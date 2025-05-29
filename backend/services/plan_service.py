@@ -3,7 +3,7 @@ import requests
 import json
 import os
 
-def generates_30_day_plan(skill: str):
+def generate_30_day_plan(skill: str):
     
     prompt = f'''Create a 30-day learning plan for: "{skill}"
 
