@@ -39,9 +39,9 @@ Example of expected format:
     }}
 ]'''
 
-    api_key = os.getenv('OPENAI_API_KEY')
+    api_key = os.getenv('OPENROUTER_API_KEY')
     if not api_key:
-        raise ValueError("OPENAI_API_KEY environment variable is not set")
+        raise ValueError("OPENROUTER_API_KEY environment variable is not set")
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -118,12 +118,17 @@ Example of expected format:
             content = content.strip()
 
             json_start_index = content.find('[')
-            if json_start_index != -1:
-                content = content[json_start_index:]
-            else:
-                raise ValueError("Valid JSON array starting with '[' not found in API response content.")
+            json_end_index = content.rfind(']')
 
-            print("\n>>> DEBUG: Cleaned content:")
+            if json_start_index != -1 and json_end_index > json_start_index:
+             
+                content = content[json_start_index : json_end_index + 1]
+                content = content.strip() 
+            else:
+                
+                raise ValueError("Valid JSON array structure (starting with '[' and ending with ']') not found in API response content.")
+
+            print("\n>>> DEBUG: Final cleaned content for JSON parsing:") 
             print(content)
 
             if not content:

@@ -3,7 +3,8 @@ from flask_cors import CORS
 import os
 from config import OPENAI_API_KEY 
 from services.plan_service import generate_30_day_plan 
-
+print(f"DEBUG: OPENROUTER_API_KEY from os.environ: {os.getenv('OPENROUTER_API_KEY')}")
+print(f"DEBUG: MONGO_URI from os.environ: {os.getenv('MONGO_URI')}")
 app = Flask(__name__)
 CORS(app)
 
