@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'rea
 import { Button } from '../components/button';
 import { Input } from '../components/Input';
 import { colors } from '../constants/colors';
+import Ionicons from 'react-native-vector-icons/Ionicons';
 import { registerUser } from "../api/auth";
 
 export default function RegisterScreen({ navigation }) {
@@ -47,6 +48,7 @@ export default function RegisterScreen({ navigation }) {
       keyboardShouldPersistTaps="handled"
     >      
       <View style={styles.header}>
+        <Ionicons name="sparkles" size={40} color={colors.primary} />
         <Text style={styles.title}> YiZ Planner</Text>
         <Text style={styles.subtitle}>Create your account</Text>
       </View>
