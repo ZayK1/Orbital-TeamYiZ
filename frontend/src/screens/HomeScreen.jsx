@@ -12,6 +12,9 @@ import {
 } from "react-native";
 import axios from "axios";
 import { colors } from "../constants/colors";
+import { Sparkles, Mail, Lock } from 'lucide-react-native';
+
+
 
 export default function HomeScreen({ navigation }) {
   const [skill, setSkill] = useState("");
@@ -57,6 +60,12 @@ export default function HomeScreen({ navigation }) {
     }
   };
 
+  const loadSamplePlan = () => {
+    setError("");
+    setLoading(false);
+    setPlan(sampleViolinPlan);
+  };
+
   const renderPlanItem = ({ item }) => (
     <View style={styles.planCard}>
       <Text style={styles.planDay}>Day {item.day}</Text>
@@ -95,8 +104,8 @@ export default function HomeScreen({ navigation }) {
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
         ]}
       >
-        <View style={styles.logoPlaceholder}>
-          <Text style={styles.logoText}>✨</Text> 
+        <View style={styles.logoContainer}>
+          <Sparkles size={32} color={colors.white} strokeWidth={2.5} />
         </View>
         <Text style={styles.mainTitle}>Skill Master</Text>
         <Text style={styles.subtitle}>Your AI-powered skill development assistant</Text>
@@ -110,8 +119,8 @@ export default function HomeScreen({ navigation }) {
       >
         <Text style={styles.inputLabel}>What skill do you want to master?</Text>
         <Text style={styles.formDescription}>
-          Enter a skill and we'll generate a personalized 30-day learning plan to help you master it.
-        </Text>
+          Enter a skill and we'll generate a personalized 30-day learning plan to help you master it. 
+        </Text >
         <View style={styles.skillInputContainer}>
           <TextInput
             placeholder="e.g., Python programming"
@@ -131,6 +140,13 @@ export default function HomeScreen({ navigation }) {
           ) : (
             <Text style={styles.buttonText}>➔ Generate 30-Day Plan</Text>
           )}
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.button, styles.sampleButton, loading && styles.buttonDisabled]}
+          onPress={loadSamplePlan}
+          disabled={loading}
+        >
+          <Text style={[styles.buttonText, styles.sampleButtonText]}>Load Sample Plan</Text>
         </TouchableOpacity>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </Animated.View>
@@ -267,6 +283,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 8,
   },
+  sampleButton: {
+    backgroundColor: 'transparent',
+    marginTop: 10,
+    paddingVertical: 8,
+    borderColor: colors.primary,
+    borderWidth: 1,
+    opacity: 0.7,
+  },
+  sampleButtonText: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 0,
+  },
   errorText: {
     color: colors.error,
     marginTop: 10,
@@ -349,3 +379,156 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 });
+
+const sampleViolinPlan = [
+  {
+      "day": 1,
+      "tasks": ["Learn the parts of the violin and bow.", "Practice holding the violin and bow correctly."],
+      "resource": ["ViolinOnline.com - Beginner Basics", "YouTube: Violin Tutorial for Beginners by Violin Tutor"]
+  },
+  {
+      "day": 2,
+      "tasks": ["Practice open string bowing (G, D, A, E).", "Work on maintaining a straight bow path."],
+      "resource": ["Fiddlerman.com - Free Beginner Lessons", "ToneGym (app for ear training)"]
+  },
+  {
+      "day": 3,
+      "tasks": ["Introduce the first finger on each string (1st position).", "Play simple scales (G major, D major)."],
+      "resource": ["ViolinLab - YouTube Channel", "MusicTheory.net (free exercises)"]
+  },
+  {
+      "day": 4,
+      "tasks": ["Practice smooth bow changes between strings.", "Work on basic rhythm exercises (quarter and half notes)."],
+      "resource": ["ViolinSchool.com - Free Resources", "Metronome Online (free web app)"]
+  },
+  {
+      "day": 5,
+      "tasks": ["Learn a simple song using open strings and first finger.", "Focus on intonation (playing in tune)."],
+      "resource": ["8Notes.com - Free Sheet Music", "Tuner Lite (free tuning app)"]
+  },
+  {
+      "day": 6,
+      "tasks": ["Introduce the second finger on each string.", "Play scales with first and second fingers."],
+      "resource": ["ViolinMasterClass - YouTube", "ScaleBook (free scale app)"]
+  },
+  {
+      "day": 7,
+      "tasks": ["Practice bowing techniques (legato, staccato).", "Play a simple melody using first and second fingers."],
+      "resource": ["The Violin Channel - Beginner Tips", "SimplyViolin (free app for beginners)"]
+  },
+  {
+      "day": 8,
+      "tasks": ["Introduce the third finger on each string.", "Play scales with first, second, and third fingers."],
+      "resource": ["ViolinTutorPro - YouTube", "Intonia (intonation training app)"]
+  },
+  {
+      "day": 9,
+      "tasks": ["Work on finger independence exercises.", "Play a simple song using first, second, and third fingers."],
+      "resource": ["ViolinSpiration - Free Lessons", "Fret Trainer (fingerboard visualization)"]
+  },
+  {
+      "day": 10,
+      "tasks": ["Introduce the fourth finger (pinky) on each string.", "Play full one-octave scales."],
+      "resource": ["Red Desert Violin - YouTube", "Perfect Ear (free ear training app)"]
+  },
+  {
+      "day": 11,
+      "tasks": ["Practice shifting between first and third positions.", "Work on vibrato exercises."],
+      "resource": ["ViolinClass - Free Tutorials", "iReal Pro (play-along app)"]
+  },
+  {
+      "day": 12,
+      "tasks": ["Play a song incorporating position shifts.", "Focus on smooth bow control."],
+      "resource": ["Musescore.com - Free Sheet Music", "Violin Notes Flash Cards (free app)"]
+  },
+  {
+      "day": 13,
+      "tasks": ["Work on double stops (two strings at once).", "Practice scales in thirds."],
+      "resource": ["ViolinMastery - YouTube", "TonalEnergy Tuner (app)"]
+  },
+  {
+      "day": 14,
+      "tasks": ["Learn a piece with dynamics (crescendo, decrescendo).", "Practice spiccato bowing."],
+      "resource": ["IMSLP - Free Classical Sheet Music", "Violin Practice App (free)"]
+  },
+  {
+      "day": 15,
+      "tasks": ["Introduce advanced bowing techniques (col legno, sul ponticello).", "Play a challenging scale (three octaves)."],
+      "resource": ["Violin Technique Videos - YouTube", "Sight-Reading Factory (free trials)"]
+  },
+  {
+      "day": 16,
+      "tasks": ["Work on a concerto or sonata excerpt.", "Practice sight-reading new music."],
+      "resource": ["The Strad - Technique Articles", "NewViolinist.com - Free Exercises"]
+  },
+  {
+      "day": 17,
+      "tasks": ["Focus on phrasing and musical expression.", "Record yourself and analyze your playing."],
+      "resource": ["ViolinTeacher.net - Free Tips", "Audacity (free recording software)"]
+  },
+  {
+      "day": 18,
+      "tasks": ["Practice playing in different styles (baroque, jazz, folk).", "Improvise over a simple chord progression."],
+      "resource": ["JazzViolinLessons.net - Free Resources", "iWasDoingAllRight (jazz violin YouTube)"]
+  },
+  {
+      "day": 19,
+      "tasks": ["Work on a fast passage with clean articulation.", "Practice with a metronome at increasing speeds."],
+      "resource": ["ViolinTechnique.com - Free Drills", "Pro Metronome (free app)"]
+  },
+  {
+      "day": 20,
+      "tasks": ["Learn a piece with advanced techniques (harmonics, pizzicato).", "Focus on stage presence and performance."],
+      "resource": ["ViolinVirtuosity - YouTube", "Virtual Sheet Music (free samples)"]
+  },
+  {
+      "day": 21,
+      "tasks": ["Play along with a backing track or ensemble recording.", "Work on memorizing a piece."],
+      "resource": ["YouTube - Violin Backing Tracks", "Anki (flashcard app for memorization)"]
+  },
+  {
+      "day": 22,
+      "tasks": ["Practice a challenging etude (Kreutzer, Ševčík).", "Focus on left-hand agility."],
+      "resource": ["IMSLP - Free Etudes", "ViolinExercises.com - Free PDFs"]
+  },
+  {
+      "day": 23,
+      "tasks": ["Work on a duet or chamber music part.", "Practice listening and blending with another player."],
+      "resource": ["8Notes - Free Duets", "Discord Violin Jam Groups"]
+  },
+  {
+      "day": 24,
+      "tasks": ["Refine vibrato speed and control.", "Practice playing in higher positions (5th, 7th)."],
+      "resource": ["ViolinVibrato Masterclass - YouTube", "Fiddler's Fakebook (free folk tunes)"]
+  },
+  {
+      "day": 25,
+      "tasks": ["Learn a piece with irregular rhythms (syncopation, polyrhythms).", "Work on bow distribution."],
+      "resource": ["Rhythm Trainer (free app)", "ViolinPatterns.com - Free Exercises"]
+  },
+  {
+      "day": 26,
+      "tasks": ["Practice performing under pressure (mock audition).", "Work on stage fright techniques."],
+      "resource": ["TED Talk: Performance Anxiety", "ViolinPerformanceTips.com"]
+  },
+  {
+      "day": 27,
+      "tasks": ["Explore extended techniques (bariolage, ricochet).", "Improvise a cadenza."],
+      "resource": ["Contemporary Violin - YouTube", "Impro-Violin (free ebook)"]
+  },
+  {
+      "day": 28,
+      "tasks": ["Polish a recital piece with full expression.", "Record a final performance video."],
+      "resource": ["Violin Recital Tips - Blog", "Canva (free video editing)"]
+  },
+  {
+      "day": 29,
+      "tasks": ["Review all scales and arpeggios.", "Play through favorite pieces for enjoyment."],
+      "resource": ["Violin Scale Book PDF - Free", "Spotify - Violin Playlists"]
+  },
+  {
+      "day": 30,
+      "tasks": ["Reflect on progress and set new goals.", "Play a fun piece just for joy!"],
+      "resource": ["Goal Setting for Musicians - Article", "Violin Jam Tracks - YouTube"]
+  }
+];
