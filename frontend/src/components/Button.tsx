@@ -5,18 +5,20 @@ import {
   StyleSheet, 
   ActivityIndicator,
   ViewStyle,
-  TextStyle
+  TextStyle,
+  View
 } from 'react-native';
 import { colors } from '../constants/colors';
 
 interface ButtonProps {
-  title: string;s
+  title: string;
   onPress: () => void;
   variant?: 'primary' | 'secondary' | 'outline';
   isLoading?: boolean;
   disabled?: boolean;
   style?: ViewStyle;
   textStyle?: TextStyle;
+  icon?: React.ReactNode;
 }
 
 export const Button: React.FC<ButtonProps> = ({
@@ -27,6 +29,7 @@ export const Button: React.FC<ButtonProps> = ({
   disabled = false,
   style,
   textStyle,
+  icon,
 }) => {
   const getButtonStyle = () => {
     switch (variant) {
@@ -66,7 +69,10 @@ export const Button: React.FC<ButtonProps> = ({
           size="small" 
         />
       ) : (
-        <Text style={[getTextStyle(), textStyle]}>{title}</Text>
+        <>
+          {icon && <View style={styles.iconContainer}>{icon}</View>}
+          <Text style={[getTextStyle(), textStyle]}>{title}</Text>
+        </>
       )}
     </TouchableOpacity>
   );
@@ -104,5 +110,8 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: 16,
     fontWeight: '600',
+  },
+  iconContainer: {
+    marginRight: 8,
   },
 });
