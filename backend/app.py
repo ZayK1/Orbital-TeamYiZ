@@ -11,7 +11,11 @@ print(f"DEBUG: MONGO_URI from os.environ: {os.getenv('MONGO_URI')}")
 
 
 app = Flask(__name__)
-CORS(app)
+
+FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:8081") 
+
+CORS(app, resources={r"/*": {"origins": [FRONTEND_URL, "http://localhost:8081", "http://127.0.0.1:8081"]}}, supports_credentials=True)
+
 app.register_blueprint(auth_bp)
 @app.route("/health")
 def health():
