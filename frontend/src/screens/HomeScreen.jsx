@@ -13,6 +13,7 @@ import {
 import axios from "axios";
 import { colors } from "../constants/colors";
 import { Sparkles, Mail, Lock } from 'lucide-react-native';
+import { API_BASE_URL } from "../api/apiConfig";
 
 
 
@@ -49,7 +50,7 @@ export default function HomeScreen({ navigation }) {
     setLoading(true);
     setIsModalVisible(true);
     try {
-      const response = await axios.post("http://192.168.0.116:5000/generate-plan", {
+      const response = await axios.post(`${API_BASE_URL}/generate-plan`, {
         skill_name: skill.trim(),
       });
       if (response.data.plan && response.data.plan.length > 0) {
