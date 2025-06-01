@@ -1,13 +1,13 @@
 // Color palette for the app
 export const colors = {
-  primary: '#3A6EA5', // Deep blue
-  primaryLight: '#EBF2FA', // Light blue background
-  secondary: '#FF6B6B', // Coral accent
-  secondaryLight: '#FFE2E2', // Light coral
+  primary: '#3A6EA5', 
+  primaryLight: '#EBF2FA', 
+  secondary: '#FF6B6B', 
+  secondaryLight: '#FFE2E2', 
   background: '#FFFFFF',
   card: '#FFFFFF',
-  text: '#1A2C42', // Dark blue-gray
-  textSecondary: '#6E7A8A', // Medium gray
+  text: '#1A2C42', 
+  textSecondary: '#6E7A8A', 
   border: '#E5E9F0',
   success: '#4CAF50',
   successLight: '#E8F5E9',

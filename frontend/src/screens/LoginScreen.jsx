@@ -4,7 +4,6 @@ import { useNavigation } from '@react-navigation/native';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { colors } from '../constants/colors';
-import Ionicons from 'react-native-vector-icons/Ionicons';
 import { useAuth } from '../context/AuthContext';
 import { loginUser } from '../api/auth';
 import { Sparkles, Mail, Lock } from 'lucide-react-native';
@@ -46,7 +45,7 @@ export default function LoginScreen() {
     try {
       const data = await loginUser({ identifier, password });
       contextLogin(data.user);
-      navigation.replace('Home');
+      navigation.replace('Main');
     } catch (err) {
       console.error(err);
       const msg = err.response?.data?.error || "Login failed. Please check your credentials.";

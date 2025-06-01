@@ -4,11 +4,11 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  FlatList,
   StyleSheet,
   ActivityIndicator,
   ScrollView,
   Animated,
+  Modal,
 } from "react-native";
 import axios from "axios";
 import { colors } from "../constants/colors";
@@ -18,9 +18,9 @@ import { Sparkles, Mail, Lock } from 'lucide-react-native';
 
 export default function HomeScreen({ navigation }) {
   const [skill, setSkill] = useState("");
-  const [plan, setPlan] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -47,35 +47,30 @@ export default function HomeScreen({ navigation }) {
       return;
     }
     setLoading(true);
+    setIsModalVisible(true);
     try {
-      const response = await axios.post("http://127.0.0.1:5000/generate-plan", {
+      const response = await axios.post("http://192.168.0.116:5000/generate-plan", {
         skill_name: skill.trim(),
       });
-      setPlan(response.data.plan || []);
+      if (response.data.plan && response.data.plan.length > 0) {
+        navigation.navigate('PlanIndex', { plan: response.data.plan, skillName: skill.trim() });
+      } else {
+        setError("Could not generate a plan for this skill. Try a different skill.");
+      }
     } catch (err) {
       console.error(err);
       setError("Failed to generate plan. Please try again.");
     } finally {
       setLoading(false);
+      setIsModalVisible(false);
     }
   };
 
   const loadSamplePlan = () => {
     setError("");
     setLoading(false);
-    setPlan(sampleViolinPlan);
+    navigation.navigate('PlanIndex', { plan: sampleViolinPlan, skillName: "Violin (Sample)" });
   };
-
-  const renderPlanItem = ({ item }) => (
-    <View style={styles.planCard}>
-      <Text style={styles.planDay}>Day {item.day}</Text>
-      {item.tasks.map((task, idx) => (
-        <Text key={idx} style={styles.planTask}>
-          • {task}
-        </Text>
-      ))}
-    </View>
-  );
 
   const howItWorksItems = [
     {
@@ -104,7 +99,7 @@ export default function HomeScreen({ navigation }) {
           { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
         ]}
       >
-        <View style={styles.logoContainer}>
+       <View style={styles.logoPlaceholder}>
           <Sparkles size={32} color={colors.white} strokeWidth={2.5} />
         </View>
         <Text style={styles.mainTitle}>Skill Master</Text>
@@ -118,7 +113,7 @@ export default function HomeScreen({ navigation }) {
         ]}
       >
         <Text style={styles.inputLabel}>What skill do you want to master?</Text>
-        <Text style={styles.formDescription}>
+        <Text style={[styles.formDescription, { opacity: 0.6 }]}>
           Enter a skill and we'll generate a personalized 30-day learning plan to help you master it. 
         </Text >
         <View style={styles.skillInputContainer}>
@@ -151,42 +146,45 @@ export default function HomeScreen({ navigation }) {
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
       </Animated.View>
 
-      {plan && plan.length > 0 ? (
-        <Animated.View style={{ opacity: fadeAnim }}>
-          <Text style={styles.sectionTitle}>Your 30-Day Plan</Text>
-          <FlatList
-            data={plan}
-            keyExtractor={(item) => item.day.toString()}
-            renderItem={renderPlanItem}
-            contentContainerStyle={styles.list}
-            scrollEnabled={false}
-          />
-        </Animated.View>
-      ) : (
-        !loading && (
-          <Animated.View 
-            style={[
-              styles.howItWorksSection,
-              { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-            ]}
-          >
-            <Text style={styles.sectionTitle}>How it works</Text>
-            {howItWorksItems.map((item, index) => (
-              <View key={index} style={styles.howItWorksItem}>
-                <View style={styles.howItWorksIconContainer}>
-                  {index === 0 && <Text style={styles.iconPlaceholderText}>🔍</Text>}
-                  {index === 1 && <Text style={styles.iconPlaceholderText}>🧠</Text>}
-                  {index === 2 && <Text style={styles.iconPlaceholderText}>✔️</Text>}
-                </View>
-                <View style={styles.howItWorksTextContainer}>
-                  <Text style={styles.howItWorksTitle}>{item.title}</Text>
-                  <Text style={styles.howItWorksDescription}>{item.description}</Text>
-                </View>
+      {!loading && (
+        <Animated.View
+          style={[
+            styles.howItWorksSection,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
+          ]}
+        >
+          <Text style={styles.sectionTitle}>How it works</Text>
+          {howItWorksItems.map((item, index) => (
+            <View key={index} style={styles.howItWorksItem}>
+              <View style={styles.howItWorksIconContainer}>
+                {index === 0 && <Text style={styles.iconPlaceholderText}>🔍</Text>}
+                {index === 1 && <Text style={styles.iconPlaceholderText}>🧠</Text>}
+                {index === 2 && <Text style={styles.iconPlaceholderText}>✔️</Text>}
               </View>
-            ))}
-          </Animated.View>
-        )
+              <View style={styles.howItWorksTextContainer}>
+                <Text style={styles.howItWorksTitle}>{item.title}</Text>
+                <Text style={styles.howItWorksDescription}>{item.description}</Text>
+              </View>
+            </View>
+          ))}
+        </Animated.View>
       )}
+
+      <Modal
+        transparent={true}
+        animationType="fade"
+        visible={isModalVisible}
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalBackground}>
+          <View style={styles.activityIndicatorWrapper}>
+            <ActivityIndicator size="large" color={colors.primary} />
+            <Text style={styles.modalText}>Generating your plan...</Text>
+            <Text style={styles.modalSubText}>This may take a moment.</Text>
+          </View>
+        </View>
+      </Modal>
+
     </ScrollView>
   );
 }
@@ -198,7 +196,8 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     paddingHorizontal: 24,
-    paddingVertical: 30,
+    paddingTop: 60,
+    paddingBottom: 30,
   },
   headerSection: {
     alignItems: 'center',
@@ -378,6 +377,39 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     lineHeight: 22,
   },
+  modalBackground: {
+    flex: 1,
+    alignItems: 'center',
+    flexDirection: 'column',
+    justifyContent: 'space-around',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+  },
+  activityIndicatorWrapper: {
+    backgroundColor: colors.white,
+    height: 150,
+    width: 250,
+    borderRadius: 20,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+    padding: 20,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalText: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: '600',
+    color: colors.text,
+  },
+  modalSubText: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 5,
+  }
 });
 
 const sampleViolinPlan = [
