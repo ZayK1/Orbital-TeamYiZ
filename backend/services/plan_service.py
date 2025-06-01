@@ -75,7 +75,7 @@ Example of expected format:
             "https://openrouter.ai/api/v1/chat/completions",
             headers=headers,
             json=payload,
-            timeout=30
+            timeout=85
         )
 
         print("\n>>> DEBUG: Response status code:", response.status_code)
