@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
-import { Button } from '../components/button';
+import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { colors } from '../constants/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';

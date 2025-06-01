@@ -156,6 +156,8 @@ Example of expected format:
                         raise ValueError("'tasks' must be an array")
                     if not (2 <= len(item['tasks']) <= 4):
                         raise ValueError(f"Day {item['day']} must have 2-4 tasks (has {len(item['tasks'])})")
+                    if 'resource' in item and 'resources' not in item:
+                        item['resources'] = item.pop('resource')
                     if 'resources' not in item:
                         raise ValueError("Each item must have a 'resources' key")
                     if not isinstance(item['resources'], list):
