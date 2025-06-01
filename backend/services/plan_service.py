@@ -60,7 +60,7 @@ Example of expected format:
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.3,
-        "max_tokens": 1000
+        "max_tokens": 100
     }
 
     try:
