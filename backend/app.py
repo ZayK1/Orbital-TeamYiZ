@@ -4,8 +4,12 @@ import os
 from config import OPENAI_API_KEY, MONGO_URI
 from auth.routes import auth_bp
 from services.plan_service import generate_30_day_plan 
+
+
 print(f"DEBUG: OPENROUTER_API_KEY from os.environ: {os.getenv('OPENROUTER_API_KEY')}")
 print(f"DEBUG: MONGO_URI from os.environ: {os.getenv('MONGO_URI')}")
+
+
 app = Flask(__name__)
 CORS(app)
 app.register_blueprint(auth_bp)
@@ -38,5 +42,6 @@ def generate_plan():
         print(f"Unexpected error in generate_plan: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', debug=True)
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 8080)) 
+    app.run(host='0.0.0.0', port=port, debug=False)
