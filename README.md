@@ -40,8 +40,8 @@ Sample Flow:
 
 **Tech Stack**
 Frontend:  React Native
-Backend: Node.js + Express
-Database: MongoDB
+Backend: Python(flask)
+Database: MongoDB Atlas
 AI Integration: OpenRouter API
 
 
