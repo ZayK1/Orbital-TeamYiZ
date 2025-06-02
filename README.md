@@ -48,7 +48,7 @@ Our working demo includes the following functionalities:
 
 ---
 
-## 🛠Tech Stack  
+## Tech Stack  
 
 ### 🔹 Frontend
 - **React Native** (with Expo)
