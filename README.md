@@ -35,7 +35,7 @@ Our working demo includes the following functionalities:
 - **React Native Frontend**: A functional UI for login, registration, and the home page  
 - **MongoDB Backend**: Stores and authenticates user credentials  
 - **API Integration**: Successful API call to OpenRouter based on user input (e.g., _"learn guitar"_)  
-- **AI-Generated Plan Display**: AI-generated plans are successfully retrieved and displayed within the app  
+ 
 
 
 ---
@@ -67,8 +67,7 @@ Our working demo includes the following functionalities:
 - `bcrypt` for password hashing  
 - `requests`, `flask-cors`, `python-dotenv`  
 
-### 🔹 AI Integration
-- **OpenRouter API** for generating 30-day learning plans  
+
 
 ---
 
@@ -76,8 +75,8 @@ Our working demo includes the following functionalities:
 YiZ Planner follows a classic **client-server architecture**:
 
 - The **React Native frontend** (built with Expo) provides the UI and handles user interactions  
-- The **Flask backend API** manages authentication and AI plan generation  
-- The backend connects to **MongoDB Atlas** and the **OpenRouter API** to store data and generate plans  
+- The **Flask backend API** manages authentication  
+- The backend connects to **MongoDB Atlas** 
 
 ---
 
@@ -85,9 +84,9 @@ YiZ Planner follows a classic **client-server architecture**:
 You can access the deployed frontend at:  
 🔗 [https://orbital-team-viz-frontend.vercel.app/](https://orbital-team-viz-frontend.vercel.app/)
 
-> **Note:** The "Generate Plan" feature may not work on the deployed app due to Render's free trial memory limit.  
+> **Note:** The "Generate Plan" feature is not fully implemented for now.
 > A "Sample Plan" button has been added to preview how a plan is generated for any skill.  
-> The full "Generate Plan" functionality works locally.
+> The full "Generate Plan" will be added later
 
 ---
 
@@ -97,10 +96,7 @@ You can access the deployed frontend at:
 <img src="https://github.com/user-attachments/assets/f1884652-5d52-49da-9cc8-521a8b31de47" alt="Screenshot 10" width="300">
 <img src="https://github.com/user-attachments/assets/ecfe7e72-aac1-48a1-a753-8263ae9c86d2" alt="Screenshot 6" width="300">
 <img src="https://github.com/user-attachments/assets/7441c36c-99dc-476d-b3f3-fed4856ed52f" alt="Screenshot 9" width="300">
-<img src="https://github.com/user-attachments/assets/3a313a83-bab1-41c9-a09d-321ec5117a7c" alt="Screenshot 2" width="300">
-<img src="https://github.com/user-attachments/assets/7eb1e962-1ec1-4532-bf1a-285842413057" alt="Screenshot 5" width="300">
-<img src="https://github.com/user-attachments/assets/07893587-a300-4961-a121-bd01be907e6d" alt="Screenshot 1" width="300">
-<img src="https://github.com/user-attachments/assets/604e605f-0e92-4e09-a8db-59401eff6921" alt="Screenshot 4" width="300">
+
 <img src="https://github.com/user-attachments/assets/dfb21802-ac9f-4b28-b331-3b540cf9d33e" alt="Screenshot 8" width="300">
 <img src="https://github.com/user-attachments/assets/86ff80da-282c-46ba-a319-6ab48b09f565" alt="Screenshot 7" width="300">
 <img src="https://github.com/user-attachments/assets/e73d7432-7847-4d1c-b133-0c66955677a7" alt="Screenshot 3" width="300">
