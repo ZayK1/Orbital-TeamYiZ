@@ -37,6 +37,7 @@ Our working demo includes the following functionalities:
 - **API Integration**: Successful API call to OpenRouter based on user input (e.g., _"learn guitar"_)  
 - **AI-Generated Plan Display**: AI-generated plans are successfully retrieved and displayed within the app  
 
+
 ---
 
 ## Sample Flow  
@@ -91,4 +92,15 @@ You can access the deployed frontend at:
 ---
 
 ## Sreenshots
-
+<img src="https://github.com/user-attachments/assets/7383f341-cea2-43e8-94c4-50956625c5d1" alt="Screenshot 12" width="300">
+<img src="https://github.com/user-attachments/assets/957568bd-6767-4ff6-bb8f-43a181cdd629" alt="Screenshot 11" width="300">
+<img src="https://github.com/user-attachments/assets/f1884652-5d52-49da-9cc8-521a8b31de47" alt="Screenshot 10" width="300">
+<img src="https://github.com/user-attachments/assets/ecfe7e72-aac1-48a1-a753-8263ae9c86d2" alt="Screenshot 6" width="300">
+<img src="https://github.com/user-attachments/assets/7441c36c-99dc-476d-b3f3-fed4856ed52f" alt="Screenshot 9" width="300">
+<img src="https://github.com/user-attachments/assets/3a313a83-bab1-41c9-a09d-321ec5117a7c" alt="Screenshot 2" width="300">
+<img src="https://github.com/user-attachments/assets/7eb1e962-1ec1-4532-bf1a-285842413057" alt="Screenshot 5" width="300">
+<img src="https://github.com/user-attachments/assets/07893587-a300-4961-a121-bd01be907e6d" alt="Screenshot 1" width="300">
+<img src="https://github.com/user-attachments/assets/604e605f-0e92-4e09-a8db-59401eff6921" alt="Screenshot 4" width="300">
+<img src="https://github.com/user-attachments/assets/dfb21802-ac9f-4b28-b331-3b540cf9d33e" alt="Screenshot 8" width="300">
+<img src="https://github.com/user-attachments/assets/86ff80da-282c-46ba-a319-6ab48b09f565" alt="Screenshot 7" width="300">
+<img src="https://github.com/user-attachments/assets/e73d7432-7847-4d1c-b133-0c66955677a7" alt="Screenshot 3" width="300">
