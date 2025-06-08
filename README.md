@@ -82,7 +82,7 @@ YiZ Planner follows a classic **client-server architecture**:
 
 ## Deployed App  
 You can access the deployed frontend at:  
-🔗 [https://orbital-team-viz-frontend.vercel.app/](https://orbital-team-viz-frontend.vercel.app/)
+🔗 [https://orbital-team-viz-frontend.vercel.app/](https://orbital-team-yiz-frontend.vercel.app/)
 
 > **Note:** The "Generate plan" feature may not work on the deployed app due to Render's free trial memory limit. A "sample plan" button has been added for preview purposes on how the plan is generated for any skill. The "Generate plan" functionality works otherwise on a local machine.
 
