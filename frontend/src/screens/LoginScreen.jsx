@@ -5,7 +5,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { colors } from '../constants/colors';
 import { useAuth } from '../context/AuthContext';
-import { loginUser } from '../api/auth';
+import { authAPI } from '../api/auth';
 import { Sparkles, Mail, Lock } from 'lucide-react-native';
 
 export default function LoginScreen() {
@@ -43,9 +43,17 @@ export default function LoginScreen() {
       return;
     }
     try {
-      const data = await loginUser({ identifier, password });
-      contextLogin(data.user);
-      navigation.replace('Main');
+      const result = await authAPI.login({ identifier, password });
+      if (result.success) {
+        const loginSuccess = await contextLogin(result.data.user, result.data.token);
+        if (loginSuccess) {
+          navigation.replace('Main');
+        } else {
+          setLocalError('Failed to store login data');
+        }
+      } else {
+        setLocalError(result.error);
+      }
     } catch (err) {
       console.error(err);
       const msg = err.response?.data?.error || "Login failed. Please check your credentials.";

@@ -5,19 +5,39 @@ import { API_BASE_URL } from './apiConfig';
 
 const AUTH_BASE_URL = `${API_BASE_URL}/auth`;
 
-export async function registerUser(payload) {
-  const response = await axios.post(`${AUTH_BASE_URL}/register`, {
-    username: payload.username,
-    email: payload.email,
-    password: payload.password,
-  });
-  return response.data;
-}
+const authAPI = {
+  register: async (userData) => {
+    try {
+      const response = await axios.post(`${AUTH_BASE_URL}/register`, userData);
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || "Registration failed",
+      };
+    }
+  },
 
-export async function loginUser(payload) {
-  const response = await axios.post(`${AUTH_BASE_URL}/login`, {
-    identifier: payload.identifier,
-    password: payload.password,
-  });
-  return response.data;
-}
+  login: async (credentials) => {
+    try {
+      const response = await axios.post(`${AUTH_BASE_URL}/login`, credentials);
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || "Login failed",
+      };
+    }
+  },
+
+  verifyToken: async (token) => {
+    try {
+      const response = await axios.post(`${AUTH_BASE_URL}/verify`, { token });
+      return response.data.valid;
+    } catch {
+      return false;
+    }
+  },
+};
+
+export { authAPI };

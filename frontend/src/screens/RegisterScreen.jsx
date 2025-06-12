@@ -4,7 +4,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { colors } from '../constants/colors';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { registerUser } from "../api/auth";
+import { authAPI } from "../api/auth";
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -22,7 +22,12 @@ export default function RegisterScreen({ navigation }) {
     setIsLoading(true);
     setError('');
     try {
-      await registerUser({ username: name, email, password });
+      const result = await authAPI.register({ username: name, email, password });
+      if (!result.success) {
+        setError(result.error);
+        setIsLoading(false);
+        return;
+      }
       Alert.alert("Success", "Registration complete! Please log in.", [
         { text: "OK", onPress: () => navigation.replace("Login") },
       ]);

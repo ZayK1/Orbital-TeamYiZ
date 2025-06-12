@@ -1,51 +1,88 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from werkzeug.exceptions import BadRequest
 from auth.models import User
-from auth.utils import hash_password, check_password
+from auth.utils import hash_password, verify_password
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/auth")
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
-
-    data = request.get_json() or {}
-    username = data.get("username", "").strip()
-    email = data.get("email", "").strip()
-    password = data.get("password", "").strip()
-
-    if not username or not email or not password:
-        raise BadRequest("username, email, and password are required")
-
-    pw_hash = hash_password(password)
-
     try:
+        data = request.get_json() or {}
+        username = data.get("username", "").strip()
+        email = data.get("email", "").strip()
+        password = data.get("password", "")
+
+        # Validation
+        if not all([username, email, password]):
+            return jsonify({'error': 'All fields are required'}), 400
+        if len(password) < 6:
+            return jsonify({'error': 'Password must be at least 6 characters'}), 400
+        # Check if user exists
+        if User.find_by_username_or_email(username) or User.find_by_username_or_email(email):
+            return jsonify({'error': 'Username or email already exists'}), 409
+        # Create user
+        pw_hash = hash_password(password)
         user_id = User.create(username, email, pw_hash)
-        return jsonify({"message": "User created", "user_id": user_id}), 201
-    except ValueError as ve:
-        return jsonify({"error": str(ve)}), 409
+        token = User.generate_jwt_token(user_id)
+        return jsonify({
+            'message': 'User created successfully',
+            'token': token,
+            'user': {
+                'id': user_id,
+                'username': username,
+                'email': email
+            }
+        }), 201
     except Exception as e:
-        return jsonify({"error": "Server error"}), 500
+        current_app.logger.error(f"Registration error: {str(e)}")
+        return jsonify({'error': 'Registration failed'}), 500
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
+    try:
+        data = request.get_json() or {}
+        identifier = data.get("identifier", "").strip()
+        password = data.get("password", "")
+        if not all([identifier, password]):
+            return jsonify({'error': 'All fields are required'}), 400
+        user_doc = User.find_by_username_or_email(identifier)
+        if not user_doc or not verify_password(password, user_doc["password_hash"]):
+            return jsonify({'error': 'Invalid credentials'}), 401
+        User.update_last_login(user_doc['_id'])
+        token = User.generate_jwt_token(str(user_doc['_id']))
+        user_safe = {
+            'id': str(user_doc['_id']),
+            'username': user_doc['username'],
+            'email': user_doc['email']
+        }
+        return jsonify({'message': 'Login successful', 'token': token, 'user': user_safe}), 200
+    except Exception as e:
+        current_app.logger.error(f"Login error: {str(e)}")
+        return jsonify({'error': 'Login failed'}), 500
 
-    data = request.get_json() or {}
-    identifier = data.get("identifier", "").strip()
-    password = data.get("password", "").strip()
-
-    if not identifier or not password:
-        raise BadRequest("identifier and password are required")
-
-    user_doc = User.find_by_username_or_email(identifier)
-    if not user_doc:
-        return jsonify({"error": "Invalid credentials"}), 401
-
-    if not check_password(password, user_doc["password_hash"]):
-        return jsonify({"error": "Invalid credentials"}), 401
-
-    user_safe = {
-        "_id": str(user_doc["_id"]),
-        "username": user_doc["username"],
-        "email": user_doc["email"]
-    }
-    return jsonify({"message": "Login successful", "user": user_safe}), 200
+@auth_bp.route("/verify", methods=["POST"])
+def verify_token():
+    try:
+        data = request.get_json()
+        token = data.get('token')
+        if not token:
+            return jsonify({'error': 'Token required'}), 400
+        user_id = User.verify_jwt_token(token)
+        if not user_id:
+            return jsonify({'error': 'Invalid or expired token'}), 401
+        user = User.find_by_id(user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
+        return jsonify({
+            'valid': True,
+            'user': {
+                'id': str(user['_id']),
+                'username': user['username'],
+                'email': user['email']
+            }
+        }), 200
+    except Exception as e:
+        current_app.logger.error(f"Token verification error: {str(e)}")
+        return jsonify({'error': 'Token verification failed'}), 500
+    
