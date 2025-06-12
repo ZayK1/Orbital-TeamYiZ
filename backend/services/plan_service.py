@@ -50,8 +50,10 @@ Example of expected format:
         "Accept": "application/json"
     }
 
+    
+    #"deepseek/deepseek-chat-v3-0324:free"
     payload = {
-        "model": "deepseek/deepseek-chat-v3-0324:free",
+        "model": "deepseek/deepseek-r1-0528:free",
         "messages": [
             {
                 "role": "system", 

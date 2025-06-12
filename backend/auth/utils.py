@@ -1,5 +1,10 @@
 import bcrypt
-from config import BCRYPT_ROUNDS
+
+try:
+    from config import BCRYPT_ROUNDS  # type: ignore
+except ModuleNotFoundError:
+    import os
+    BCRYPT_ROUNDS = int(os.getenv("BCRYPT_ROUNDS", "12"))
 
 def hash_password(plaintext_password: str) -> str:
 
@@ -16,3 +21,9 @@ def check_password(plaintext_password: str, password_hash: str) -> bool:
         )
     except:
         return False
+
+
+
+def verify_password(plaintext_password: str, password_hash: str) -> bool:
+    
+    return check_password(plaintext_password, password_hash)

@@ -1,51 +1,72 @@
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-import os
-from config import OPENAI_API_KEY, MONGO_URI
+from pymongo import MongoClient
 from auth.routes import auth_bp
-from services.plan_service import generate_30_day_plan 
+from services.plan_service import generate_30_day_plan
+import logging
+from dotenv import load_dotenv; 
+
+load_dotenv()
 
 
-print(f"DEBUG: OPENROUTER_API_KEY from os.environ: {os.getenv('OPENROUTER_API_KEY')}")
-print(f"DEBUG: MONGO_URI from os.environ: {os.getenv('MONGO_URI')}")
+def create_app():
+    app = Flask(__name__)
+
+    app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
+    app.config['MONGO_URI'] = os.getenv('MONGO_URI', 'mongodb://localhost:27017/skillplan_db')
 
 
-app = Flask(__name__)
+    CORS(app, origins=[
+        os.getenv('FRONTEND_URL', 'http://localhost:8081'),
+        'http://localhost:8081',
+        'exp://192.168.0.116:8081'  
+    ])
 
-FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:8081") 
 
-CORS(app, resources={r"/*": {"origins": [FRONTEND_URL, "http://localhost:8081", "http://127.0.0.1:8081"]}}, supports_credentials=True)
+    client = MongoClient(app.config['MONGO_URI'])
+    app.db = client.get_default_database()
 
-app.register_blueprint(auth_bp)
-@app.route("/health")
-def health():
-    return jsonify({"status": "ok"})
 
-@app.route("/generate-plan", methods=["POST"])
-def generate_plan():
-    try:
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "No JSON data provided"}), 400
-            
-        skill = data.get("skill_name", "").strip()
-        if not skill:
-            return jsonify({"error": "skill_name is required"}), 400
+    logging.basicConfig(level=logging.INFO)
+    app.logger.setLevel(logging.INFO)
 
-        plan = generate_30_day_plan(skill)
-        
-        
-        return jsonify({
-            "skill": skill,
-            "plan": plan  
-        }), 200
-        
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-    except Exception as e:
-        print(f"Unexpected error in generate_plan: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+    
+    app.register_blueprint(auth_bp)
+
+
+    @app.route('/health', methods=['GET'])
+    def health_check():
+        return jsonify({'status': 'healthy', 'message': 'YiZ Planner API is running'}), 200
+
+   
+    @app.route('/generate-plan', methods=['POST'])
+    def generate_plan():
+        try:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "No JSON data provided"}), 400
+
+            skill = data.get("skill_name", "").strip()
+            if not skill:
+                return jsonify({"error": "skill_name is required"}), 400
+
+            plan = generate_30_day_plan(skill)
+
+            return jsonify({
+                "skill": skill,
+                "plan": plan
+            }), 200
+
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
+        except Exception as e:
+            app.logger.error(f"Unexpected error in generate_plan: {str(e)}")
+            return jsonify({"error": "Internal server error"}), 500
+
+    return app
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 8080)) 
-    app.run(host='0.0.0.0', port=port, debug=False)
+    app = create_app()
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port, debug=True)

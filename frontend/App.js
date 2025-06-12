@@ -3,6 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Home, UserCircle2 } from "lucide-react-native";
+import { ActivityIndicator, View } from "react-native";
 
 import { AuthProvider, useAuth } from "./src/context/AuthContext";
 
@@ -17,13 +18,31 @@ import { colors } from "./src/constants/colors";
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-function ProtectedRoute({ navigation, children }) {
-  const { user } = useAuth();
-  if (!user) {
-    navigation.replace("Login");
-    return null;
+function AuthStackNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function RootNavigator() {
+  const { loading, isAuthenticated } = useAuth();
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
   }
-  return children;
+
+  return (
+    <NavigationContainer>
+      {isAuthenticated ? <MainTabNavigator /> : <AuthStackNavigator />}
+    </NavigationContainer>
+  );
 }
 
 function MainTabNavigator() {
@@ -71,13 +90,7 @@ function HomeStackNavigator() {
 export default function App() {
   return (
     <AuthProvider>
-      <NavigationContainer>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-          <Stack.Screen name="Main" component={MainTabNavigator} />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <RootNavigator />
     </AuthProvider>
   );
 }
