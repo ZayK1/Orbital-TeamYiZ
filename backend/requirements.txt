@@ -7,4 +7,3 @@ pymongo
 bcrypt
 gunicorn
 PyJWT
-react-native-async-storage
