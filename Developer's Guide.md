@@ -2284,13 +2284,44 @@ npx expo start -c        # clear Metro cache + env load
 
 ---
 
-## 📚 Additional Resources
+## 📞 Support & Resources
 
-• 🐍 Flask Best Practices – https://flask.palletsprojects.com/en/3.0.x/patterns/appfactories/  
-• ⚛️ React Navigation recipes – https://reactnavigation.org/docs/tab-based/  
-• 🔒 OWASP JWT Cheat-Sheet – https://cheatsheetseries.owasp.org/cheatsheets/JSON_Web_Token_Cheat_Sheet.html  
-• 🌐 CORS Debugger – https://test-cors.org
+### Documentation Links
+- [React Native Docs](https://reactnative.dev/docs/getting-started)
+- [Expo Documentation](https://docs.expo.dev/)
+- [Flask Documentation](https://flask.palletsprojects.com/)
+- [MongoDB Documentation](https://docs.mongodb.com/)
+- [OpenRouter API Docs](https://openrouter.ai/docs)
+
+### Development Communities
+- [React Native Community](https://github.com/react-native-community)
+- [Expo Forums](https://forums.expo.dev/)
+- [Flask Discord](https://discord.gg/flask)
+
+### Debugging Tools
+- **Frontend**: React Native Debugger, Flipper
+- **Backend**: Flask Debug Mode, MongoDB Compass
+- **API Testing**: Postman, Insomnia
+
+---
+
+## 📄 License & Contributing
+
+### Development Guidelines
+1. Follow established code style and patterns
+2. Write comprehensive tests for new features
+3. Update documentation for API changes
+4. Use semantic commit messages
+5. Create feature branches for new development
+
+### Code Review Process
+1. Create feature branch from main
+2. Implement feature with tests
+3. Submit pull request with description
+4. Address review feedback
+5. Merge after approval
 
 ---
 
 > **Keep this guide living!**  When you merge a feature branch that affects the API, database, or deployment flow, append a note here.
+> *This guide serves as a living document and should be updated as the project evolves. For questions or clarifications, please reach out to the development team.*
