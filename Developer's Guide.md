@@ -2230,16 +2230,12 @@ windowSize={5}
 
 
 
-| Priority | Feature | Description | Timeline |
-
-|----------|---------|-------------|----------|
-
-| 🔴 High | **Progress Tracking** | Mark daily tasks as complete |
-| 🟠 Medium | **Plan Persistence** | Save generated plans to a new `plans` collection and expose `/plans/*` endpoints | Q3 2025 |
-| 🟡 Medium | **Push Notifications** | Daily reminders via Expo Notifications | Q3 2025 |
-| 🟢 Low    | **Gamification**       | Achievements & streaks | 2025 |
-
----
+| Priority | Feature              | Description                                                       | Timeline |
+|----------|----------------------|-------------------------------------------------------------------|----------|
+| 🔴 High  | **Progress Tracking**| Mark daily tasks as complete                                      | June  |
+| 🟠 Medium| **Plan Persistence** | Save generated plans to a new `plans` collection and add `/plans/*` endpoints | June  |
+| 🟡 Medium| **Push Notifications**| Daily learning-reminder notifications via Expo                   | June  |
+| 🟢 Low   | **Gamification**     | Achievements & learning streak badges                             | June     |
 
 ## ✨ Recently Implemented (June 2025)
 
