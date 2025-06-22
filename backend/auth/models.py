@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import jwt
-from flask import current_app
+from flask import current_app, g
 from werkzeug.exceptions import BadRequest
 from bson.objectid import ObjectId
 
@@ -15,12 +15,12 @@ class User:
             'updated_at': datetime.utcnow(),
             'last_login': None
         }
-        result = current_app.db.users.insert_one(user_data)
+        result = g.db.users.insert_one(user_data)
         return str(result.inserted_id)
 
     @staticmethod
     def find_by_username_or_email(identifier: str):
-        return current_app.db.users.find_one({
+        return g.db.users.find_one({
             '$or': [
                 {'username': identifier},
                 {'email': identifier}
@@ -30,14 +30,14 @@ class User:
     @staticmethod
     def find_by_id(user_id: str):
         try:
-            doc = current_app.db.users.find_one({'_id': ObjectId(user_id)})
+            doc = g.db.users.find_one({'_id': ObjectId(user_id)})
             return doc
         except:
             return None
 
     @staticmethod
     def update_last_login(user_id: str):
-        current_app.db.users.update_one(
+        g.db.users.update_one(
             {'_id': ObjectId(user_id)},
             {'$set': {'last_login': datetime.utcnow()}}
         )

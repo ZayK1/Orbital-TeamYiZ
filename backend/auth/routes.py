@@ -1,9 +1,35 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
 from werkzeug.exceptions import BadRequest
-from auth.models import User
-from auth.utils import hash_password, verify_password
+from functools import wraps
+import jwt
+from backend.auth.models import User
+from backend.auth.utils import hash_password, verify_password
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/auth")
+
+def require_auth(f):
+    """Decorator to protect routes and add user_id to the request context."""
+    @wraps(f)
+    async def decorated_function(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers and request.headers['Authorization'].startswith('Bearer '):
+            token = request.headers['Authorization'].split(' ')[1]
+
+        if not token:
+            return jsonify({'error': 'Authentication token is missing!'}), 401
+
+        try:
+            user_id = User.verify_jwt_token(token)
+            if not user_id:
+                return jsonify({'error': 'Invalid or expired token!'}), 401
+            g.user_id = user_id
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token has expired!'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Invalid token!'}), 401
+
+        return await f(*args, **kwargs)
+    return decorated_function
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
@@ -64,7 +90,7 @@ def login():
 @auth_bp.route("/verify", methods=["POST"])
 def verify_token():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         token = data.get('token')
         if not token:
             return jsonify({'error': 'Token required'}), 400

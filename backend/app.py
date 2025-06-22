@@ -1,9 +1,9 @@
 import os
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from pymongo import MongoClient
-from auth.routes import auth_bp
-from services.plan_service import generate_30_day_plan
+from backend.auth.routes import auth_bp
+from backend.services.plan_service import generate_30_day_plan
 import logging
 from dotenv import load_dotenv; 
 
@@ -11,6 +11,7 @@ load_dotenv()
 
 
 def create_app():
+    """Flask application factory."""
     app = Flask(__name__)
 
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
@@ -24,15 +25,36 @@ def create_app():
     ])
 
 
-    client = MongoClient(app.config['MONGO_URI'])
-    app.db = client.get_default_database()
+    @app.before_request
+    def before_request():
+        """Connect to the database before each request."""
+        try:
+            if 'db_client' not in g:
+                mongo_uri = os.getenv("MONGO_URI")
+                if not mongo_uri:
+                    raise ValueError("MONGO_URI environment variable not set.")
+                g.db_client = MongoClient(mongo_uri)
+                g.db = g.db_client.get_default_database()
+        except Exception as e:
+            app.logger.critical(f"Could not connect to MongoDB: {e}")
+            # This will prevent the app from handling requests if DB is down
+            g.db = None 
 
+    @app.teardown_request
+    def teardown_request(exception):
+        """Close the database connection at the end of the request."""
+        db_client = g.pop('db_client', None)
+        if db_client is not None:
+            db_client.close()
 
     logging.basicConfig(level=logging.INFO)
     app.logger.setLevel(logging.INFO)
 
     
     app.register_blueprint(auth_bp)
+
+    from backend.api.v1.plans import plans_bp
+    app.register_blueprint(plans_bp)
 
 
     @app.route('/health', methods=['GET'])
