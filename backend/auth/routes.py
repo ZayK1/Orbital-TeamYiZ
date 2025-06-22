@@ -22,7 +22,12 @@ def require_auth(f):
             user_id = User.verify_jwt_token(token)
             if not user_id:
                 return jsonify({'error': 'Invalid or expired token!'}), 401
-            g.user_id = user_id
+            
+            user = User.find_by_id(user_id)
+            if not user:
+                return jsonify({'error': 'User not found!'}), 401
+
+            g.current_user = user
         except jwt.ExpiredSignatureError:
             return jsonify({'error': 'Token has expired!'}), 401
         except jwt.InvalidTokenError:

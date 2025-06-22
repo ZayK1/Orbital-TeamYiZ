@@ -3,7 +3,6 @@ from marshmallow import Schema, fields, validate
 class SkillCreateSchema(Schema):
     """Schema for validating new skill plan creation requests."""
     title = fields.Str(required=True, validate=validate.Length(min=3, max=100))
-    skill_name = fields.Str(required=True, validate=validate.Length(min=2, max=100))
     difficulty = fields.Str(validate=validate.OneOf(["beginner", "intermediate", "advanced"]))
     custom_duration = fields.Int(validate=validate.Range(min=7, max=90))
 

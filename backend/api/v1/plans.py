@@ -60,19 +60,16 @@ def handle_value_error(err):
 @require_auth
 async def create_skill():
     """Creates a new skill plan."""
-    validated_data = cast(dict, SkillCreateSchema().load(request.json or {}))
-    service = get_skill_service()
+    json_data = request.json or {}
+    validated_data = cast(dict, SkillCreateSchema().load(json_data))
     
-    # g.user_id is set by the @require_auth decorator
-    skill = await service.create_skill_plan(user_id=g.user_id, **validated_data)
+    # The user document's primary key is '_id'
+    user_id = str(g.current_user['_id'])
     
-    # The repository returns placeholder data for now, so we can't serialize it.
-    # We will return a success message instead.
-    return jsonify({
-        "status": "success",
-        "message": "Skill plan created successfully. NOTE: Data is placeholder.",
-        # "data": skill.to_dict() # This will be enabled once repos are implemented
-    }), 201
+    # Call the static service method directly with the expected arguments
+    skill_plan = await SkillService.create_skill(user_id=user_id, title=validated_data['title'])
+    
+    return jsonify(skill_plan), 201
 
 @plans_bp.route('/skills/<skill_id>/days/<int:day_number>/complete', methods=['PATCH']) # type: ignore
 @require_auth
@@ -96,14 +93,20 @@ async def mark_skill_day_complete(skill_id, day_number):
 @require_auth
 async def create_habit():
     """Creates a new habit."""
-    validated_data = cast(dict, HabitCreateSchema().load(request.json or {}))
-    service = get_habit_service()
-    habit = await service.create_habit_plan(user_id=g.user_id, **validated_data)
-    return jsonify({
-        "status": "success",
-        "message": "Habit plan created successfully. NOTE: Data is placeholder.",
-        # "data": habit.to_dict()
-    }), 201
+    json_data = request.json or {}
+    validated_data = cast(dict, HabitCreateSchema().load(json_data))
+
+    # The user document's primary key is '_id'
+    user_id = str(g.current_user['_id'])
+    
+    # Call the static service method directly with the expected arguments
+    habit_plan = await HabitService.create_habit(
+        user_id=user_id, 
+        title=validated_data['title'],
+        category=validated_data['category']
+    )
+    
+    return jsonify(habit_plan), 201
 
 @plans_bp.route('/habits/<habit_id>/checkin', methods=['POST']) # type: ignore
 @require_auth

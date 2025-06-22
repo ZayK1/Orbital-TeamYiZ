@@ -4,52 +4,51 @@ from datetime import datetime, date, timedelta
 from backend.models.base import HabitPlan
 from backend.repositories.habit_repository import HabitRepository
 from backend.repositories.checkin_repository import CheckinRepository
+from backend.services.ai_service import AIService
+import logging
+from flask import g
 
 class HabitService:
     def __init__(self, habit_repo: HabitRepository, checkin_repo: CheckinRepository):
         self.habit_repo = habit_repo
         self.checkin_repo = checkin_repo
     
-    async def create_habit_plan(
-        self,
-        user_id: str,
-        title: str,
-        category: str,
-        frequency: str = "daily",
-        target_days: Optional[List[int]] = None,
-        target_streak: Optional[int] = None
-    ) -> HabitPlan:
-        
-        if target_days is None:
-            target_days = list(range(7))
-        
-        habit_data = {
+    @staticmethod
+    async def create_habit(user_id: str, title: str, category: str) -> Dict[str, Any]:
+        """
+        Creates a new habit plan.
+        """
+        habit_repo = HabitRepository(g.db.habits)
+
+        try:
+            # Although AI isn't strictly necessary for a habit, we can get suggestions.
+            # For now, we create a placeholder structure.
+            daily_tasks_list = await AIService.generate_structured_plan(topic=title, plan_type="habit")
+        except (ValueError, ConnectionError) as e:
+            logging.error(f"AI Service failed to generate plan for habit '{title}': {e}")
+            raise
+
+        now = datetime.utcnow()
+
+        habit_plan_data = {
             "user_id": user_id,
             "title": title,
             "category": category,
-            "pattern": {
-                "frequency": frequency,
-                "target_days": target_days,
-                "target_time": None,
-                "duration_minutes": 15
-            },
-            "streaks": {
-                "current_streak": 0,
-                "longest_streak": 0,
-                "total_completions": 0,
-                "success_rate_30d": 0,
-                "last_completion": None
-            },
-            "goals": {
-                "target_streak": target_streak,
-                "milestone_rewards": self._generate_default_milestones(target_streak)
-            },
+            "pattern": {"type": "daily"}, # Default pattern
+            "streaks": {"current_streak": 0, "max_streak": 0},
+            "goals": {"target_streak": 30, "daily_tasks": daily_tasks_list},
             "status": "active",
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": now,
+            "updated_at": now,
         }
+
+        try:
+            created_plan_dict = await habit_repo.create(habit_plan_data)
+        except Exception as e:
+            logging.error(f"Failed to save habit plan for user {user_id}: {e}")
+            raise
         
-        return cast(HabitPlan, await self.habit_repo.create(habit_data))
+        return created_plan_dict
     
     async def record_checkin(
         self,

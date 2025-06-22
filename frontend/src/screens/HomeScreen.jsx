@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import {
   View,
   Text,
@@ -14,14 +14,15 @@ import axios from "axios";
 import { colors } from "../constants/colors";
 import { Sparkles, Mail, Lock } from 'lucide-react-native';
 import { API_BASE_URL } from "../api/apiConfig";
-
-
+import { useAuth } from "../context/AuthContext";
+import { createSkillPlan } from "../api/plans";
 
 export default function HomeScreen({ navigation }) {
   const [skill, setSkill] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const { token } = useAuth();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
@@ -47,20 +48,26 @@ export default function HomeScreen({ navigation }) {
       setError("Please enter a skill");
       return;
     }
+    if (!token) {
+      setError("You must be logged in to create a plan.");
+      return;
+    }
+
     setLoading(true);
     setIsModalVisible(true);
+
     try {
-      const response = await axios.post(`${API_BASE_URL}/generate-plan`, {
-        skill_name: skill.trim(),
-      });
-      if (response.data.plan && response.data.plan.length > 0) {
-        navigation.navigate('PlanIndex', { plan: response.data.plan, skillName: skill.trim() });
+      const newPlan = await createSkillPlan(skill.trim(), token);
+      
+      if (newPlan && newPlan.curriculum && newPlan.curriculum.daily_tasks) {
+        navigation.navigate('PlanIndex', { plan: newPlan, skillName: newPlan.title });
       } else {
         setError("Could not generate a plan for this skill. Try a different skill.");
       }
     } catch (err) {
       console.error(err);
-      setError("Failed to generate plan. Please try again.");
+      const errorMessage = err.error || "Failed to generate plan. Please try again.";
+      setError(errorMessage);
     } finally {
       setLoading(false);
       setIsModalVisible(false);

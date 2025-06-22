@@ -15,7 +15,8 @@ import { colors } from '../constants/colors';
 import { ArrowLeft } from 'lucide-react-native';
 
 export default function PlanIndexScreen({ route, navigation }) {
-  const { plan: initialPlan, skillName } = route.params;
+  const { plan: planObject, skillName } = route.params;
+  const initialPlan = planObject?.curriculum?.daily_tasks;
   const [plan, setPlan] = useState(initialPlan || []);
   const [completedDays, setCompletedDays] = useState({}); 
   const [loading, setLoading] = useState(true);

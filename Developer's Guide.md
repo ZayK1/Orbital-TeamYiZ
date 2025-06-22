@@ -378,43 +378,140 @@ class User:
 - The `@require_auth` decorator in `auth/routes.py` has been rewritten to be `async` to support async API routes
 - Database connection is managed through Flask's application context (`g` object)
 
-### 🤖 AI Plan Generation
+## 🤖 AI Plan Generation
+
+The AI service generates highly structured 30-day learning plans using OpenRouter's deepseek model. Each plan follows a consistent nested structure with daily themes, multiple tasks per day, and specific resources for each task.
+
+### 🏗️ New Data Structure
+
+The fundamental change is that daily plans now contain structured objects rather than simple title/description pairs:
+
+```json
+{
+  "day": 1,
+  "title": "Foundations of Python",
+  "tasks": [
+    {
+      "description": "Install Python and set up your VS Code environment.",
+      "resources": [
+        "Official Python website: python.org/downloads",
+        "VS Code Python extension marketplace page"
+      ]
+    },
+    {
+      "description": "Write and run your first 'Hello, World!' program.",
+      "resources": [
+        "Tutorial: Real Python - Your First Python Program",
+        "Book: 'Python for Everybody' - Chapter 1"
+      ]
+    }
+  ]
+}
+```
+
+### 🔧 Enhanced AI Prompt
+
+The AI service now uses a sophisticated prompt that enforces this structured JSON schema:
 
 ```python
-async def generate_30_day_plan(skill):
+async def generate_30_day_plan(skill_name, difficulty):
     """
-    Generate structured 30-day learning plan using deepseek model
+    Generate structured 30-day learning plan with tasks and resources
     
     Returns:
-        list[dict]: [
-            {
-                "day": 1,
-                "tasks": ["Task 1", "Task 2", "Task 3"],
-                "resources": ["Resource 1", "Resource 2"]
-            }
-            # ... 30 days total
-        ]
+        dict: {
+            "daily_tasks": [
+                {
+                    "day": 1,
+                    "title": "Theme for the day",
+                    "tasks": [
+                        {
+                            "description": "Specific task description",
+                            "resources": ["Resource 1", "Resource 2"]
+                        }
+                    ]
+                }
+                # ... 30 days total
+            ]
+        }
     """
+    
+    prompt = f"""
+    Create a comprehensive 30-day learning plan for {skill_name} at {difficulty} level.
+    
+    CRITICAL: Return ONLY valid JSON in this exact structure:
+    {{
+        "daily_tasks": [
+            {{
+                "day": 1,
+                "title": "Daily theme/focus area",
+                "tasks": [
+                    {{
+                        "description": "Specific actionable task",
+                        "resources": ["Specific resource 1", "Specific resource 2"]
+                    }}
+                ]
+            }}
+        ]
+    }}
+    
+    Requirements:
+    - Exactly 30 days
+    - Each day has 2-4 specific, actionable tasks
+    - Each task has 2-3 relevant, specific resources
+    - Progressive difficulty throughout the 30 days
+    - Practical, hands-on learning approach
+    """
+    
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://openrouter.ai/api/v1/chat/completions",
-            headers={"Authorization": f"Bearer {OPENROUTER_API_KEY}"},
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json"
+            },
             json={
                 "model": "deepseek/deepseek-r1-0528:free",
                 "messages": [
-                    {"role": "user", "content": f"Generate a 30-day learning plan for {skill}"}
-                ]
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": 0.7,
+                "max_tokens": 4000
             }
         )
-        return response.json()
+        
+        ai_response = response.json()
+        content = ai_response['choices'][0]['message']['content']
+        
+        # Parse and validate JSON structure
+        plan_data = json.loads(content)
+        
+        # Validate structure
+        if not isinstance(plan_data.get('daily_tasks'), list):
+            raise ValueError("Invalid plan structure: missing daily_tasks array")
+        
+        if len(plan_data['daily_tasks']) != 30:
+            raise ValueError(f"Invalid plan length: expected 30 days, got {len(plan_data['daily_tasks'])}")
+        
+        # Validate each day has required structure
+        for day in plan_data['daily_tasks']:
+            if not all(key in day for key in ['day', 'title', 'tasks']):
+                raise ValueError("Invalid day structure: missing required fields")
+            
+            for task in day['tasks']:
+                if not all(key in task for key in ['description', 'resources']):
+                    raise ValueError("Invalid task structure: missing required fields")
+        
+        return plan_data
 ```
 
-#### 🎯 Plan Structure Validation
-- ✅ Ensures exactly 30 days
-- ✅ Validates JSON response format
-- ✅ Handles API errors gracefully
-- ✅ Cleans and formats output
-- ✅ Uses async httpx for non-blocking requests
+### ⚡ Key Improvements
+
+- **Structured Content**: Each day now contains a thematic title and multiple specific tasks
+- **Resource-Rich**: Every task includes curated learning resources
+- **Validation**: Comprehensive JSON structure validation ensures consistency
+- **Async Processing**: Non-blocking AI API calls for better performance
+- **Error Handling**: Robust error handling for malformed AI responses
 
 ---
 
@@ -505,7 +602,113 @@ process.env.REACT_APP_API_BASE_URL || // Web fallback
 
 ### 🎨 Screen Components
 
+#### 📅 DayCard.jsx
+Displays a summary view of each day in the 30-day plan. Now shows the day's main title (theme) and provides a concatenated preview of all tasks for that day.
 
+**Key Features:**
+- **Theme Display**: Shows the day's primary focus area in the title
+- **Task Summary**: Concatenates task descriptions with " | " separator for quick overview
+- **Progress Indicator**: Visual completion status
+- **Navigation**: Taps navigate to detailed day view
+
+```javascript
+// Example rendering logic
+const taskSummary = day.tasks
+  .map(task => task.description)
+  .join(' | ');
+
+return (
+  <TouchableOpacity onPress={() => navigateToDay(day.day)}>
+    <View style={styles.dayCard}>
+      <Text style={styles.dayTitle}>Day {day.day}: {day.title}</Text>
+      <Text style={styles.taskSummary} numberOfLines={2}>
+        {taskSummary}
+      </Text>
+      <ProgressIndicator completed={day.completed} />
+    </View>
+  </TouchableOpacity>
+);
+```
+
+#### 📋 DayDetail.jsx
+Completely overhauled to display the new structured plan format. Now renders a comprehensive view of the day's theme, all tasks, and associated resources for each task.
+
+**Key Features:**
+- **Theme Header**: Prominently displays the day's main title/focus area
+- **Task Iteration**: Maps through the tasks array to render each task individually
+- **Resource Lists**: For each task, displays clickable resource links
+- **Interactive Resources**: Resources are clickable and open in browser/app
+- **Completion Tracking**: Mark individual tasks or the entire day as complete
+
+```javascript
+// Example component structure
+const DayDetail = ({ route }) => {
+  const { day } = route.params;
+  
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.dayNumber}>Day {day.day}</Text>
+        <Text style={styles.dayTitle}>{day.title}</Text>
+      </View>
+      
+      <View style={styles.tasksContainer}>
+        {day.tasks.map((task, index) => (
+          <View key={index} style={styles.taskCard}>
+            <Text style={styles.taskDescription}>
+              {task.description}
+            </Text>
+            
+            <View style={styles.resourcesContainer}>
+              <Text style={styles.resourcesHeader}>Resources:</Text>
+              {task.resources.map((resource, resourceIndex) => (
+                <TouchableOpacity
+                  key={resourceIndex}
+                  style={styles.resourceLink}
+                  onPress={() => openResource(resource)}
+                >
+                  <Text style={styles.resourceText}>
+                    • {resource}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        ))}
+      </View>
+      
+      <Button
+        title="Mark Day Complete"
+        onPress={() => markDayComplete(day.day)}
+        style={styles.completeButton}
+      />
+    </ScrollView>
+  );
+};
+```
+
+**Resource Interaction:**
+```javascript
+const openResource = (resource) => {
+  // Extract URLs from resource strings and open them
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const urls = resource.match(urlRegex);
+  
+  if (urls && urls.length > 0) {
+    Linking.openURL(urls[0]);
+  } else if (resource.includes('Tutorial:') || resource.includes('Book:')) {
+    // Handle specific resource types
+    // Could open in-app browser or search functionality
+    searchForResource(resource);
+  }
+};
+```
+
+**Enhanced User Experience:**
+- **Structured Learning**: Clear separation between tasks and their resources
+- **Progressive Disclosure**: Tasks are visually distinct with dedicated resource sections
+- **Action-Oriented**: Each task feels like a concrete step to complete
+- **Resource Rich**: Multiple learning materials per task for different learning styles
 
 #### 🏠 HomeScreen Features
 
@@ -814,18 +1017,19 @@ curl -X POST https://your-api.onrender.com/api/v1/plans/habits \
 ```javascript
 {
   _id: ObjectId,
-  user_id: ObjectId,           // reference to users
-  title: String,               // user-provided title
-  skill_name: String,          // AI-generated skill focus
-  difficulty: String,          // "beginner", "intermediate", "advanced"
+  user_id: ObjectId,
+  title: String,
+  skill_name: String,
+  difficulty: String,
   curriculum: {
-    total_days: Number,        // always 30 for skills
-    days: Array[{              // 30-day structured plan
+    total_days: Number,
+    daily_tasks: Array[{ // Changed from 'days' to match our code
       day: Number,
-      tasks: Array[String],
-      resources: Array[String],
-      completed: Boolean,
-      completed_at: ISODate
+      title: String, // Thematic title for the day
+      tasks: Array[{ // Array of task objects
+        description: String,
+        resources: Array[String]
+      }]
     }]
   },
   progress: {
@@ -1288,6 +1492,85 @@ skills = await SkillRepository.find_by_user_and_status(
 )
 ```
 
+#### 📋 Example API Response (Updated Structure)
+
+**POST /api/v1/plans/skills**
+
+```json
+{
+  "message": "Skill plan created successfully",
+  "skill": {
+    "_id": "skill_id_here",
+    "title": "Master Python Programming",
+    "skill_name": "Python Programming",
+    "difficulty": "intermediate",
+    "curriculum": {
+      "total_days": 30,
+      "days": [
+        {
+          "day": 1,
+          "title": "Foundations of Python",
+          "tasks": [
+            {
+              "description": "Install Python and set up your development environment",
+              "resources": [
+                "Official Python website: python.org/downloads",
+                "VS Code Python extension setup guide"
+              ]
+            },
+            {
+              "description": "Learn Python syntax basics and write your first program",
+              "resources": [
+                "Tutorial: Real Python - Your First Python Program",
+                "Book: 'Automate the Boring Stuff' - Chapter 1"
+              ]
+            },
+            {
+              "description": "Understand variables, data types, and basic operators",
+              "resources": [
+                "Python.org tutorial on data types",
+                "Video: Python variables explained"
+              ]
+            }
+          ],
+          "completed": false
+        },
+        {
+          "day": 2,
+          "title": "Control Structures and Logic",
+          "tasks": [
+            {
+              "description": "Master if/else statements and conditional logic",
+              "resources": [
+                "Python conditional statements guide",
+                "Practice: HackerRank Python conditionals"
+              ]
+            },
+            {
+              "description": "Learn loops: for and while statements",
+              "resources": [
+                "Python loops tutorial",
+                "Interactive: Python loop exercises"
+              ]
+            }
+          ],
+          "completed": false
+        }
+        // ... 28 more days with similar structure
+      ]
+    },
+    "progress": {
+      "completed_days": 0,
+      "completion_percentage": 0,
+      "current_day": 1
+    },
+    "status": "active",
+    "created_at": "2025-06-22T10:30:00Z",
+    "updated_at": "2025-06-22T10:30:00Z"
+  }
+}
+```
+
 #### 📋 Schema Validation (`schemas/`)
 - **Request Validation**: Marshmallow schemas for API input validation
 - **Data Serialization**: Consistent API response formatting
@@ -1306,6 +1589,8 @@ except ValidationError as err:
         "details": err.messages
     }), 422
 ```
+
+---
 
 ### 💾 State Persistence
 

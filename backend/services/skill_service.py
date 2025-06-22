@@ -3,48 +3,65 @@ from datetime import datetime, timedelta
 from backend.models.base import SkillPlan
 from backend.repositories.skill_repository import SkillRepository
 from backend.services.ai_service import AIService
+import logging
+from flask import g
 
 class SkillService:
     def __init__(self, repository: SkillRepository, ai_service: AIService):
         self.repository = repository
         self.ai_service = ai_service
     
-    async def create_skill_plan(
-        self, 
-        user_id: str, 
-        title: str, 
-        skill_name: str, 
-        difficulty: str = "beginner",
-        custom_duration: int = 30
-    ) -> SkillPlan:
-        curriculum = await self.ai_service.generate_skill_curriculum(
-            skill_name=skill_name,
-            difficulty=difficulty,
-            duration_days=custom_duration
-        )
-        
-        projected_completion = datetime.utcnow() + timedelta(days=custom_duration)
-        
-        skill_data = {
+    @staticmethod
+    async def create_skill(user_id: str, title: str, start_date_str: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Creates a new skill plan by generating a curriculum from the AI service
+        and saving it to the database.
+        """
+        skill_repo = SkillRepository(g.db.skills)
+
+        try:
+            daily_tasks_list = await AIService.generate_structured_plan(topic=title, plan_type="skill")
+        except (ValueError, ConnectionError) as e:
+            logging.error(f"AI Service failed to generate plan for skill '{title}': {e}")
+            raise
+
+        now = datetime.utcnow()
+        start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        if start_date_str:
+            try:
+                start_date = datetime.fromisoformat(start_date_str)
+            except ValueError:
+                raise ValueError("Invalid date format. Use YYYY-MM-DD.")
+
+        skill_plan_data = {
             "user_id": user_id,
             "title": title,
-            "skill_name": skill_name,
-            "difficulty": difficulty,
-            "curriculum": curriculum,
+            "skill_name": title,
+            "difficulty": "beginner",
+            "curriculum": {
+                "daily_tasks": daily_tasks_list,
+                "total_days": 30
+            },
             "progress": {
                 "current_day": 1,
                 "completed_days": 0,
                 "completion_percentage": 0,
-                "started_at": datetime.utcnow(),
-                "last_activity": datetime.utcnow(),
-                "projected_completion": projected_completion
+                "started_at": start_date,
+                "last_activity": start_date,
+                "projected_completion": start_date + timedelta(days=30)
             },
             "status": "active",
-            "created_at": datetime.utcnow(),
-            "updated_at": datetime.utcnow()
+            "created_at": now,
+            "updated_at": now
         }
+
+        try:
+            created_plan_dict = await skill_repo.create(skill_plan_data)
+        except Exception as e:
+            logging.error(f"Failed to save skill plan for user {user_id}: {e}")
+            raise
         
-        return cast(SkillPlan, await self.repository.create(skill_data))
+        return created_plan_dict
     
     async def mark_day_complete(
         self, 
@@ -95,3 +112,7 @@ class SkillService:
             page=page,
             limit=limit
         )) 
+
+    async def get_skill_plan(self, plan_id: str, user_id: str) -> Optional[SkillPlan]:
+        # Implementation of get_skill_plan method
+        pass 
