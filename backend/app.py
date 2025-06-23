@@ -22,7 +22,6 @@ load_dotenv()
 
 
 def create_app():
-    """Flask application factory."""
     app = Flask(__name__)
     app.json_encoder = CustomJSONEncoder
 
@@ -39,7 +38,6 @@ def create_app():
 
     @app.before_request
     def before_request():
-        """Connect to the database before each request."""
         try:
             if 'db_client' not in g:
                 mongo_uri = os.getenv("MONGO_URI")
@@ -49,12 +47,10 @@ def create_app():
                 g.db = g.db_client.get_default_database()
         except Exception as e:
             app.logger.critical(f"Could not connect to MongoDB: {e}")
-            # This will prevent the app from handling requests if DB is down
             g.db = None 
 
     @app.teardown_request
     def teardown_request(exception):
-        """Close the database connection at the end of the request."""
         db_client = g.pop('db_client', None)
         if db_client is not None:
             db_client.close()
@@ -65,8 +61,8 @@ def create_app():
     
     app.register_blueprint(auth_bp)
 
-    from backend.api.v1.plans import plans_bp
-    app.register_blueprint(plans_bp)
+    from backend.api.v1.plans import v1_plans_blueprint
+    app.register_blueprint(v1_plans_blueprint, url_prefix='/api/v1/plans')
 
 
     @app.route('/health', methods=['GET'])

@@ -1,31 +1,44 @@
-# backend/repositories/skill_repository.py
-
 from bson import ObjectId
-from pymongo.results import InsertOneResult
+from pymongo.results import InsertOneResult, UpdateResult, DeleteResult
+from datetime import datetime
 
 class SkillRepository:
-    """
-    Handles all database operations related to the 'skills' collection.
-    """
+
     def __init__(self, db_collection):
         self.collection = db_collection
     
     async def create(self, skill_data: dict) -> dict:
-        """
-        Inserts a new skill document into the database.
-        """
+
         result: InsertOneResult = self.collection.insert_one(skill_data)
-        created_document = self.collection.find_one({"_id": result.inserted_id})
-        return created_document
+        return self.collection.find_one({"_id": result.inserted_id})
 
-    async def get_by_id_and_user(self, skill_id: str, user_id: str):
-        # Placeholder for fetching a skill by its ID for a specific user.
-        return self.collection.find_one({"_id": ObjectId(skill_id), "user_id": user_id})
+    async def find_by_user(self, user_id: str) -> list:
+        return list(self.collection.find({"user_id": user_id}))
 
-    async def update(self, skill):
-        # Placeholder for updating a skill document.
-        pass
+    async def find_by_id(self, skill_id: str, user_id: str) -> dict:
+        return self.collection.find_one({
+            "_id": ObjectId(skill_id), 
+            "user_id": user_id
+        })
+
+    async def update_day_completion(self, skill_id: str, user_id: str, day_number: int) -> UpdateResult:
+        return self.collection.update_one(
+            {"_id": ObjectId(skill_id), "user_id": user_id},
+            {"$set": { f"curriculum.daily_tasks.{day_number - 1}.completed": True, "updated_at": datetime.utcnow()}}
+        )
+
+    async def update_progress_stats(self, skill_id: str, user_id: str, progress_data: dict) -> UpdateResult:
+        return self.collection.update_one(
+            {"_id": ObjectId(skill_id), "user_id": user_id},
+            {"$set": {"progress": progress_data, "updated_at": datetime.utcnow()}}
+        )
+
+    async def delete_by_id(self, skill_id: str, user_id: str) -> DeleteResult:
+        return self.collection.delete_one({
+            "_id": ObjectId(skill_id), 
+            "user_id": user_id
+        })
 
     async def get_by_user_paginated(self, user_id, status, page, limit):
-        # Placeholder for fetching a paginated list of skills for a user.
+        # Placeholder .
         pass 

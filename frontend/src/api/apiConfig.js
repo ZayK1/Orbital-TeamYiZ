@@ -1,4 +1,5 @@
 import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const API_BASE_URL =
   process.env.EXPO_PUBLIC_API_BASE_URL ||      
@@ -11,5 +12,19 @@ export const API_BASE_URL =
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
+
+// Request interceptor to add the auth token to every request
+api.interceptors.request.use(
+  async (config) => {
+    const token = await AsyncStorage.getItem('authToken');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
 
 export default api;

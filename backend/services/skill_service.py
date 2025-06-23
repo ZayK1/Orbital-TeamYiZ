@@ -5,18 +5,12 @@ from backend.repositories.skill_repository import SkillRepository
 from backend.services.ai_service import AIService
 import logging
 from flask import g
+from bson import ObjectId
 
 class SkillService:
-    def __init__(self, repository: SkillRepository, ai_service: AIService):
-        self.repository = repository
-        self.ai_service = ai_service
-    
     @staticmethod
     async def create_skill(user_id: str, title: str, start_date_str: Optional[str] = None) -> Dict[str, Any]:
-        """
-        Creates a new skill plan by generating a curriculum from the AI service
-        and saving it to the database.
-        """
+     
         skill_repo = SkillRepository(g.db.skills)
 
         try:
@@ -61,58 +55,62 @@ class SkillService:
             logging.error(f"Failed to save skill plan for user {user_id}: {e}")
             raise
         
+        if created_plan_dict and '_id' in created_plan_dict:
+            created_plan_dict['_id'] = str(created_plan_dict['_id'])
+            
         return created_plan_dict
     
-    async def mark_day_complete(
-        self, 
-        user_id: str, 
-        skill_id: str, 
-        day_number: int
-    ) -> SkillPlan:
-        
-        skill = cast(SkillPlan, await self.repository.get_by_id_and_user(skill_id, user_id))
+    @staticmethod
+    async def get_user_skills(user_id: str) -> list:
+        repository = SkillRepository(g.db.skills)
+        skills = await repository.find_by_user(user_id)
+        for skill in skills:
+            skill['_id'] = str(skill['_id'])
+        return skills
+
+    @staticmethod
+    async def get_skill_by_id(skill_id: str, user_id: str) -> dict:
+        repository = SkillRepository(g.db.skills)
+        skill = await repository.find_by_id(skill_id, user_id)
         if not skill:
             raise ValueError("Skill not found or access denied")
-        
-        for day in skill.curriculum["days"]:
-            if day["day_number"] == day_number:
-                if not day.get("completed", False):
-                    day["completed"] = True
-                    day["completed_at"] = datetime.utcnow()
-                    break
-        
-        completed_days = sum(1 for day in skill.curriculum["days"] if day.get("completed", False))
-        total_days = skill.curriculum["total_days"]
-        
-        skill.progress.update({
-            "completed_days": completed_days,
-            "completion_percentage": (completed_days / total_days) * 100,
-            "current_day": min(day_number + 1, total_days),
-            "last_activity": datetime.utcnow()
-        })
-        
-        if completed_days >= total_days:
-            skill.status = "completed"
-        
-        skill.updated_at = datetime.utcnow()
-        
-        return cast(SkillPlan, await self.repository.update(skill))
-    
-    async def get_user_skills(
-        self, 
-        user_id: str, 
-        status: Optional[str] = None,
-        page: int = 1,
-        limit: int = 20
-    ) -> Dict[str, Any]:
-        
-        return cast(Dict[str, Any], await self.repository.get_by_user_paginated(
-            user_id=user_id,
-            status=status,
-            page=page,
-            limit=limit
-        )) 
+        skill['_id'] = str(skill['_id'])
+        return skill
 
-    async def get_skill_plan(self, plan_id: str, user_id: str) -> Optional[SkillPlan]:
-        # Implementation of get_skill_plan method
-        pass 
+    @staticmethod
+    async def complete_skill_day(skill_id: str, user_id: str, day_number: int) -> dict:
+        repository = SkillRepository(g.db.skills)
+        skill = await repository.find_by_id(skill_id, user_id)
+        
+        if not skill:
+            raise ValueError("Skill not found or access denied")
+        if not (1 <= day_number <= 30):
+            raise ValueError("Day number must be between 1 and 30")
+
+        daily_tasks = skill.get('curriculum', {}).get('daily_tasks', [])
+        if not (0 <= day_number - 1 < len(daily_tasks)):
+            raise ValueError("Invalid day number for the curriculum")
+
+        if daily_tasks[day_number - 1].get('completed', False):
+            raise ValueError("Day is already completed")
+        
+        await repository.update_day_completion(skill_id, user_id, day_number)
+        
+        completed_days = skill.get('progress', {}).get('completed_days', 0) + 1
+        
+        progress_data = {
+            "completed_days": completed_days,
+            "completion_percentage": round((completed_days / 30) * 100, 2),
+            "current_day": min(day_number + 1, 30),
+            "last_accessed": datetime.utcnow()
+        }
+        await repository.update_progress_stats(skill_id, user_id, progress_data)
+        return progress_data
+
+    @staticmethod
+    async def delete_skill(skill_id: str, user_id: str) -> bool:
+        repository = SkillRepository(g.db.skills)
+        if not await repository.find_by_id(skill_id, user_id):
+            raise ValueError("Skill not found or access denied")
+        result = await repository.delete_by_id(skill_id, user_id)
+        return result.deleted_count > 0 

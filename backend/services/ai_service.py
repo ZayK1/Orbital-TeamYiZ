@@ -10,9 +10,7 @@ MODEL_NAME = os.getenv("AI_MODEL_NAME", "deepseek/deepseek-r1-0528:free")
 class AIService:
     @staticmethod
     async def generate_structured_plan(topic: str, plan_type: str = "skill") -> List[Dict[str, Any]]:
-        """
-        Generates a structured 30-day plan using a detailed prompt and robust parsing.
-        """
+        
         prompt = f"""
         As an expert in curriculum design and habit formation, create a detailed 30-day plan for the following topic: "{topic}".
         The plan should be for building a new {plan_type}.
@@ -79,11 +77,10 @@ class AIService:
             
             parsed_plan = json.loads(ai_response_content)
 
-            # Be resilient: AI might return the list directly.
+        
             if isinstance(parsed_plan, dict) and "daily_tasks" in parsed_plan and isinstance(parsed_plan["daily_tasks"], list):
                 return parsed_plan["daily_tasks"]
             
-            # Or it might return the list as the top-level object.
             if isinstance(parsed_plan, list):
                 return parsed_plan
 
@@ -113,14 +110,7 @@ class AIService:
         difficulty: str,
         duration_days: int
     ) -> Dict[str, Any]:
-        """
-        Generates a structured learning plan curriculum using OpenRouter.
         
-        This method is responsible for:
-        1.  Building a precise, role-based prompt.
-        2.  Requesting a JSON object from the AI to minimize parsing errors.
-        3.  Validating the response structure.
-        """
         prompt = self._build_curriculum_prompt(skill_name, difficulty, duration_days)
         
         async with httpx.AsyncClient(timeout=90.0) as client:

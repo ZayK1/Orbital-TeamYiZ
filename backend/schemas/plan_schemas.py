@@ -1,13 +1,11 @@
-from marshmallow import Schema, fields, validate
+from marshmallow import Schema, fields, validate, EXCLUDE
 
 class SkillCreateSchema(Schema):
-    """Schema for validating new skill plan creation requests."""
-    title = fields.Str(required=True, validate=validate.Length(min=3, max=100))
+    skill_name = fields.Str(required=True, validate=validate.Length(min=3, max=100))
     difficulty = fields.Str(validate=validate.OneOf(["beginner", "intermediate", "advanced"]))
     custom_duration = fields.Int(validate=validate.Range(min=7, max=90))
 
 class HabitCreateSchema(Schema):
-    """Schema for validating new habit plan creation requests."""
     title = fields.Str(required=True, validate=validate.Length(min=3, max=100))
     category = fields.Str(required=True, validate=validate.OneOf(["health", "productivity", "learning", "creative", "social"]))
     frequency = fields.Str(validate=validate.OneOf(["daily", "weekly", "custom"]))
@@ -15,8 +13,15 @@ class HabitCreateSchema(Schema):
     target_streak = fields.Int(validate=validate.Range(min=1))
 
 class HabitCheckinSchema(Schema):
-    """Schema for validating habit check-in requests."""
     completion_date = fields.Date()
     quality_rating = fields.Int(validate=validate.Range(min=1, max=5))
     notes = fields.Str(validate=validate.Length(max=500))
-    duration_actual = fields.Int(validate=validate.Range(min=1)) 
+    duration_actual = fields.Int(validate=validate.Range(min=1))
+
+class CheckinCreateSchema(Schema):
+    date = fields.Date(required=True)
+    completed = fields.Bool(required=True)
+    notes = fields.Str(required=False, allow_none=True)
+
+    class Meta:
+        unknown = EXCLUDE 

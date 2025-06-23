@@ -13,6 +13,7 @@ import HomeScreen from "./src/screens/HomeScreen";
 import PlanIndexScreen from "./src/screens/PlanIndexScreen";
 import DayDetailScreen from "./src/screens/DayDetailScreen";
 import ProfileScreen from "./src/screens/ProfileScreen";
+import SkillCurriculumScreen from "./src/screens/SkillCurriculumScreen";
 import { colors } from "./src/constants/colors";
 
 const Stack = createNativeStackNavigator();
@@ -82,6 +83,7 @@ function HomeStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="PlanIndex" component={PlanIndexScreen} />
+      <Stack.Screen name="SkillCurriculum" component={SkillCurriculumScreen} />
       <Stack.Screen name="DayDetail" component={DayDetailScreen} />
     </Stack.Navigator>
   );

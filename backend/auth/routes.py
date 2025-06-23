@@ -8,7 +8,7 @@ from backend.auth.utils import hash_password, verify_password
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/auth")
 
 def require_auth(f):
-    """Decorator to protect routes and add user_id to the request context."""
+
     @wraps(f)
     async def decorated_function(*args, **kwargs):
         token = None
@@ -44,15 +44,12 @@ def register():
         email = data.get("email", "").strip()
         password = data.get("password", "")
 
-        # Validation
         if not all([username, email, password]):
             return jsonify({'error': 'All fields are required'}), 400
         if len(password) < 6:
             return jsonify({'error': 'Password must be at least 6 characters'}), 400
-        # Check if user exists
         if User.find_by_username_or_email(username) or User.find_by_username_or_email(email):
             return jsonify({'error': 'Username or email already exists'}), 409
-        # Create user
         pw_hash = hash_password(password)
         user_id = User.create(username, email, pw_hash)
         token = User.generate_jwt_token(user_id)

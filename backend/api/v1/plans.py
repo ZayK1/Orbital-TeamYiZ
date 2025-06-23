@@ -1,133 +1,127 @@
-import os
-from flask import Blueprint, request, jsonify, g, current_app
+from flask import Blueprint, request, jsonify, g
 from marshmallow import ValidationError
-from datetime import date
 from typing import cast
-
+from datetime import datetime
 from backend.auth.routes import require_auth
-from backend.schemas.plan_schemas import SkillCreateSchema, HabitCreateSchema, HabitCheckinSchema
-from backend.services.ai_service import AIService
+from backend.schemas.plan_schemas import SkillCreateSchema, HabitCreateSchema, CheckinCreateSchema
 from backend.services.skill_service import SkillService
 from backend.services.habit_service import HabitService
-from backend.repositories.skill_repository import SkillRepository
-from backend.repositories.habit_repository import HabitRepository
-from backend.repositories.checkin_repository import CheckinRepository
+v1_plans_blueprint = Blueprint('plans', __name__)
 
-plans_bp = Blueprint('plans', __name__, url_prefix='/api/v1/plans')
 
-# --- Dependency Injection Factories ---
 
-def get_ai_service():
-    """Creates an instance of the AIService."""
-    api_key = os.getenv("OPENROUTER_API_KEY")
-    if not api_key:
-        raise ValueError("OPENROUTER_API_KEY environment variable not set.")
-    return AIService(api_key=api_key)
-
-def get_skill_service():
-    """Creates an instance of the SkillService with its dependencies."""
-    if 'db' not in g or g.db is None:
-        raise ConnectionError("Database not connected.")
-    skill_repo = SkillRepository(g.db.skills)
-    ai_service = get_ai_service()
-    return SkillService(repository=skill_repo, ai_service=ai_service)
-
-def get_habit_service():
-    """Creates an instance of the HabitService with its dependencies."""
-    if 'db' not in g or g.db is None:
-        raise ConnectionError("Database not connected.")
-    habit_repo = HabitRepository(g.db.habits)
-    checkin_repo = CheckinRepository(g.db.habit_checkins)
-    return HabitService(habit_repo=habit_repo, checkin_repo=checkin_repo)
-
-# --- Error Handler ---
-
-@plans_bp.errorhandler(ValidationError)
+@v1_plans_blueprint.errorhandler(ValidationError)
 def handle_marshmallow_validation(err):
-    return jsonify({
-        "status": "error",
-        "message": "Validation error",
-        "errors": err.messages
-    }), 422
+    return jsonify({"error": "Validation failed", "details": err.messages}), 422
 
-@plans_bp.errorhandler(ValueError)
+@v1_plans_blueprint.errorhandler(ValueError)
 def handle_value_error(err):
-    return jsonify({"status": "error", "message": str(err)}), 400
+    return jsonify({"error": str(err)}), 400
 
-# --- Skill Routes ---
+@v1_plans_blueprint.errorhandler(Exception)
+def handle_generic_error(err):
+    return jsonify({"error": "An unexpected error occurred."}), 500
 
-@plans_bp.route('/skills', methods=['POST']) # type: ignore
+
+@v1_plans_blueprint.route('/', methods=['GET']) # type: ignore
+@require_auth
+async def get_all_plans():
+    user_id = str(g.current_user['_id'])
+    skills = await SkillService.get_user_skills(user_id)
+    habits = await HabitService.get_user_habits(user_id)
+    return jsonify({"skills": skills, "habits": habits}), 200
+
+
+
+@v1_plans_blueprint.route('/skills', methods=['POST']) # type: ignore
 @require_auth
 async def create_skill():
-    """Creates a new skill plan."""
-    json_data = request.json or {}
-    validated_data = cast(dict, SkillCreateSchema().load(json_data))
+    json_data = request.get_json()
+    if not json_data:
+        return jsonify({"error": "Invalid JSON"}), 400
     
-    # The user document's primary key is '_id'
+    validated_data = cast(dict, SkillCreateSchema().load(json_data))
     user_id = str(g.current_user['_id'])
     
-    # Call the static service method directly with the expected arguments
-    skill_plan = await SkillService.create_skill(user_id=user_id, title=validated_data['title'])
-    
-    return jsonify(skill_plan), 201
+    skill_plan = await SkillService.create_skill(user_id=user_id, title=validated_data['skill_name'])
+    return jsonify({"message": "Skill plan created successfully", "skill": skill_plan}), 201
 
-@plans_bp.route('/skills/<skill_id>/days/<int:day_number>/complete', methods=['PATCH']) # type: ignore
+@v1_plans_blueprint.route('/skills/<skill_id>', methods=['GET']) # type: ignore
 @require_auth
-async def mark_skill_day_complete(skill_id, day_number):
-    """Marks a day of a skill plan as complete."""
-    service = get_skill_service()
-    skill = await service.mark_day_complete(
-        user_id=g.user_id,
-        skill_id=skill_id,
-        day_number=day_number
-    )
-    return jsonify({
-        "status": "success",
-        "message": f"Day {day_number} marked as complete. NOTE: Data is placeholder.",
-        # "data": skill.to_dict()
-    })
+async def get_skill(skill_id: str):
+    user_id = str(g.current_user['_id'])
+    skill = await SkillService.get_skill_by_id(skill_id, user_id)
+    return jsonify(skill), 200
 
-# --- Habit Routes ---
+@v1_plans_blueprint.route('/skills/<skill_id>', methods=['DELETE']) # type: ignore
+@require_auth
+async def delete_skill(skill_id: str):
+    user_id = str(g.current_user['_id'])
+    success = await SkillService.delete_skill(skill_id, user_id)
+    if success:
+        return jsonify({"message": "Skill deleted successfully"}), 200
+    return jsonify({"error": "Delete operation failed"}), 500
 
-@plans_bp.route('/habits', methods=['POST']) # type: ignore
+
+@v1_plans_blueprint.route('/skills/<skill_id>/days/<int:day_number>/complete', methods=['PATCH']) # type: ignore
+@require_auth
+async def complete_skill_day_route(skill_id: str, day_number: int):
+    user_id = str(g.current_user['_id'])
+    progress = await SkillService.complete_skill_day(skill_id, user_id, day_number)
+    return jsonify({"message": "Day marked as completed", "progress": progress}), 200
+
+
+@v1_plans_blueprint.route('/habits', methods=['POST']) # type: ignore
 @require_auth
 async def create_habit():
-    """Creates a new habit."""
-    json_data = request.json or {}
-    validated_data = cast(dict, HabitCreateSchema().load(json_data))
+    json_data = request.get_json()
+    if not json_data:
+        return jsonify({"error": "Invalid JSON"}), 400
 
-    # The user document's primary key is '_id'
+    validated_data = cast(dict, HabitCreateSchema().load(json_data))
     user_id = str(g.current_user['_id'])
     
-    # Call the static service method directly with the expected arguments
     habit_plan = await HabitService.create_habit(
         user_id=user_id, 
         title=validated_data['title'],
         category=validated_data['category']
     )
-    
-    return jsonify(habit_plan), 201
+    return jsonify({"message": "Habit created successfully", "habit": habit_plan}), 201
 
-@plans_bp.route('/habits/<habit_id>/checkin', methods=['POST']) # type: ignore
+@v1_plans_blueprint.route('/habits/<habit_id>/checkin', methods=['POST']) # type: ignore
 @require_auth
-async def habit_checkin(habit_id):
-    """Records a check-in for a habit."""
-    validated_data = cast(dict, HabitCheckinSchema().load(request.json or {}))
-    service = get_habit_service()
+async def record_habit_checkin(habit_id: str):
+    json_data = request.get_json()
+    if not json_data:
+        return jsonify({"error": "Invalid JSON"}), 400
     
-    # Use 'date.today()' as a fallback if not provided in the request
-    completion_date = validated_data.get('completion_date', date.today())
+    validated_data = cast(dict, CheckinCreateSchema().load(json_data))
+    user_id = str(g.current_user['_id'])
     
-    result = await service.record_checkin(
-        user_id=g.user_id,
-        habit_id=habit_id,
-        completion_date=completion_date,
-        quality_rating=validated_data.get('quality_rating'),
-        notes=validated_data.get('notes'),
-        duration_actual=validated_data.get('duration_actual')
-    )
+    validated_data['date'] = datetime.combine(validated_data['date'], datetime.min.time())
+    
+    result = await HabitService.record_checkin(habit_id, user_id, validated_data)
+
+    if result and result.get('checkin') and '_id' in result['checkin']:
+        result['checkin']['_id'] = str(result['checkin']['_id'])
+
     return jsonify({
-        "status": "success",
-        "data": "Check-in recorded successfully. NOTE: Data is placeholder.",
-        # "data": result 
-    }) 
+        "message": "Check-in recorded successfully", 
+        **result
+    }), 201
+
+@v1_plans_blueprint.route('/habits/<habit_id>', methods=['GET']) # type: ignore
+@require_auth
+async def get_habit(habit_id: str):
+    user_id = str(g.current_user['_id'])
+    habit = await HabitService.get_habit_by_id(habit_id, user_id)
+    return jsonify(habit), 200
+
+@v1_plans_blueprint.route('/habits/<habit_id>', methods=['DELETE']) # type: ignore
+@require_auth
+async def delete_habit(habit_id: str):
+    user_id = str(g.current_user['_id'])
+    success = await HabitService.delete_habit(habit_id, user_id)
+    if success:
+        return jsonify({"message": "Habit deleted successfully"}), 200
+    return jsonify({"error": "Delete operation failed"}), 500 
