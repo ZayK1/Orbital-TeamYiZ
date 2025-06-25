@@ -5,6 +5,7 @@ from backend.repositories.checkin_repository import CheckinRepository
 from backend.services.ai_service import AIService
 import logging
 from flask import g
+from backend.services.unsplash_service import UnsplashService
 
 class HabitService:
     @staticmethod
@@ -33,9 +34,16 @@ class HabitService:
                 "monthly_target": 30
             },
             "status": "active",
+            "icon_url": None,
             "created_at": now,
             "updated_at": now,
         }
+
+        # Fetch an illustrative icon/image for the habit category
+        try:
+            habit_plan_data["icon_url"] = await UnsplashService.fetch_image(category or title)
+        except Exception as e:
+            logging.error(f"Unsplash fetch failed for habit '{title}': {e}")
 
         try:
             created_plan_dict = await habit_repo.create(habit_plan_data)

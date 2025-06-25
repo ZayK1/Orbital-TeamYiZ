@@ -104,15 +104,17 @@ Framework │ React Native + Expo SDK 53
 
 Language │ JavaScript (JSX) with TypeScript support
 
-Navigation │ React Navigation (Stack + Tab)
+Navigation │ React Navigation (Custom Bottom Tab + Stack)
 
 State │ React Context + AsyncStorage
 
 HTTP Client │ Axios
 
-Icons │ Lucide React Native
+Icons │ Lucide React Native + @expo/vector-icons
 
 Build/Host │ Vercel (web), Expo Go/EAS (mobile)
+
+Additional │ expo-blur, expo-linear-gradient, react-native-svg
 
 ```
 
@@ -133,6 +135,8 @@ CORS │ Flask-CORS
 Config │ python-dotenv (local) / Render env-vars
 
 Server │ Gunicorn with app factory pattern
+
+Image Fetch │ Unsplash API via aiohttp
 
 ```
 
@@ -237,7 +241,9 @@ end
 
 3. **Plan Generation**: `/generate-plan` → OpenRouter AI → structured response
 
-4. **Persistence**: JWT & user data stored in AsyncStorage for offline access
+4. **Skill/Habit Creation**: `/api/v1/plans/*` → Unsplash Random Photo API → returns `image_url` / `icon_url`
+
+5. **Persistence**: JWT, user data & generated media URLs stored in AsyncStorage for offline access
 
 
 
@@ -267,29 +273,37 @@ frontend/
 
 │ │ └── 📄 auth.js # Auth API helpers
 
+│ ├── 📁 components/
+
+│ │ ├── 📄 PlanCard.jsx # Reusable card for plans
+
+│ │ └── ...
+
 │ ├── 📁 context/
 
 │ │ └── 📄 AuthContext.js # JWT persistence & state
 
-│ ├── 📁 components/
+│ ├── 📁 navigation/
 
-│ │ ├── 📄 Button.js # Reusable button component
-
-│ │ └── 📄 Input.js # Reusable input component
+│ │ └── 📄 MainTabNavigator.jsx # Custom tab bar and main app navigation
 
 │ ├── 📁 screens/
 
-│ │ ├── 📄 Login.jsx # Login interface
+│ │ ├── 📄 LoginScreen.jsx # Login interface
 
-│ │ ├── 📄 Register.jsx # Registration interface
+│ │ ├── 📄 RegisterScreen.jsx # Registration interface
 
-│ │ ├── 📄 Home.jsx # Main dashboard
+│ │ ├── 📄 RepositoryScreen.jsx # Main dashboard screen
 
-│ │ ├── 📄 PlanIndex.jsx # Plan overview
+│ │ ├── 📄 ProfileScreen.jsx # Revamped user profile
 
-│ │ ├── 📄 DayDetail.jsx # Daily task details
+│ │ ├── 📄 ExploreScreen.jsx # Placeholder for discovery
 
-│ │ └── 📄 Profile.jsx # User profile
+│ │ ├── 📄 StatsScreen.jsx # Placeholder for statistics
+
+│ │ ├── 📄 AddSkillScreen.jsx # Form to create a new skill
+
+│ │ └── 📄 AddHabitScreen.jsx # Form to create a new habit
 
 │ └── 📁 constants/
 
@@ -307,23 +321,51 @@ frontend/
 
 backend/
 
-├── 📄 app.py # Flask app factory (Gunicorn entry)
+├── 📄 app.py               # Flask app factory (Gunicorn entry)
 
-├── 📄 requirements.txt # Python dependencies
+├── 📄 config.py            # Centralized settings
 
-├── 📄 .env # Environment variables
+├── 📄 requirements.txt     # Python dependencies
+
+├── 📄 Procfile             # Render deployment entry
+
+├── 📁 api/
+
+│   └── 📁 v1/
+
+│       └── 📄 plans.py     # Plan-related routes (REST)
 
 ├── 📁 auth/
 
-│ ├── 📄 routes.py # Auth endpoints (/auth/*)
+│   ├── 📄 routes.py        # /auth/* endpoints
 
-│ ├── 📄 models.py # User logic & DB operations
+│   ├── 📄 models.py        # User schema & helpers
 
-│ └── 📄 utils.py # Password hashing utilities
+│   └── 📄 utils.py         # Password hashing & JWT helpers
+
+├── 📁 models/
+
+│   └── 📄 base.py          # Reusable DB helpers
+
+├── 📁 schemas/
+
+│   └── 📄 plan_schemas.py  # Marshmallow / validation schemas
+
+├── 📁 repositories/
+
+│   ├── 📄 habit_repository.py   # CRUD for habits
+
+│   ├── 📄 skill_repository.py   # CRUD for skills
+
+│   └── 📄 checkin_repository.py # Habit check-ins
 
 └── 📁 services/
 
-└── 📄 plan_service.py # AI plan generation logic
+    ├── 📄 ai_service.py        # AI plan generation via OpenRouter
+
+    ├── 📄 habit_service.py     # Habit business logic
+
+    └── 📄 skill_service.py     # Skill business logic
 
 ```
 
@@ -479,33 +521,36 @@ list[dict]: [
 
 ### 🧭 Navigation Architecture
 
+The app uses a custom-built, animated bottom tab navigator that appears on user interaction. The main "Repository" tab is a nested stack to handle the creation of new skills and habits.
 
+```mermaid
+graph TD
+    subgraph "App Entry"
+        A[App.js] -- AuthProvider --> B{RootNavigator};
+    end
 
+    B -- No User --> C[AuthStack];
+    B -- User Logged In --> D[MainTabNavigator];
+
+    subgraph "Authentication"
+        C -- /login --> E[LoginScreen];
+        C -- /register --> F[RegisterScreen];
+    end
+
+    subgraph "Main Application"
+        D;
+        subgraph "Repository Stack (Tab 1)"
+            G[RepositoryStack] --> H[RepositoryScreen];
+            H -- Add Skill --> I[AddSkillScreen];
+            H -- Add Habit --> J[AddHabitScreen];
+        end
+        D -- Tab 2 --> K[ExploreScreen];
+        D -- Tab 3 --> L[StatsScreen];
+        D -- Tab 4 --> M[ProfileScreen];
+    end
+
+    style D fill:#f9f,stroke:#333,stroke-width:2px
 ```
-
-📱 App (AuthProvider)
-
-├── 🔐 AuthStack
-
-│ ├── LoginScreen
-
-│ └── RegisterScreen
-
-└── 🏠 MainTabNavigator
-
-├── 📚 HomeStack (StackNavigator)
-
-│ ├── HomeScreen
-
-│ ├── PlanIndexScreen
-
-│ └── DayDetailScreen
-
-└── 👤 ProfileScreen
-
-```
-
-
 
 ### 🔐 Authentication Context
 
@@ -559,29 +604,33 @@ process.env.REACT_APP_API_BASE_URL || // Web fallback
 
 ### 🎨 Screen Components
 
+#### ✨ `RepositoryScreen`
+- **Purpose**: The main dashboard and landing screen after login.
+- **Features**: Displays user's daily focus, active skills, and current habits in a visually engaging layout.
+- **UI**: Uses circular progress bars for stats and custom cards for skills and habits.
 
+#### ✨ `ProfileScreen`
+- **Purpose**: A comprehensive view of the user's journey and settings.
+- **Features**:
+    - Displays user info, streak, and overall progress with a gradient card.
+    - Showcases achievements and key statistics in a grid.
+    - Provides access to settings like "Dark Mode" and "Notifications" with custom toggle switches.
+    - Contains the "Log Out" functionality.
 
-#### 🏠 HomeScreen Features
+#### ✨ `AddSkillScreen` & `AddHabitScreen`
+- **Purpose**: Dedicated forms for creating new skills and habits.
+- **Features**:
+    - Intuitive input fields with suggestions and character counters.
+    - Interactive selection for frequency, difficulty, and color-coding.
+    - Seamless navigation between the two screens.
 
-- Skill input interface with validation
-
-- Plan generation with loading states
-
-- Comprehensive error handling
-
-- Sample plan loading for testing
-
-
-
-#### 🔐 LoginScreen Features
-
-- Form validation with real-time feedback
-
-- AuthContext integration
-
-- Smooth navigation transitions
-
-- Error state management
+#### ✨ `MainTabNavigator` (Custom Component)
+- **Purpose**: A highly interactive and animated main navigation hub.
+- **Features**:
+    - A floating menu button reveals the tab bar on press.
+    - The central `+` button triggers a spring animation, presenting "Add Skill" and "Add Habit" options horizontally.
+    - Uses `expo-blur` for a modern, blurred background effect on the tab bar.
+    - Manages its own visibility state, providing a clean and focused UI.
 
 
 
@@ -799,6 +848,71 @@ Content-Type: application/json
 
 
 
+### 🖼️ Skill & Habit Endpoints
+
+#### Create Skill
+
+```http
+POST /api/v1/plans/skills
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "skill_name": "Guitar"
+}
+```
+
+**Response: 201 Created**
+
+```json
+{
+  "message": "Skill plan created successfully",
+  "skill": {
+    "_id": "skill_id",
+    "title": "Guitar",
+    "image_url": "https://images.unsplash.com/...",  // 📷 auto-selected
+    "status": "active",
+    "curriculum": { "daily_tasks": [ /* 30-day plan */ ] },
+    "created_at": "ISODate",
+    "updated_at": "ISODate"
+  }
+}
+```
+
+#### Create Habit
+
+```http
+POST /api/v1/plans/habits
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "title": "Drink Water",
+  "category": "health"
+}
+```
+
+**Response: 201 Created**
+
+```json
+{
+  "message": "Habit created successfully",
+  "habit": {
+    "_id": "habit_id",
+    "title": "Drink Water",
+    "icon_url": "https://images.unsplash.com/...",  // 🎨 auto-selected
+    "category": "health",
+    "status": "active",
+    "pattern": { "frequency": "daily", "target_days": [1,2,3,4,5,6,7] },
+    "streaks": { "current_streak": 0, "longest_streak": 0 },
+    "created_at": "ISODate",
+    "updated_at": "ISODate"
+  }
+}
+```
+
+
+
 ### 🔍 Health Check
 
 
@@ -885,40 +999,59 @@ last_login: ISODate // tracked on login
 
 
 
-### 📚 Plans Collection *(Future Implementation)*
-
-
+### 🎸 Skills Collection
 
 ```javascript
-
 {
-
-_id: ObjectId,
-
-user_id: ObjectId, // reference to users
-
-skill_name: String, // e.g., "Python Programming"
-
-plan_data: Array, // 30-day structured plan
-
-created_at: ISODate,
-
-updated_at: ISODate,
-
-status: String, // "active", "completed", "paused"
-
-progress: {
-
-completed_days: Number,
-
-completion_percentage: Number,
-
-last_accessed: ISODate
-
+ _id: ObjectId,
+ user_id: ObjectId,
+ title: String,
+ skill_name: String,
+ difficulty: String, // beginner | intermediate | advanced
+ curriculum: Array,  // 30-day plan
+ image_url: String,  // Unsplash-generated background
+ progress: {
+   completed_days: Number,
+   completion_percentage: Number,
+   current_day: Number,
+   started_at: ISODate,
+   last_activity: ISODate,
+   projected_completion: ISODate
+ },
+ status: String, // active | completed | archived
+ created_at: ISODate,
+ updated_at: ISODate
 }
+```
 
+### ✅ Habits Collection
+
+```javascript
+{
+ _id: ObjectId,
+ user_id: ObjectId,
+ title: String,
+ category: String, // e.g., health, productivity
+ icon_url: String, // Unsplash-generated illustrative icon
+ pattern: {
+   frequency: String, // daily | weekly | custom
+   target_days: Array, // [1-7]
+   reminder_time: Date
+ },
+ streaks: {
+   current_streak: Number,
+   longest_streak: Number,
+   total_completions: Number
+ },
+ goals: {
+   target_streak: Number,
+   weekly_target: Number,
+   monthly_target: Number
+ },
+ status: String, // active | paused | archived
+ created_at: ISODate,
+ updated_at: ISODate
 }
-
 ```
 
 
@@ -2279,6 +2412,7 @@ windowSize={5}
 | **CORS by Env** | `FRONTEND_URL` env-var controls allowed origin; dev URLs hard-coded for Expo  |
 | **Cloud-Ready Config** | All secrets & URLs pulled from env (Render/Vercel); local `.env` loaded with `python-dotenv` |
 | **Gunicorn Compatibility** | Top-level `app` export lets Render run `gunicorn backend.app:app` |
+| **Skill/Habit Cover Images** | Automatic Unsplash image/icon fetched on creation (`aiohttp`, `UNSPLASH_ACCESS_KEY`) |
 
 ---
 
@@ -2289,72 +2423,7 @@ windowSize={5}
 | `MONGO_URI` | Backend | `mongodb://localhost:27017/skillplan_db` | Atlas SRV string |
 | `JWT_SECRET_KEY` | Backend | `dev-secret-change` | 64-char hex |
 | `OPENROUTER_API_KEY` | Backend | `sk-…` | Same |
-| `FRONTEND_URL` | Backend CORS | `http://localhost:8081` | `https://<vercel-url>` |
+| `FRONTEND_URL` | Backend | `http://localhost:8081` | `https://<vercel-url>` |
 | `BCRYPT_ROUNDS` | Backend | `12` | `12` |
+| `UNSPLASH_ACCESS_KEY` | Backend Image Service | `UqKRPeL...` | Render secret |
 | `EXPO_PUBLIC_API_BASE_URL` | Frontend | `http://192.168.0.116:8080` | `https://<render-url>` |
-
----
-
-## 🧪 Testing Cheat-Sheet
-
-```bash
-# 👉 Backend
-cd backend && .venv\Scripts\activate
-pytest -q                # unit tests
-curl http://localhost:8080/health
-http POST :8080/auth/register username=a email=a@b.c password=secret  # httpie example
-
-# 👉 Frontend
-cd frontend
-npm test                 # jest / RTL
-npx expo start -c        # clear Metro cache + env load
-
-# Verify persistence:
-# 1. Register & login in Expo Go
-# 2. Close Expo Go (swipe-away)
-# 3. Re-open → app should enter MainTab without prompting
-```
-
----
-
-## 📞 Support & Resources
-
-### Documentation Links
-- [React Native Docs](https://reactnative.dev/docs/getting-started)
-- [Expo Documentation](https://docs.expo.dev/)
-- [Flask Documentation](https://flask.palletsprojects.com/)
-- [MongoDB Documentation](https://docs.mongodb.com/)
-- [OpenRouter API Docs](https://openrouter.ai/docs)
-
-### Development Communities
-- [React Native Community](https://github.com/react-native-community)
-- [Expo Forums](https://forums.expo.dev/)
-- [Flask Discord](https://discord.gg/flask)
-
-### Debugging Tools
-- **Frontend**: React Native Debugger, Flipper
-- **Backend**: Flask Debug Mode, MongoDB Compass
-- **API Testing**: Postman, Insomnia
-
----
-
-## 📄 License & Contributing
-
-### Development Guidelines
-1. Follow established code style and patterns
-2. Write comprehensive tests for new features
-3. Update documentation for API changes
-4. Use semantic commit messages
-5. Create feature branches for new development
-
-### Code Review Process
-1. Create feature branch from main
-2. Implement feature with tests
-3. Submit pull request with description
-4. Address review feedback
-5. Merge after approval
-
----
-
-> **Keep this guide living!**  When you merge a feature branch that affects the API, database, or deployment flow, append a note here.
-> *This guide serves as a living document and should be updated as the project evolves. For questions or clarifications, please reach out to the development team.*

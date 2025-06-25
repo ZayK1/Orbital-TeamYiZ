@@ -1,96 +1,213 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Circle } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
-import { colors } from '../constants/colors';
-import { LogOut, ChevronRight } from 'lucide-react-native';
-import { getAllPlans } from '../api/plans'; 
-import PlanCard from '../components/PlanCard'; 
 
-export default function ProfileScreen({ navigation }) {
-  const { user, logout, token } = useAuth();
-  const [skills, setSkills] = useState([]);
-  const [habits, setHabits] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
-  const fetchPlans = useCallback(async () => {
-    if (!token) return;
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getAllPlans();
-      setSkills(data.skills || []);
-      setHabits(data.habits || []);
-    } catch (err) {
-      setError('Failed to fetch plans.');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }, [token]);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchPlans();
-    }, [fetchPlans])
-  );
-  
-  const navigateToSkill = (skillId) => {
-    navigation.navigate('SkillCurriculum', { skillId });
-  };
+const CircularProgress = ({ size, strokeWidth, progress, color, backgroundColor, children }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      <Svg width={size} height={size} style={{ position: 'absolute' }}>
+        <Circle
+          stroke={backgroundColor}
+          fill="none"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          strokeWidth={strokeWidth}
+        />
+        <Circle
+          stroke={color}
+          fill="none"
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          strokeWidth={strokeWidth}
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`}
+        />
+      </Svg>
+      {children}
+    </View>
+  );
+};
+
+
+export default function ProfileScreen() {
+  const { logout, user } = useAuth();
+  const [darkMode, setDarkMode] = useState(false);
+  const [notifications, setNotifications] = useState(true);
+
+  const settingItems = [
+    { icon: 'person-outline', label: 'Account Details' },
+    { icon: 'notifications-none', label: 'Notifications', value: notifications, setter: setNotifications },
+    { icon: 'calendar-today', label: 'Calendar Integration', status: 'Connected' },
+    { icon: 'dark-mode', label: 'Dark Mode', value: darkMode, setter: setDarkMode },
+  ];
+
+  return (
+    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Profile Info */}
+      <View style={styles.profileSection}>
+        <View style={styles.avatarContainer}>
+          <Image
+            style={styles.avatar}
+            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCe9ITJO-B1kZ4R3kTfhoqnjVQ-gRwZM-ry6UMLu9X6bMY3OmavpvXcpGuR_cZ95cHOsUw1TfU1qZrlLYCcO1QTExa36TIeTIX1FJFlzhIDvWuJqpmRQ2pJP31zPghsfcTP2tyccG3OoWpwiUx5rt6nbqaolfROXuFJWNQedyRtDbPBnz0xJjjJG3TAoZcuYGqeaDmf5D4emoiXNHUTYTp7_1dGKHVWjDfqngmfKIVLUmEr2IAm7cFaCy5E6CFS-QzC3o5wdlMr7T7Q' }}
+          />
+          <View style={styles.avatarBadge}>
+            <MaterialIcons name="check" size={14} color="white" />
+          </View>
+        </View>
+        <View>
+          <Text style={styles.profileName}>{user?.username || 'Alex Chen'}</Text>
+          <Text style={styles.profileHandle}>@{user?.username || 'alexplanner'}</Text>
+        </View>
+        <TouchableOpacity style={styles.streakButton}>
+          <MaterialIcons name="local-fire-department" size={16} color="#EA580C" />
+          <Text style={styles.streakText}>58 days</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Overall Progress Card */}
+      <View style={styles.cardContainer}>
+        <LinearGradient
+          colors={['#34D399', '#3B82F6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.progressCard}
+        >
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressTitle}>Overall Progress</Text>
+            <Text style={styles.progressLevel}>Level 7</Text>
+          </View>
+          <View style={styles.progressBody}>
+            <CircularProgress size={100} strokeWidth={8} progress={72} color="white" backgroundColor="rgba(255,255,255,0.3)">
+              <Text style={styles.progressPercentage}>72%</Text>
+            </CircularProgress>
+            <View style={styles.progressStats}>
+              <View style={styles.statItem}>
+                <View style={styles.statIconContainer}>
+                  <MaterialIcons name="auto-awesome" size={18} color="white" />
+                </View>
+                <View>
+                  <Text style={styles.statValue}>12 active skills</Text>
+                  <Text style={styles.statLabel}>8 completed this week</Text>
+                </View>
+              </View>
+              <View style={styles.statItem}>
+                <View style={styles.statIconContainer}>
+                  <MaterialIcons name="check-circle-outline" size={18} color="white" />
+                </View>
+                <View>
+                  <Text style={styles.statValue}>4 daily habits</Text>
+                  <Text style={styles.statLabel}>Completed today: 3/4</Text>
+                </View>
+              </View>
+            </View>
+          </View>
+          <View style={styles.progressFooter}>
+            <TouchableOpacity style={styles.progressButton}>
+              <MaterialIcons name="add-circle-outline" size={16} color="white" />
+              <Text style={styles.progressButtonText}>Set new goal</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.progressButton}>
+              <MaterialIcons name="visibility" size={16} color="white" />
+              <Text style={styles.progressButtonText}>View details</Text>
+            </TouchableOpacity>
+          </View>
+        </LinearGradient>
+      </View>
+
+      {/* Achievements */}
+      <View style={styles.cardContainer}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Achievements</Text>
+          <TouchableOpacity style={styles.viewAllButton}>
+            <Text style={styles.viewAllText}>View All</Text>
+            <MaterialIcons name="chevron-right" size={18} color="#3B82F6" />
+          </TouchableOpacity>
+        </View>
+        <View style={styles.achievementsGrid}>
+          <View style={[styles.achievementCard, { backgroundColor: '#C4B5FD' }]}>
+            <MaterialIcons name="military-tech" size={28} color="white" />
+            <Text style={styles.achievementTitle}>30-Day Master</Text>
+            <Text style={styles.achievementDate}>Apr 15, 2023</Text>
+          </View>
+          <View style={[styles.achievementCard, { backgroundColor: '#F9A8D4' }]}>
+            <MaterialIcons name="local-fire-department" size={28} color="white" />
+            <Text style={styles.achievementTitle}>Habit Streak</Text>
+            <Text style={styles.achievementDate}>May 2, 2023</Text>
+          </View>
+          <View style={[styles.achievementCard, { backgroundColor: '#86EFAC' }]}>
+            <MaterialIcons name="wb-sunny" size={28} color="white" />
+            <Text style={styles.achievementTitle}>Early Bird</Text>
+            <Text style={styles.achievementDate}>Jun 12, 2023</Text>
+          </View>
+        </View>
       </View>
       
-      {user && (
-        <View style={styles.profileInfo}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user.username ? user.username.charAt(0).toUpperCase() : '?'}</Text>
+      {/* Stats */}
+      <View style={styles.cardContainer}>
+        <View style={styles.statsGrid}>
+          <View style={styles.statCard}>
+            <Text style={styles.statCardValueBlue}>204</Text>
+            <Text style={styles.statCardLabel}>Completed Lessons</Text>
           </View>
-          <Text style={styles.username}>{user.username}</Text>
-          <Text style={styles.email}>{user.email}</Text>
+          <View style={styles.statCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+              <MaterialIcons name="local-fire-department" size={16} color="#F97316" />
+              <Text style={styles.statCardValueOrange}>58</Text>
+              <Text style={styles.statCardUnit}>days</Text>
+            </View>
+            <Text style={styles.statCardLabel}>Longest Streak</Text>
+          </View>
+          <View style={styles.statCard}>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+              <Text style={styles.statCardValueGreen}>4.2</Text>
+              <Text style={styles.statCardUnit}>hrs</Text>
+            </View>
+            <Text style={styles.statCardLabel}>Weekly Average</Text>
+          </View>
         </View>
-      )}
-
-      <View style={styles.plansSection}>
-        <Text style={styles.sectionTitle}>Current Plans</Text>
-        {loading ? (
-          <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 20 }}/>
-        ) : error ? (
-          <Text style={styles.errorText}>{error}</Text>
-        ) : (
-          <>
-            {skills.length === 0 && habits.length === 0 && (
-              <Text style={styles.emptyText}>You have no active plans.</Text>
-            )}
-            {skills.map(skill => (
-              <PlanCard 
-                key={skill._id}
-                plan={skill}
-                onPress={() => navigateToSkill(skill._id)}
-                type="Skill"
-              />
-            ))}
-            {habits.map(habit => (
-              <PlanCard 
-                key={habit._id}
-                plan={habit}
-                onPress={() => alert('Habit details not implemented.')}
-                type="Habit"
-              />
-            ))}
-          </>
-        )}
       </View>
 
-      <TouchableOpacity style={styles.logoutButton} onPress={logout}>
-        <LogOut color={colors.error} size={20} />
-        <Text style={styles.logoutButtonText}>Logout</Text>
-      </TouchableOpacity>
+      {/* Settings */}
+      <View style={[styles.cardContainer, { marginBottom: 80 }]}>
+        {settingItems.map(({ icon, label, value, setter, status }, i) => (
+          <TouchableOpacity
+            key={i}
+            style={styles.settingItem}
+            onPress={() => setter && setter(!value)}
+            activeOpacity={setter ? 0.7 : 1}
+          >
+            <View style={styles.settingInfo}>
+              <MaterialIcons name={icon} size={20} color="#4B5563" />
+              <Text style={styles.settingLabel}>{label}</Text>
+            </View>
+            {typeof value === 'boolean' ? (
+              <View style={[styles.toggleSwitch, value ? styles.toggleSwitchActive : styles.toggleSwitchInactive]}>
+                <View style={[styles.toggleKnob, value && styles.toggleKnobActive]} />
+              </View>
+            ) : (
+              <Text style={styles.settingStatus}>{status}</Text>
+            )}
+          </TouchableOpacity>
+            ))}
+        <TouchableOpacity style={styles.settingItem} onPress={logout}>
+          <View style={styles.settingInfo}>
+            <MaterialIcons name="logout" size={20} color="#EF4444" />
+            <Text style={[styles.settingLabel, { color: "#EF4444" }]}>Log Out</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 }
@@ -98,89 +215,310 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.gray100,
+    backgroundColor: '#F9FAFB',
+    paddingTop: 20,
   },
   header: {
-    padding: 20,
-    paddingTop: 60,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
+    padding: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: colors.text,
-    textAlign: 'center',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#374151',
   },
-  profileInfo: {
+  headerIcons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  profileSection: {
+    padding: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: colors.white,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.gray200,
-    marginBottom: 20,
+    gap: 16,
+  },
+  avatarContainer: {
+    position: 'relative',
   },
   avatar: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: colors.primary,
+    borderWidth: 4,
+    borderColor: 'white',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  avatarBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 24,
+    height: 24,
+    backgroundColor: '#22C55E',
+    borderRadius: 12,
+    alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  profileName: {
+    fontSize: 24,
+    fontWeight: '600',
+  },
+  profileHandle: {
+    color: '#6B7280',
+  },
+  streakButton: {
+    marginLeft: 'auto',
+    backgroundColor: '#FFEDD5',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+  },
+  streakText: {
+    color: '#C2410C',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  cardContainer: {
+    padding: 16,
+  },
+  progressCard: {
+    borderRadius: 12,
+    padding: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  progressTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: 'white',
+  },
+  progressLevel: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    fontSize: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    color: 'white',
+  },
+  progressBody: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+  },
+  progressPercentage: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: 'white',
+  },
+  progressStats: {
+    gap: 10,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  statIconContainer: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    padding: 8,
+    borderRadius: 8,
+  },
+  statValue: {
+    fontWeight: '500',
+    color: 'white',
+  },
+  statLabel: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+  },
+  progressFooter: {
+    marginTop: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  progressButton: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingVertical: 10,
+    borderRadius: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 4,
+  },
+  progressButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
-  avatarText: {
-    color: colors.white,
-    fontSize: 32,
-    fontWeight: 'bold',
-  },
-  username: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: colors.text,
-  },
-  email: {
-    fontSize: 16,
-    color: colors.textSecondary,
-    marginTop: 4,
-  },
-  plansSection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
   sectionTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
-    color: colors.text,
-    marginBottom: 10,
+    color: '#374151',
   },
-  errorText: {
-    textAlign: 'center',
-    color: colors.error,
-    marginTop: 15,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: colors.textSecondary,
-    marginTop: 15,
-    fontStyle: 'italic',
-  },
-  logoutButton: {
+  viewAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    margin: 20,
-    padding: 15,
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: colors.error,
   },
-  logoutButtonText: {
-    color: colors.error,
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginLeft: 10,
+  viewAllText: {
+    fontSize: 14,
+    color: '#3B82F6',
+  },
+  achievementsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  achievementCard: {
+    flex: 1,
+    aspectRatio: 1,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 8,
+  },
+  achievementTitle: {
+    color: 'white',
+    fontWeight: '600',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  achievementDate: {
+    color: 'white',
+    fontSize: 12,
+    opacity: 0.8,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+    alignItems: 'center',
+  },
+  statCardValueBlue: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#2563EB',
+  },
+  statCardValueOrange: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#F97316',
+  },
+  statCardValueGreen: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#16A34A',
+  },
+  statCardUnit: {
+    fontSize: 14,
+    fontWeight: '400',
+    color: '#6B7280',
+    marginLeft: 2,
+    paddingBottom: 2,
+  },
+  statCardLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  settingItem: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 16,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+    marginBottom: 8,
+  },
+  settingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  settingLabel: {
+    color: '#374151',
+    fontWeight: '500',
+  },
+  toggleSwitch: {
+    width: 48,
+    height: 24,
+    borderRadius: 12,
+    padding: 2,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  toggleSwitchActive: {
+    backgroundColor: '#3B82F6',
+    justifyContent: 'flex-end',
+  },
+  toggleSwitchInactive: {
+    backgroundColor: '#D1D5DB',
+    justifyContent: 'flex-start',
+  },
+  toggleKnob: {
+    width: 20,
+    height: 20,
+    backgroundColor: 'white',
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  settingStatus: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#16A34A',
   },
 }); 

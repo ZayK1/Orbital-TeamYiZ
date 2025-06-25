@@ -6,6 +6,7 @@ from backend.services.ai_service import AIService
 import logging
 from flask import g
 from bson import ObjectId
+from backend.services.unsplash_service import UnsplashService
 
 class SkillService:
     @staticmethod
@@ -27,6 +28,13 @@ class SkillService:
             except ValueError:
                 raise ValueError("Invalid date format. Use YYYY-MM-DD.")
 
+        # Fetch representative image for the skill
+        image_url = None
+        try:
+            image_url = await UnsplashService.fetch_image(title)
+        except Exception as e:
+            logging.error(f"Unsplash fetch failed for skill '{title}': {e}")
+
         skill_plan_data = {
             "user_id": user_id,
             "title": title,
@@ -45,6 +53,7 @@ class SkillService:
                 "projected_completion": start_date + timedelta(days=30)
             },
             "status": "active",
+            "image_url": image_url,
             "created_at": now,
             "updated_at": now
         }
