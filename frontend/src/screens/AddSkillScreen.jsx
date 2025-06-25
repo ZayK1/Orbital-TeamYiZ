@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, StyleSheet, ImageBackground } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, StyleSheet, ImageBackground, ActivityIndicator, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { useAuth } from '../context/AuthContext';
+import { createSkillPlan } from '../api/plans';
 
 const suggestions = [
   { icon: 'edit', label: 'Photography' },
@@ -36,9 +38,40 @@ const popularSkills = [
   }
 ];
 
-export default function AddSkillScreen({ navigation }) {
+export default function AddSkillScreen({ navigation, route }) {
+  const { token } = useAuth();
   const [skill, setSkill] = useState('');
   const [difficulty, setDifficulty] = useState('Beginner');
+  const [loading, setLoading] = useState(false);
+
+  const handleGeneratePlan = async () => {
+    if (!skill.trim()) {
+      Alert.alert('Validation', 'Please enter a skill name.');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await createSkillPlan(skill.trim(), difficulty, token);
+      Alert.alert('Success', 'Your 30-day plan has been created!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Repository');
+            }
+          },
+        },
+      ]);
+    } catch (err) {
+      console.error('Plan generation failed:', err);
+      Alert.alert('Error', 'Failed to generate the plan. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -134,8 +167,16 @@ export default function AddSkillScreen({ navigation }) {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.primaryButton}>
-          <Text style={styles.primaryButtonText}>Generate 30-Day Plan</Text>
+        <TouchableOpacity
+          style={[styles.primaryButton, !skill.trim() || loading ? { opacity: 0.6 } : null]}
+          onPress={handleGeneratePlan}
+          disabled={!skill.trim() || loading}
+        >
+          {loading ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.primaryButtonText}>Generate 30-Day Plan</Text>
+          )}
         </TouchableOpacity>
         <TouchableOpacity style={styles.secondaryButton} onPress={() => navigation.navigate('AddHabit')}>
           <Text style={styles.secondaryButtonText}>Create Habit Instead</Text>
@@ -345,16 +386,17 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     width: '100%',
-    backgroundColor: '#2DD4BF',
+    backgroundColor: '#14B8A6',
     paddingVertical: 14,
     paddingHorizontal: 16,
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-    marginBottom: 12
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+    marginBottom: 12,
+    alignItems: 'center',
   },
   primaryButtonText: {
     color: 'white',

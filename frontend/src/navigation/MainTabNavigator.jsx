@@ -19,6 +19,11 @@ import StatsScreen from '../screens/StatsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AddSkillScreen from '../screens/AddSkillScreen';
 import AddHabitScreen from '../screens/AddHabitScreen';
+import AllSkillsScreen from '../screens/AllSkillsScreen';
+import AllHabitsScreen from '../screens/AllHabitsScreen';
+import SkillDetailScreen from '../screens/SkillDetailScreen';
+import PlanIndexScreen from '../screens/PlanIndexScreen';
+import DayDetailScreen from '../screens/DayDetailScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -165,6 +170,10 @@ function RepositoryStackNavigator() {
       <Stack.Screen name="Repository" component={RepositoryScreen} />
       <Stack.Screen name="AddSkill" component={AddSkillScreen} />
       <Stack.Screen name="AddHabit" component={AddHabitScreen} />
+      <Stack.Screen name="AllSkills" component={AllSkillsScreen} />
+      <Stack.Screen name="AllHabits" component={AllHabitsScreen} />
+      <Stack.Screen name="SkillDetail" component={PlanIndexScreen} />
+      <Stack.Screen name="DayDetail" component={DayDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -262,11 +271,15 @@ const styles = StyleSheet.create({
   },
   actionButtonContainer: {
     position: 'absolute',
-    alignSelf: 'center',
-    bottom: 95,
+    left: 0,
+    right: 0,
+    bottom: 200,
+    alignItems: 'center',
   },
   actionButton: {
     position: 'absolute',
+    left: '50%',
+    marginLeft: -40,
     width: 80,
     height: 70,
     borderRadius: 16,

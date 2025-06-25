@@ -36,9 +36,7 @@ class HabitRepository:
         pass
 
     async def get_by_id_and_user(self, habit_id, user_id):
-        # Placeholder
         pass
 
     async def update(self, habit):
-        # Placeholder
         pass 

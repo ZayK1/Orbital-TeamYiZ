@@ -28,7 +28,7 @@ class SkillService:
             except ValueError:
                 raise ValueError("Invalid date format. Use YYYY-MM-DD.")
 
-        # Fetch representative image for the skill
+
         image_url = None
         try:
             image_url = await UnsplashService.fetch_image(title)

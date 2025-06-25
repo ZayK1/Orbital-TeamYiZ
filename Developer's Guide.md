@@ -297,9 +297,9 @@ frontend/
 
 │ │ ├── 📄 ProfileScreen.jsx # Revamped user profile
 
-│ │ ├── 📄 ExploreScreen.jsx # Placeholder for discovery
+│ │ ├── 📄 ExploreScreen.jsx # Beta discovery screen (community skills upload & browse)
 
-│ │ ├── 📄 StatsScreen.jsx # Placeholder for statistics
+│ │ ├── 📄 StatsScreen.jsx # Beta statistics dashboard
 
 │ │ ├── 📄 AddSkillScreen.jsx # Form to create a new skill
 
@@ -525,31 +525,36 @@ The app uses a custom-built, animated bottom tab navigator that appears on user 
 
 ```mermaid
 graph TD
-    subgraph "App Entry"
-        A[App.js] -- AuthProvider --> B{RootNavigator};
-    end
+  subgraph "App Entry"
+    A[App.js] -->|AuthProvider| B{RootNavigator}
+  end
 
-    B -- No User --> C[AuthStack];
-    B -- User Logged In --> D[MainTabNavigator];
+  B -->|Unauthenticated| C[AuthStack]
+  B -->|Authenticated| D[MainTabNavigator]
 
-    subgraph "Authentication"
-        C -- /login --> E[LoginScreen];
-        C -- /register --> F[RegisterScreen];
-    end
+  subgraph "Authentication"
+    C --> E[LoginScreen]
+    C --> F[RegisterScreen]
+  end
 
-    subgraph "Main Application"
-        D;
-        subgraph "Repository Stack (Tab 1)"
-            G[RepositoryStack] --> H[RepositoryScreen];
-            H -- Add Skill --> I[AddSkillScreen];
-            H -- Add Habit --> J[AddHabitScreen];
-        end
-        D -- Tab 2 --> K[ExploreScreen];
-        D -- Tab 3 --> L[StatsScreen];
-        D -- Tab 4 --> M[ProfileScreen];
-    end
+  subgraph "Main Tabs"
+    D --> G[RepositoryStack]
+    D --> K[ExploreScreen]
+    D --> L[StatsScreen]
+    D --> M[ProfileScreen]
+  end
 
-    style D fill:#f9f,stroke:#333,stroke-width:2px
+  subgraph "Repository Stack"
+    G --> H[RepositoryScreen]
+    H --> I[AddSkillScreen]
+    H --> J[AddHabitScreen]
+    H --> N[AllSkillsScreen]
+    H --> O[AllHabitsScreen]
+    H --> P[PlanIndexScreen]
+    P --> Q[DayDetailScreen]
+  end
+
+  style D fill:#f9f,stroke:#333,stroke-width:2px
 ```
 
 ### 🔐 Authentication Context
@@ -858,7 +863,8 @@ Content-Type: application/json
 Authorization: Bearer <token>
 
 {
-  "skill_name": "Guitar"
+  "skill_name": "Guitar",
+  "difficulty": "beginner"
 }
 ```
 
@@ -870,6 +876,7 @@ Authorization: Bearer <token>
   "skill": {
     "_id": "skill_id",
     "title": "Guitar",
+    "difficulty": "beginner",
     "image_url": "https://images.unsplash.com/...",  // 📷 auto-selected
     "status": "active",
     "curriculum": { "daily_tasks": [ /* 30-day plan */ ] },
@@ -888,7 +895,9 @@ Authorization: Bearer <token>
 
 {
   "title": "Drink Water",
-  "category": "health"
+  "category": "health",
+  "frequency": "daily",
+  "color": "#14B8A6"
 }
 ```
 
@@ -900,9 +909,10 @@ Authorization: Bearer <token>
   "habit": {
     "_id": "habit_id",
     "title": "Drink Water",
-    "icon_url": "https://images.unsplash.com/...",  // 🎨 auto-selected
     "category": "health",
-    "status": "active",
+    "frequency": "daily",
+    "color": "#14B8A6",
+    "icon_url": "https://images.unsplash.com/...",  // 🎨 auto-selected
     "pattern": { "frequency": "daily", "target_days": [1,2,3,4,5,6,7] },
     "streaks": { "current_streak": 0, "longest_streak": 0 },
     "created_at": "ISODate",
@@ -911,7 +921,50 @@ Authorization: Bearer <token>
 }
 ```
 
+#### Check-in Habit
 
+```http
+POST /api/v1/plans/habits/{id}/checkin
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "date": "YYYY-MM-DD" // ISO date (defaults to today if omitted)
+}
+```
+
+| Param | In   | Type   | Required | Description               |
+|-------|------|--------|----------|---------------------------|
+| id    | path | string | ✓        | Habit document `_id`      |
+| date  | body | string | ✗        | Day to record completion  |
+
+**Response: 200 OK**
+
+```json
+{
+  "message": "Check-in recorded",
+  "habit": { /* updated habit with streaks */ }
+}
+```
+
+#### Get Skill By ID
+
+```http
+GET /api/v1/plans/skills/{id}
+Authorization: Bearer <token>
+```
+
+Returns full skill document including curriculum & progress.
+
+#### Delete Habit / Delete Skill
+
+```http
+DELETE /api/v1/plans/habits/{id}
+DELETE /api/v1/plans/skills/{id}
+Authorization: Bearer <token>
+```
+
+Soft-deletes the document (status → `archived`).
 
 ### 🔍 Health Check
 
@@ -1033,6 +1086,7 @@ last_login: ISODate // tracked on login
  title: String,
  category: String, // e.g., health, productivity
  icon_url: String, // Unsplash-generated illustrative icon
+ color: String, // hex colour used for UI accents
  pattern: {
    frequency: String, // daily | weekly | custom
    target_days: Array, // [1-7]
@@ -2413,6 +2467,14 @@ windowSize={5}
 | **Cloud-Ready Config** | All secrets & URLs pulled from env (Render/Vercel); local `.env` loaded with `python-dotenv` |
 | **Gunicorn Compatibility** | Top-level `app` export lets Render run `gunicorn backend.app:app` |
 | **Skill/Habit Cover Images** | Automatic Unsplash image/icon fetched on creation (`aiohttp`, `UNSPLASH_ACCESS_KEY`) |
+| **Dynamic Dashboard** | RepositoryScreen now pulls `/api/v1/plans` on focus → shows 1 active skill + up to 4 habits (View All/See All). |
+| **In-App Plan Creation** | `AddSkillScreen` & `AddHabitScreen` wired to backend. • Skill: sends `skill_name` + `difficulty` (beginner/intermediate/advanced). • Habit: sends `title`, `frequency` (daily/weekly/custom) + `color` hex. |
+| **Habit Daily Check-ins** | Grey tick → POST `/habits/{id}/checkin` for today → turns green; streak counters forthcoming. |
+| **Plan Deletion** | Long-press trash can in All-plans screens deletes skill or habit via API. |
+| **Enhanced Empty-States** | Motivational placeholders with icons appear when users have no skills or habits. |
+| **Gender-neutral Avatars** | Profile avatars now use `ui-avatars.com` for dynamic, neutral imagery based on username. |
+| **Floating Add Menu UX** | Skill/Habit quick-add buttons align centrally and animate above the nav bar. |
+| **Discover & Stats Beta** | ExploreScreen and StatsScreen now show attractive beta notices outlining upcoming upload/browse and visual analytics features. |
 
 ---
 

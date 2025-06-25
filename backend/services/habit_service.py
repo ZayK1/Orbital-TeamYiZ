@@ -9,7 +9,7 @@ from backend.services.unsplash_service import UnsplashService
 
 class HabitService:
     @staticmethod
-    async def create_habit(user_id: str, title: str, category: str) -> Dict[str, Any]:
+    async def create_habit(user_id: str, title: str, category: str, frequency: str = "daily", color: str | None = None) -> Dict[str, Any]:
         habit_repo = HabitRepository(g.db.habits)
 
         now = datetime.utcnow()
@@ -19,7 +19,7 @@ class HabitService:
             "title": title,
             "category": category,
             "pattern": {
-                "frequency": "daily",
+                "frequency": frequency or "daily",
                 "target_days": [1, 2, 3, 4, 5, 6, 7],
                 "reminder_time": None
             },
@@ -35,11 +35,11 @@ class HabitService:
             },
             "status": "active",
             "icon_url": None,
+            "color": color,
             "created_at": now,
             "updated_at": now,
         }
 
-        # Fetch an illustrative icon/image for the habit category
         try:
             habit_plan_data["icon_url"] = await UnsplashService.fetch_image(category or title)
         except Exception as e:

@@ -13,7 +13,6 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// Request interceptor to add the auth token to every request
 api.interceptors.request.use(
   async (config) => {
     const token = await AsyncStorage.getItem('authToken');

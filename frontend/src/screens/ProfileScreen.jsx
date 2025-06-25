@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
+import { useIsFocused } from '@react-navigation/native';
+import { getAllPlans } from '../api/plans';
 
 
 const CircularProgress = ({ size, strokeWidth, progress, color, backgroundColor, children }) => {
@@ -42,9 +44,51 @@ const CircularProgress = ({ size, strokeWidth, progress, color, backgroundColor,
 
 
 export default function ProfileScreen() {
-  const { logout, user } = useAuth();
+  const { logout, user, token } = useAuth();
+  const isFocused = useIsFocused();
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(true);
+  const [stats, setStats] = useState({
+    activeSkills: 0,
+    completedSkills: 0,
+    percentComplete: 0,
+    dailyHabits: 0,
+    completedToday: 0,
+    longestStreak: 0,
+  });
+  const [achievements, setAchievements] = useState([]);
+
+  useEffect(() => {
+    const fetch = async () => {
+      try {
+        const data = await getAllPlans(token);
+        const skills = data.skills || [];
+        const habits = data.habits || [];
+
+        const completedSkills = skills.filter((s) => s.status === 'completed').length;
+        const percent = skills.length ? Math.round((completedSkills / skills.length) * 100) : 0;
+
+        const completedToday = habits.filter((h) => h.checked_today).length;
+        const longestStreak = habits.reduce((max, h) => Math.max(max, h.streaks?.longest_streak || 0), 0);
+
+        setStats({
+          activeSkills: skills.length - completedSkills,
+          completedSkills,
+          percentComplete: percent,
+          dailyHabits: habits.length,
+          completedToday,
+          longestStreak,
+        });
+        setAchievements([]);
+      } catch (err) {
+        console.error('Profile stats fetch failed', err);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+    if (token && isFocused) fetch();
+  }, [token, isFocused]);
 
   const settingItems = [
     { icon: 'person-outline', label: 'Account Details' },
@@ -60,7 +104,7 @@ export default function ProfileScreen() {
         <View style={styles.avatarContainer}>
           <Image
             style={styles.avatar}
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCe9ITJO-B1kZ4R3kTfhoqnjVQ-gRwZM-ry6UMLu9X6bMY3OmavpvXcpGuR_cZ95cHOsUw1TfU1qZrlLYCcO1QTExa36TIeTIX1FJFlzhIDvWuJqpmRQ2pJP31zPghsfcTP2tyccG3OoWpwiUx5rt6nbqaolfROXuFJWNQedyRtDbPBnz0xJjjJG3TAoZcuYGqeaDmf5D4emoiXNHUTYTp7_1dGKHVWjDfqngmfKIVLUmEr2IAm7cFaCy5E6CFS-QzC3o5wdlMr7T7Q' }}
+            source={{ uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'User')}&background=14B8A6&color=ffffff&size=128` }}
           />
           <View style={styles.avatarBadge}>
             <MaterialIcons name="check" size={14} color="white" />
@@ -86,11 +130,11 @@ export default function ProfileScreen() {
         >
           <View style={styles.progressHeader}>
             <Text style={styles.progressTitle}>Overall Progress</Text>
-            <Text style={styles.progressLevel}>Level 7</Text>
+            <Text style={styles.progressLevel}>{stats.completedSkills}/{stats.activeSkills + stats.completedSkills}</Text>
           </View>
           <View style={styles.progressBody}>
-            <CircularProgress size={100} strokeWidth={8} progress={72} color="white" backgroundColor="rgba(255,255,255,0.3)">
-              <Text style={styles.progressPercentage}>72%</Text>
+            <CircularProgress size={100} strokeWidth={8} progress={stats.percentComplete} color="white" backgroundColor="rgba(255,255,255,0.3)">
+              <Text style={styles.progressPercentage}>{stats.percentComplete}%</Text>
             </CircularProgress>
             <View style={styles.progressStats}>
               <View style={styles.statItem}>
@@ -98,8 +142,8 @@ export default function ProfileScreen() {
                   <MaterialIcons name="auto-awesome" size={18} color="white" />
                 </View>
                 <View>
-                  <Text style={styles.statValue}>12 active skills</Text>
-                  <Text style={styles.statLabel}>8 completed this week</Text>
+                  <Text style={styles.statValue}>{stats.activeSkills} active skills</Text>
+                  <Text style={styles.statLabel}>{stats.completedSkills} completed</Text>
                 </View>
               </View>
               <View style={styles.statItem}>
@@ -107,8 +151,8 @@ export default function ProfileScreen() {
                   <MaterialIcons name="check-circle-outline" size={18} color="white" />
                 </View>
                 <View>
-                  <Text style={styles.statValue}>4 daily habits</Text>
-                  <Text style={styles.statLabel}>Completed today: 3/4</Text>
+                  <Text style={styles.statValue}>{stats.dailyHabits} daily habits</Text>
+                  <Text style={styles.statLabel}>Completed today: {stats.completedToday}/{stats.dailyHabits}</Text>
                 </View>
               </View>
             </View>
@@ -135,23 +179,21 @@ export default function ProfileScreen() {
             <MaterialIcons name="chevron-right" size={18} color="#3B82F6" />
           </TouchableOpacity>
         </View>
-        <View style={styles.achievementsGrid}>
-          <View style={[styles.achievementCard, { backgroundColor: '#C4B5FD' }]}>
-            <MaterialIcons name="military-tech" size={28} color="white" />
-            <Text style={styles.achievementTitle}>30-Day Master</Text>
-            <Text style={styles.achievementDate}>Apr 15, 2023</Text>
+        {achievements.length === 0 ? (
+          <View style={styles.centered}>
+            <Text style={styles.noAchieveText}>No achievements yet. Keep learning!</Text>
           </View>
-          <View style={[styles.achievementCard, { backgroundColor: '#F9A8D4' }]}>
-            <MaterialIcons name="local-fire-department" size={28} color="white" />
-            <Text style={styles.achievementTitle}>Habit Streak</Text>
-            <Text style={styles.achievementDate}>May 2, 2023</Text>
+        ) : (
+          <View style={styles.achievementsGrid}>
+            {achievements.map((achievement, index) => (
+              <View key={index} style={[styles.achievementCard, { backgroundColor: index % 3 === 0 ? '#C4B5FD' : index % 3 === 1 ? '#F9A8D4' : '#86EFAC' }]}>
+                <MaterialIcons name="military-tech" size={28} color="white" />
+                <Text style={styles.achievementTitle}>{achievement.title}</Text>
+                <Text style={styles.achievementDate}>{achievement.date}</Text>
+              </View>
+            ))}
           </View>
-          <View style={[styles.achievementCard, { backgroundColor: '#86EFAC' }]}>
-            <MaterialIcons name="wb-sunny" size={28} color="white" />
-            <Text style={styles.achievementTitle}>Early Bird</Text>
-            <Text style={styles.achievementDate}>Jun 12, 2023</Text>
-          </View>
-        </View>
+        )}
       </View>
       
       {/* Stats */}
@@ -520,5 +562,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#16A34A',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  noAchieveText: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '500',
   },
 }); 

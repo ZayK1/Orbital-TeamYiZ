@@ -40,5 +40,4 @@ class SkillRepository:
         })
 
     async def get_by_user_paginated(self, user_id, status, page, limit):
-        # Placeholder .
         pass 

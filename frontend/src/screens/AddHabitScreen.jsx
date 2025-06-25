@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Switch, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Switch, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useAuth } from '../context/AuthContext';
+import { createHabitPlan } from '../api/plans';
 
 const suggestionList = [
   { icon: 'water-drop', label: 'Drink water' },
@@ -21,10 +23,54 @@ const habitColors = {
 };
 
 export default function AddHabitScreen({ navigation }) {
+  const { token } = useAuth();
   const [habit, setHabit] = useState('');
   const [reminderEnabled, setReminderEnabled] = useState(false);
   const [selectedFrequency, setSelectedFrequency] = useState('Daily');
   const [selectedColor, setSelectedColor] = useState('green');
+  const [loading, setLoading] = useState(false);
+
+  const handleAddHabit = async () => {
+    if (!habit.trim()) {
+      Alert.alert('Validation', 'Please enter a habit title.');
+      return;
+    }
+
+    const frequencyMap = {
+      Daily: 'daily',
+      Weekdays: 'weekly',
+      Custom: 'custom',
+    };
+
+    try {
+      setLoading(true);
+      await createHabitPlan(
+        habit.trim(),
+        'health', 
+        frequencyMap[selectedFrequency],
+        habitColors[selectedColor],
+        token
+      );
+      Alert.alert('Success', 'Habit created successfully!', [
+        {
+          text: 'OK',
+          onPress: () => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Repository');
+            }
+          },
+        },
+      ]);
+    } catch (err) {
+      console.error('Habit creation failed:', err);
+      const msg = err.response?.data?.error || 'Could not create habit.';
+      Alert.alert('Error', msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -121,12 +167,17 @@ export default function AddHabitScreen({ navigation }) {
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity>
+          <TouchableOpacity disabled={!habit.trim() || loading} onPress={handleAddHabit}>
             <LinearGradient
-              colors={["#8B5CF6", "#6366F1"]}
-              style={styles.primaryButton}
+              colors={[habitColors[selectedColor], '#14B8A6']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={[styles.primaryButton, (!habit.trim() || loading) && { opacity: 0.6 }]}
             >
-              <Text style={styles.primaryButtonText}>Add Habit</Text>
+              {loading ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.primaryButtonText}>Add Habit</Text>
+              )}
             </LinearGradient>
           </TouchableOpacity>
 
@@ -211,7 +262,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 12,
     top: '50%',
-    marginTop: -10, // Adjust for icon size
+    marginTop: -10, 
     padding: 4,
   },
   suggestionsContainer: {

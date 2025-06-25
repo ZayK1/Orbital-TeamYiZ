@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -7,36 +7,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   ImageBackground,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
-
-const habits = [
-  {
-    title: 'Morning meditation',
-    icon: 'wb-sunny',
-    time: '7:00 AM',
-    color: '#A78BFA',
-  },
-  {
-    title: 'Read 20 pages',
-    icon: 'menu-book',
-    time: '8:30 AM',
-    color: '#2DD4BF',
-  },
-  {
-    title: 'Drink water',
-    icon: 'water-drop',
-    time: 'Throughout day',
-    color: '#60A5FA',
-  },
-  {
-    title: 'Evening walk',
-    icon: 'directions-walk',
-    time: '6:00 PM',
-    color: '#F472B6',
-  },
-];
+import { useNavigation, useIsFocused } from '@react-navigation/native';
+import { useAuth } from '../context/AuthContext';
+import { getAllPlans } from '../api/plans';
+import { recordHabitCheckin } from '../api/plans';
 
 const CircularProgress = ({
   size,
@@ -76,22 +54,90 @@ const CircularProgress = ({
   );
 };
 
+const getHabitIcon = (title = '') => {
+  const lower = title.toLowerCase();
+  if (lower.includes('water')) return 'water-drop';
+  if (lower.includes('read')) return 'menu-book';
+  if (lower.includes('exercise') || lower.includes('workout')) return 'fitness-center';
+  if (lower.includes('medit')) return 'self-improvement';
+  if (lower.includes('gratitude')) return 'sentiment-satisfied';
+  return 'check-circle';
+};
+
 export default function RepositoryScreen() {
+  const navigation = useNavigation();
+  const isFocused = useIsFocused();
+  const { user, token } = useAuth();
+  const [skills, setSkills] = useState([]);
+  const [habits, setHabits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [completedHabits, setCompletedHabits] = useState(new Set());
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const data = await getAllPlans(token);
+        setSkills(data.skills || []);
+        setHabits(data.habits || []);
+        const completedSet = new Set();
+        (data.habits || []).forEach(h => {
+          if (h.checked_today) completedSet.add(h._id);
+        });
+        setCompletedHabits(completedSet);
+      } catch (err) {
+        console.error('Failed to load plans:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (token && isFocused) {
+      fetchPlans();
+    }
+   
+  }, [token, isFocused]);
+
+  const firstSkill = skills.length > 0 ? skills[0] : null;
+  const todaysHabits = habits.slice(0, 4);
+
+  const showAddSkill = () => navigation.navigate('AddSkill');
+  const showAddHabit = () => navigation.navigate('AddHabit');
+
+  const handleHabitCheck = async (habitId) => {
+    if (completedHabits.has(habitId)) return; 
+    try {
+      const todayIso = new Date().toISOString().split('T')[0];
+      await recordHabitCheckin(habitId, todayIso, token);
+      const newSet = new Set(completedHabits);
+      newSet.add(habitId);
+      setCompletedHabits(newSet);
+    } catch (err) {
+      console.error('Failed to record checkin', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#14B8A6" />
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <View style={styles.userInfo}>
           <Image
             style={styles.avatar}
             source={{
               uri:
-                'https://lh3.googleusercontent.com/aida-public/AB6AXuCmDtwn9LLEClGztRStca1u7J3RiU949GILuJJwJTVycquPO_U_HXwmbao8XHty8t44JW-hcaWK47bmLwip3Z1_pUEgbvxjBdhg1hQW-r7iBna3anmEbNnPPIkcVvmS9ZujvZa5sLXx4Xwa7AZ-XcZyi-w0KY4OoU6ZosPPSRZU7wvtu8USaEexED9593aPdXa9wWCGh5ervUM_SLtzeOYtaCGyV5Gbydv4sbe52l6-A2zpbKw4y-t0pM06vKxqpIj72Q8KxCnmgNM',
+                'https://ui-avatars.com/api/?name=' + (user?.username || 'U') + '&background=14B8A6&color=fff',
             }}
           />
           <View>
             <Text style={styles.greeting}>Good morning</Text>
-            <Text style={styles.userName}>Sarah</Text>
+            <Text style={styles.userName}>{user?.username || 'User'}</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.streakButton}>
@@ -101,11 +147,10 @@ export default function RepositoryScreen() {
             color="#14B8A6"
             style={{ marginRight: 4 }}
           />
-          <Text style={styles.streakText}>12 days</Text>
+          <Text style={styles.streakText}>0 days</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Today's Focus */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Today's Focus</Text>
         <View style={styles.focusGrid}>
@@ -126,77 +171,117 @@ export default function RepositoryScreen() {
         </View>
       </View>
 
-      {/* Active Skills */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Active Skills</Text>
-          <TouchableOpacity style={styles.viewAll}>
-            <Text style={styles.viewAllText}>View All</Text>
-            <MaterialIcons name="chevron-right" size={18} color="#14B8A6" />
-          </TouchableOpacity>
+          {skills.length > 1 && (
+            <TouchableOpacity style={styles.viewAll} onPress={() => navigation.navigate('AllSkills')}>
+              <Text style={styles.viewAllText}>View All</Text>
+              <MaterialIcons name="chevron-right" size={18} color="#14B8A6" />
+            </TouchableOpacity>
+          )}
         </View>
 
-        <View style={styles.skillCard}>
-          <ImageBackground
-            source={{
-              uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAMhDkOG3MEUk2ZURk1xihaqg8N405d9-9M88CUZqYIU3AFCcSdNNgaGb0oKUUQvYOiT06pliZLDkBW99NHg6XGbNfUgS8MHPxAf2BAn7aGGLKKfz3LVklebMcEeIBZ-nBqyQYUY4DR2T0nD3zE7pcbVLxwYWFXAn73VQNHWhc_lnnB4RWbpZ_qszJwU4LslDCR29UNYdqlbehB9tiqrA5ekOlG1fDbqZZRuYeM9L8upQxAYDLlR1rXSGjXYJbOxOWXW7VJDIW0jYw',
-            }}
-            style={styles.skillImage}
-            imageStyle={{ borderRadius: 16 }}
-          >
-            <View style={styles.skillOverlay}>
-              <View style={styles.skillTopRow}>
-                <View style={styles.skillInfo}>
-                  <MaterialIcons name="translate" color="white" size={20} />
-                  <View style={{ marginLeft: 8 }}>
-                    <Text style={styles.skillTitle}>Spanish</Text>
-                    <Text style={styles.skillSub}>Conversational Fluency</Text>
+        {firstSkill ? (
+          <View style={styles.skillCard}>
+            <ImageBackground
+              source={{ uri: firstSkill.image_url || 'https://via.placeholder.com/300' }}
+              style={styles.skillImage}
+              imageStyle={{ borderRadius: 16 }}
+            >
+              <View style={styles.skillOverlay}>
+                <View style={styles.skillTopRow}>
+                  <View style={styles.skillInfo}>
+                    <MaterialIcons name="psychology" color="white" size={20} />
+                    <View style={{ marginLeft: 8 }}>
+                      <Text style={styles.skillTitle}>{firstSkill.title}</Text>
+                      <Text style={styles.skillSub}>{firstSkill.difficulty || ''}</Text>
+                    </View>
                   </View>
+                  <Text style={styles.skillBadge}>Day {firstSkill?.progress?.current_day || 1}/30</Text>
                 </View>
-                <Text style={styles.skillBadge}>Day 8/30</Text>
+                <Text style={styles.skillProgressLabel}>Progress</Text>
+                <View style={styles.skillProgressContainer}>
+                  <View
+                    style={[styles.skillProgressBar, { width: `${firstSkill?.progress?.completion_percentage || 0}%` }]}
+                  />
+                </View>
+                <TouchableOpacity style={styles.skillButton} onPress={() => navigation.navigate('SkillDetail', { skillId: firstSkill._id })}>
+                  <Text style={styles.skillButtonText}>Continue</Text>
+                </TouchableOpacity>
               </View>
-              <Text style={styles.skillProgressLabel}>Progress</Text>
-              <View style={styles.skillProgressContainer}>
-                <View style={[styles.skillProgressBar, { width: '27%' }]} />
-              </View>
-              <TouchableOpacity style={styles.skillButton}>
-                <Text style={styles.skillButtonText}>Continue</Text>
-              </TouchableOpacity>
-            </View>
-          </ImageBackground>
-        </View>
+            </ImageBackground>
+          </View>
+        ) : (
+          <View style={[styles.placeholderCard, { borderColor: '#A78BFA' }] }>
+            <MaterialIcons name="self-improvement" size={48} color="#A78BFA" style={{ marginBottom: 12 }} />
+            <Text style={styles.placeholderText}>
+              Every great journey starts with a single step.{"\n"}
+              Tap below to create your first 30-day skill plan and watch yourself grow!
+            </Text>
+            <TouchableOpacity style={styles.placeholderButton} onPress={showAddSkill}>
+              <Text style={styles.placeholderButtonText}>Add New Skill</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
-      {/* Today's Habits */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Today's Habits</Text>
-          <TouchableOpacity style={styles.viewAll}>
-            <Text style={styles.viewAllText}>See All</Text>
-            <MaterialIcons name="chevron-right" size={18} color="#14B8A6" />
-          </TouchableOpacity>
+          {habits.length > 4 && (
+            <TouchableOpacity style={styles.viewAll} onPress={() => navigation.navigate('AllHabits')}>
+              <Text style={styles.viewAllText}>See All</Text>
+              <MaterialIcons name="chevron-right" size={18} color="#14B8A6" />
+            </TouchableOpacity>
+          )}
         </View>
 
-        <View style={styles.habitCard}>
-          {habits.map((habit, index) => (
-            <View key={habit.title}>
-              <View style={styles.habitItem}>
-                <View style={[styles.habitLine, { backgroundColor: habit.color }]} />
-                <MaterialIcons name={habit.icon} size={20} color={habit.color} style={{ marginRight: 8 }} />
-                <View>
-                  <Text style={styles.habitTitle}>{habit.title}</Text>
-                  <Text style={styles.habitTime}>{habit.time}</Text>
+        {todaysHabits.length > 0 ? (
+          <View style={styles.habitCard}>
+            {todaysHabits.map((habit, index) => (
+              <View key={habit._id || index}>
+                <View style={styles.habitItem}>
+                  <View style={[styles.habitLine, { backgroundColor: habit.color || '#14B8A6' }]} />
+                  <MaterialIcons name={getHabitIcon(habit.title)} size={20} color={habit.color || '#14B8A6'} style={{ marginRight: 8 }} />
+                  <View>
+                    <Text style={styles.habitTitle}>{habit.title}</Text>
+                    <Text style={styles.habitTime}>{habit.pattern?.frequency || 'Daily'}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[
+                      styles.habitCheck,
+                      completedHabits.has(habit._id)
+                        ? { backgroundColor: '#22C55E' }
+                        : { backgroundColor: '#E5E7EB' },
+                    ]}
+                    onPress={() => handleHabitCheck(habit._id)}
+                  >
+                    <MaterialIcons
+                      name="check"
+                      size={16}
+                      color={completedHabits.has(habit._id) ? 'white' : '#6B7280'}
+                    />
+                  </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.habitCheck}>
-                  <MaterialIcons name="check" size={16} color="white" />
-                </TouchableOpacity>
+                {index !== todaysHabits.length - 1 && (
+                  <View style={styles.habitDivider} />
+                )}
               </View>
-              {index !== habits.length - 1 && (
-                <View style={styles.habitDivider} />
-              )}
-            </View>
-          ))}
-        </View>
+            ))}
+          </View>
+        ) : (
+          <View style={[styles.placeholderCard, { borderColor: '#14B8A6' }] }>
+            <MaterialIcons name="emoji-people" size={48} color="#14B8A6" style={{ marginBottom: 12 }} />
+            <Text style={styles.placeholderText}>
+              Small daily actions create remarkable change.{"\n"}
+              Add your first habit below and begin the path to a better you!
+            </Text>
+            <TouchableOpacity style={styles.placeholderButton} onPress={showAddHabit}>
+              <Text style={styles.placeholderButtonText}>Add New Habit</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
     </ScrollView>
   );
@@ -332,7 +417,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Active Skills
   skillCard: {
     marginBottom: 16,
     borderRadius: 16,
@@ -386,7 +470,6 @@ const styles = StyleSheet.create({
   },
   skillButtonText: { color: '#111827', fontWeight: '500', fontSize: 14 },
 
-  // Habits
   habitCard: {
     backgroundColor: 'white',
     borderRadius: 16,
@@ -404,12 +487,37 @@ const styles = StyleSheet.create({
   habitTime: { fontSize: 12, color: '#6B7280' },
   habitCheck: {
     marginLeft: 'auto',
-    backgroundColor: '#14B8A6',
     borderRadius: 999,
     width: 28,
     height: 28,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#E5E7EB',
   },
   habitDivider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 },
+
+  placeholderCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 2,
+    marginBottom: 16,
+  },
+  placeholderText: {
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 12,
+    color: '#6B7280',
+  },
+  placeholderButton: {
+    backgroundColor: '#14B8A6',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  placeholderButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
 }); 

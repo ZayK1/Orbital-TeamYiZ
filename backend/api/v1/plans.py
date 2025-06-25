@@ -82,9 +82,11 @@ async def create_habit():
     user_id = str(g.current_user['_id'])
     
     habit_plan = await HabitService.create_habit(
-        user_id=user_id, 
+        user_id=user_id,
         title=validated_data['title'],
-        category=validated_data['category']
+        category=validated_data['category'],
+        frequency=validated_data.get('frequency', 'daily'),
+        color=validated_data.get('color')
     )
     return jsonify({"message": "Habit created successfully", "habit": habit_plan}), 201
 

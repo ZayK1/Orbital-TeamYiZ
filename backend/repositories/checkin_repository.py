@@ -35,9 +35,7 @@ class CheckinRepository:
         })
 
     async def upsert_by_date(self, checkin_data):
-        # Placeholder
         pass
 
     async def get_recent_for_habit(self, habit_id, days):
-        # Placeholder
         pass 

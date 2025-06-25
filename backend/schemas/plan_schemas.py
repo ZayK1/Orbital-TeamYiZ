@@ -11,6 +11,7 @@ class HabitCreateSchema(Schema):
     frequency = fields.Str(validate=validate.OneOf(["daily", "weekly", "custom"]))
     target_days = fields.List(fields.Int(validate=validate.Range(min=0, max=6)))
     target_streak = fields.Int(validate=validate.Range(min=1))
+    color = fields.Str(validate=validate.Regexp(r'^#[0-9A-Fa-f]{6}$'))
 
 class HabitCheckinSchema(Schema):
     completion_date = fields.Date()
