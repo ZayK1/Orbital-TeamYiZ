@@ -24,12 +24,13 @@ function AuthStackNavigator() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="HomeStack" component={HomeStackNavigator} />
     </Stack.Navigator>
   );
 }
 
 function RootNavigator() {
-  const { loading, isAuthenticated } = useAuth();
+  const { loading, user } = useAuth();
 
   if (loading) {
     return (
@@ -41,7 +42,7 @@ function RootNavigator() {
 
   return (
     <NavigationContainer>
-      {isAuthenticated ? <MainTabNavigator /> : <AuthStackNavigator />}
+      {user ? <MainTabNavigator /> : <AuthStackNavigator />}
     </NavigationContainer>
   );
 }
