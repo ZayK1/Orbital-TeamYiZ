@@ -4,6 +4,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { createHabitPlan } from '../api/plans';
+import HabitSuccessModal from '../components/HabitSuccessModel';
+
 
 const suggestionList = [
   { icon: 'water-drop', label: 'Drink water' },
@@ -29,6 +31,8 @@ export default function AddHabitScreen({ navigation }) {
   const [selectedFrequency, setSelectedFrequency] = useState('Daily');
   const [selectedColor, setSelectedColor] = useState('green');
   const [loading, setLoading] = useState(false);
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+
 
   const handleAddHabit = async () => {
     if (!habit.trim()) {
@@ -51,18 +55,7 @@ export default function AddHabitScreen({ navigation }) {
         habitColors[selectedColor],
         token
       );
-      Alert.alert('Success', 'Habit created successfully!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else {
-              navigation.navigate('Repository');
-            }
-          },
-        },
-      ]);
+      setSuccessModalVisible(true);
     } catch (err) {
       console.error('Habit creation failed:', err);
       const msg = err.response?.data?.error || 'Could not create habit.';
@@ -185,7 +178,22 @@ export default function AddHabitScreen({ navigation }) {
             <Text style={styles.secondaryButtonText}>Create Skill Instead</Text>
           </TouchableOpacity>
         </View>
-    </View>
+        <HabitSuccessModal
+          visible={successModalVisible}
+          message={`"${habit}" added to your journey!`}
+          buttonLabel="View My Habit"
+          iconName="celebration"
+          onClose={() => {
+            setSuccessModalVisible(false);
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Repository');
+            }
+          }}
+        />
+      </View>
+
   );
 }
 
