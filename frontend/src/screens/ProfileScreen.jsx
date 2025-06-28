@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, Image, ScrollView, StyleSheet, Animated } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Circle } from 'react-native-svg';
@@ -101,19 +101,17 @@ export default function ProfileScreen() {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Profile Info */}
       <View style={styles.profileSection}>
-        <View style={styles.avatarContainer}>
+        <LinearGradient
+          colors={[ '#A7F3D0', '#34D399' ]}
+          style={styles.avatarRing}
+        >
           <Image
             style={styles.avatar}
             source={{ uri: `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.username || 'User')}&background=14B8A6&color=ffffff&size=128` }}
           />
-          <View style={styles.avatarBadge}>
-            <MaterialIcons name="check" size={14} color="white" />
-          </View>
-        </View>
-        <View>
-          <Text style={styles.profileName}>{user?.username || 'Alex Chen'}</Text>
-          <Text style={styles.profileHandle}>@{user?.username || 'alexplanner'}</Text>
-        </View>
+        </LinearGradient>
+        <Text style={styles.profileName}>{user?.username || 'Alex Chen'}</Text>
+        <Text style={styles.profileHandle}>@{user?.username || 'alexplanner'}</Text>
         <TouchableOpacity style={styles.streakButton}>
           <MaterialIcons name="local-fire-department" size={16} color="#EA580C" />
           <Text style={styles.streakText}>58 days</Text>
@@ -171,84 +169,90 @@ export default function ProfileScreen() {
       </View>
 
       {/* Achievements */}
-      <View style={styles.cardContainer}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Achievements</Text>
-          <TouchableOpacity style={styles.viewAllButton}>
-            <Text style={styles.viewAllText}>View All</Text>
-            <MaterialIcons name="chevron-right" size={18} color="#3B82F6" />
-          </TouchableOpacity>
+      <View style={styles.cardOuter}>
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Achievements</Text>
+            <TouchableOpacity style={styles.viewAllButton}>
+              <Text style={styles.viewAllText}>View All</Text>
+              <MaterialIcons name="chevron-right" size={18} color="#3B82F6" />
+            </TouchableOpacity>
+          </View>
+          {achievements.length === 0 ? (
+            <View style={styles.centered}>
+              <Text style={styles.noAchieveText}>No achievements yet. Keep learning!</Text>
+            </View>
+          ) : (
+            <View style={styles.achievementsGrid}>
+              {achievements.map((achievement, index) => (
+                <View key={index} style={[styles.achievementCard, { backgroundColor: index % 3 === 0 ? '#C4B5FD' : index % 3 === 1 ? '#F9A8D4' : '#86EFAC' }]}>
+                  <MaterialIcons name="military-tech" size={28} color="white" />
+                  <Text style={styles.achievementTitle}>{achievement.title}</Text>
+                  <Text style={styles.achievementDate}>{achievement.date}</Text>
+                </View>
+              ))}
+            </View>
+          )}
         </View>
-        {achievements.length === 0 ? (
-          <View style={styles.centered}>
-            <Text style={styles.noAchieveText}>No achievements yet. Keep learning!</Text>
-          </View>
-        ) : (
-          <View style={styles.achievementsGrid}>
-            {achievements.map((achievement, index) => (
-              <View key={index} style={[styles.achievementCard, { backgroundColor: index % 3 === 0 ? '#C4B5FD' : index % 3 === 1 ? '#F9A8D4' : '#86EFAC' }]}>
-                <MaterialIcons name="military-tech" size={28} color="white" />
-                <Text style={styles.achievementTitle}>{achievement.title}</Text>
-                <Text style={styles.achievementDate}>{achievement.date}</Text>
-              </View>
-            ))}
-          </View>
-        )}
       </View>
       
       {/* Stats */}
-      <View style={styles.cardContainer}>
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Text style={styles.statCardValueBlue}>204</Text>
-            <Text style={styles.statCardLabel}>Completed Lessons</Text>
-          </View>
-          <View style={styles.statCard}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-              <MaterialIcons name="local-fire-department" size={16} color="#F97316" />
-              <Text style={styles.statCardValueOrange}>58</Text>
-              <Text style={styles.statCardUnit}>days</Text>
+      <View style={styles.cardOuter}>
+        <View style={styles.card}>
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <Text style={styles.statCardValueBlue}>204</Text>
+              <Text style={styles.statCardLabel}>Completed Lessons</Text>
             </View>
-            <Text style={styles.statCardLabel}>Longest Streak</Text>
-          </View>
-          <View style={styles.statCard}>
-            <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-              <Text style={styles.statCardValueGreen}>4.2</Text>
-              <Text style={styles.statCardUnit}>hrs</Text>
+            <View style={styles.statCard}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                <MaterialIcons name="local-fire-department" size={16} color="#F97316" />
+                <Text style={styles.statCardValueOrange}>58</Text>
+                <Text style={styles.statCardUnit}>days</Text>
+              </View>
+              <Text style={styles.statCardLabel}>Longest Streak</Text>
             </View>
-            <Text style={styles.statCardLabel}>Weekly Average</Text>
+            <View style={styles.statCard}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
+                <Text style={styles.statCardValueGreen}>4.2</Text>
+                <Text style={styles.statCardUnit}>hrs</Text>
+              </View>
+              <Text style={styles.statCardLabel}>Weekly Average</Text>
+            </View>
           </View>
         </View>
       </View>
 
       {/* Settings */}
-      <View style={[styles.cardContainer, { marginBottom: 80 }]}>
-        {settingItems.map(({ icon, label, value, setter, status }, i) => (
-          <TouchableOpacity
-            key={i}
-            style={styles.settingItem}
-            onPress={() => setter && setter(!value)}
-            activeOpacity={setter ? 0.7 : 1}
-          >
-            <View style={styles.settingInfo}>
-              <MaterialIcons name={icon} size={20} color="#4B5563" />
-              <Text style={styles.settingLabel}>{label}</Text>
-            </View>
-            {typeof value === 'boolean' ? (
-              <View style={[styles.toggleSwitch, value ? styles.toggleSwitchActive : styles.toggleSwitchInactive]}>
-                <View style={[styles.toggleKnob, value && styles.toggleKnobActive]} />
+      <View style={[styles.cardOuter, { marginBottom: 80 }]}>
+        <View style={styles.card}>
+          {settingItems.map(({ icon, label, value, setter, status }, i) => (
+            <TouchableOpacity
+              key={i}
+              style={styles.settingItem}
+              onPress={() => setter && setter(!value)}
+              activeOpacity={setter ? 0.7 : 1}
+            >
+              <View style={styles.settingInfo}>
+                <MaterialIcons name={icon} size={20} color="#4B5563" />
+                <Text style={styles.settingLabel}>{label}</Text>
               </View>
-            ) : (
-              <Text style={styles.settingStatus}>{status}</Text>
-            )}
+              {typeof value === 'boolean' ? (
+                <View style={[styles.toggleSwitch, value ? styles.toggleSwitchActive : styles.toggleSwitchInactive]}>
+                  <View style={[styles.toggleKnob, value && styles.toggleKnobActive]} />
+                </View>
+              ) : (
+                <Text style={styles.settingStatus}>{status}</Text>
+              )}
+            </TouchableOpacity>
+          ))}
+          <TouchableOpacity style={styles.settingItem} onPress={logout}>
+            <View style={styles.settingInfo}>
+              <MaterialIcons name="logout" size={20} color="#EF4444" />
+              <Text style={[styles.settingLabel, { color: "#EF4444" }]}>Log Out</Text>
+            </View>
           </TouchableOpacity>
-            ))}
-        <TouchableOpacity style={styles.settingItem} onPress={logout}>
-          <View style={styles.settingInfo}>
-            <MaterialIcons name="logout" size={20} color="#EF4444" />
-            <Text style={[styles.settingLabel, { color: "#EF4444" }]}>Log Out</Text>
-          </View>
-        </TouchableOpacity>
+        </View>
       </View>
     </ScrollView>
   );
@@ -257,7 +261,7 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#FAFAFC',
     paddingTop: 20,
   },
   header: {
@@ -276,18 +280,18 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   profileSection: {
-    padding: 16,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 8,
+    marginBottom: 24,
   },
-  avatarContainer: {
-    position: 'relative',
+  avatarRing: {
+    padding: 4,
+    borderRadius: 56,
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 96,
+    height: 96,
+    borderRadius: 48,
     borderWidth: 4,
     borderColor: 'white',
     shadowColor: '#000',
@@ -295,28 +299,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
-  avatarBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 24,
-    height: 24,
-    backgroundColor: '#22C55E',
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'white',
-  },
   profileName: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: '800',
   },
   profileHandle: {
     color: '#6B7280',
   },
   streakButton: {
-    marginLeft: 'auto',
+    marginTop: 8,
     backgroundColor: '#FFEDD5',
     paddingVertical: 6,
     paddingHorizontal: 12,
@@ -338,7 +329,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   progressCard: {
-    borderRadius: 12,
+    borderRadius: 20,
     padding: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
@@ -573,4 +564,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  cardOuter: { marginHorizontal:16, marginBottom:20 },
+  card: { backgroundColor:'white', borderRadius:20, padding:16, shadowColor:'#000', shadowOffset:{width:0,height:4}, shadowOpacity:0.05, shadowRadius:12, elevation:4 },
 }); 

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Animated, KeyboardAvoidingView, Platform } from 'react-native';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { colors } from '../constants/colors';
-import Ionicons from 'react-native-vector-icons/Ionicons';
+import { Sparkles } from 'lucide-react-native';
 import { authAPI } from "../api/auth";
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -12,6 +13,32 @@ export default function RegisterScreen({ navigation }) {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const slideAnim = React.useRef(new Animated.Value(40)).current;
+  const bounceAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounceAnim, { toValue: -6, duration: 1500, useNativeDriver: true }),
+        Animated.timing(bounceAnim, { toValue: 0, duration: 1500, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
 
   const handleRegister = async () => {
     if (!name.trim() || !email.trim() || !password.trim()) {
@@ -47,140 +74,57 @@ export default function RegisterScreen({ navigation }) {
   }, [email, password, name]);
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >      
-      <View style={styles.header}>
-        <Ionicons name="sparkles" size={40} color={colors.primary} />
-        <Text style={styles.title}> YiZ Planner</Text>
-        <Text style={styles.subtitle}>Create your account</Text>
-      </View>
-      
-      <View style={styles.formContainer}>
-        <Input
-          label="Name"
-          placeholder="Enter your name"
-          value={name}
-          onChangeText={setName}
-          containerStyle={styles.input}
-        />
-        
-        <Input
-          label="Email"
-          placeholder="Enter your email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          containerStyle={styles.input}
-        />
-        
-        <Input
-          label="Password"
-          placeholder="Create a password (min 6 characters)"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          containerStyle={styles.input}
-          error={error}
-        />
-        
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        
-        <Button
-          title="Register"
-          onPress={handleRegister}
-          isLoading={isLoading}
-          disabled={!email.trim() || !password.trim() || !name.trim() || isLoading}
-          style={styles.button}
-        />
-        
-        <View style={styles.loginContainer}>
-          <Text style={styles.loginText}>Already have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.replace('Login')}>
-            <Text style={styles.loginLink}>Login</Text>
-          </TouchableOpacity>
+    <LinearGradient colors={['#EDE9FE', '#8B5CF6']} style={styles.background}>
+      <Animated.View style={[styles.mascotWrapper, { transform: [{ translateY: bounceAnim }] }]}> 
+        <View style={[styles.mascotCircle, { backgroundColor: 'rgba(255,255,255,0.3)' }]}> 
+          <Sparkles size={40} color={'white'} strokeWidth={2.5} />
         </View>
-      </View>
-      
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          For demo purposes, any email with a password of 6+ characters will work
-        </Text>
-      </View>
-    </ScrollView>
+      </Animated.View>
+
+      <KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} style={{ width:'100%', alignItems:'center' }}>
+        <Animated.View style={[styles.card, { opacity: fadeAnim, transform:[{translateY: slideAnim}] }]}> 
+          <Text style={styles.appTitle}>Create Account</Text>
+          <Text style={styles.tagline}>Start your learning journey</Text>
+
+          <Input label="Name" placeholder="Enter your name" value={name} onChangeText={setName}/>
+          <Input label="Email" placeholder="Enter your email" value={email} onChangeText={setEmail} keyboardType="email-address" autoCapitalize="none" />
+          <Input label="Password" placeholder="Create a password" value={password} onChangeText={setPassword} secureTextEntry error={error||undefined} />
+          {error ? <Text style={styles.errorText}>{error}</Text>:null}
+
+          <Button title="Register" onPress={handleRegister} isLoading={isLoading} disabled={!email.trim()||!password.trim()||!name.trim()} style={styles.primaryButton} />
+
+          <View style={styles.loginContainer}>
+            <Text style={styles.loginText}>Already have an account? </Text>
+            <TouchableOpacity onPress={()=>navigation.replace('Login')}>
+              <Text style={styles.loginLink}>Login</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
+  background: {
+    flex:1,
+    justifyContent:'flex-start',
+    alignItems:'center',
   },
-  content: {
-    padding: 20,
-    paddingTop: 60,
-    minHeight: '100%',
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  formContainer: {
-    backgroundColor: colors.white,
-    borderRadius: 12,
-    padding: 20,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  input: {
-    marginBottom: 16,
-  },
-  button: {
-    marginTop: 8,
-    width: '100%',
-    backgroundColor: colors.primary,
-    padding: 14,
-    borderRadius: 8,
-  },
+  mascotWrapper:{ marginTop:80, marginBottom:20 },
+  mascotCircle:{ width:80,height:80,borderRadius:40,justifyContent:'center',alignItems:'center' },
+  card:{ width:'88%', padding:24, borderRadius:32, backgroundColor:colors.white, shadowColor:colors.black, shadowOffset:{width:0,height:6}, shadowOpacity:0.06, shadowRadius:12, elevation:10 },
+  appTitle:{ fontSize:28, fontWeight:'800', textAlign:'center', color:colors.text },
+  tagline:{ fontSize:16, textAlign:'center', color:colors.textSecondary, marginBottom:24 },
+  primaryButton:{ marginTop:12, backgroundColor:colors.secondary },
+  loginLink:{ color:colors.secondary, fontWeight:'600' },
   loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: 20,
+    marginTop: 24,
   },
   loginText: {
     color: colors.textSecondary,
-  },
-  loginLink: {
-    color: colors.primary,
-    fontWeight: '600',
-  },
-  footer: {
-    marginTop: 24,
-    alignItems: 'center',
-  },
-  footerText: {
-    fontSize: 12,
-    color: colors.textSecondary,
-    textAlign: 'center',
   },
   errorText: {
     color: 'red',

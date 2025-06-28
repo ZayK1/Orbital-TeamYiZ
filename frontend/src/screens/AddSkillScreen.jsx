@@ -3,6 +3,8 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, Image, StyleSheet,
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
 import { createSkillPlan } from '../api/plans';
+import LoadingModal from '../components/LoadingModal';
+import SuccessModal from '../components/SuccessModal';
 
 const suggestions = [
   { icon: 'edit', label: 'Photography' },
@@ -43,6 +45,8 @@ export default function AddSkillScreen({ navigation, route }) {
   const [skill, setSkill] = useState('');
   const [difficulty, setDifficulty] = useState('Beginner');
   const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [successVisible, setSuccessVisible] = useState(false);
 
   const handleGeneratePlan = async () => {
     if (!skill.trim()) {
@@ -51,26 +55,27 @@ export default function AddSkillScreen({ navigation, route }) {
     }
 
     try {
+      setGenerating(true);
       setLoading(true);
       await createSkillPlan(skill.trim(), difficulty, token);
-      Alert.alert('Success', 'Your 30-day plan has been created!', [
-        {
-          text: 'OK',
-          onPress: () => {
-            if (navigation.canGoBack()) {
-              navigation.goBack();
-            } else {
-              navigation.navigate('Repository');
-            }
-          },
-        },
-      ]);
+      setGenerating(false);
+      setSuccessVisible(true);
     } catch (err) {
       console.error('Plan generation failed:', err);
       Alert.alert('Error', 'Failed to generate the plan. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const getIconForSkill = (skillName) => {
+    const lower = skillName.toLowerCase();
+    if (lower.includes('photo') || lower.includes('camera')) return 'photo-camera';
+    if (lower.includes('spanish') || lower.includes('language')) return 'translate';
+    if (lower.includes('code') || lower.includes('program')) return 'code';
+    if (lower.includes('guitar') || lower.includes('music')) return 'music-note';
+    if (lower.includes('cook') || lower.includes('chef')) return 'restaurant-menu';
+    return 'auto-awesome';
   };
 
   return (
@@ -182,6 +187,21 @@ export default function AddSkillScreen({ navigation, route }) {
           <Text style={styles.secondaryButtonText}>Create Habit Instead</Text>
         </TouchableOpacity>
       </View>
+
+      <LoadingModal visible={generating} />
+      <SuccessModal
+        visible={successVisible}
+        iconName={getIconForSkill(skill)}
+        message={`Your "${skill}" plan is ready!`}
+        onClose={() => {
+          setSuccessVisible(false);
+          if (navigation.canGoBack()) {
+            navigation.goBack();
+          } else {
+            navigation.navigate('Repository');
+          }
+        }}
+      />
     </View>
   );
 }
