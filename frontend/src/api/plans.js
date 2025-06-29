@@ -1,0 +1,72 @@
+import axios from 'axios';
+import { API_BASE_URL } from './apiConfig';
+
+
+export const createSkillPlan = async (skillName, difficulty, token) => {
+  const body = { skill_name: skillName };
+  if (difficulty) {
+    body.difficulty = difficulty.toLowerCase();
+  }
+  const response = await axios.post(`${API_BASE_URL}/api/v1/plans/skills`,
+    body,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+
+export const createHabitPlan = async (title, category, frequency, color, token) => {
+  const body = { title, category };
+  if (frequency) body.frequency = frequency.toLowerCase();
+  if (color) body.color = color;
+  const response = await axios.post(`${API_BASE_URL}/api/v1/plans/habits`,
+    body,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+
+export const getAllPlans = async (token) => {
+  const response = await axios.get(`${API_BASE_URL}/api/v1/plans/`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const getSkillById = async (skillId, token) => {
+  const response = await axios.get(`${API_BASE_URL}/api/v1/plans/skills/${skillId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const deleteSkill = async (skillId, token) => {
+  const response = await axios.delete(`${API_BASE_URL}/api/v1/plans/skills/${skillId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const deleteHabit = async (habitId, token) => {
+  const response = await axios.delete(`${API_BASE_URL}/api/v1/plans/habits/${habitId}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const recordHabitCheckin = async (habitId, dateIso, token) => {
+  const response = await axios.post(
+    `${API_BASE_URL}/api/v1/plans/habits/${habitId}/checkin`,
+    { date: dateIso, completed: true },
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+
+export const markSkillDayComplete = async (skillId, dayNumber, token) => {
+  const response = await axios.patch(
+    `${API_BASE_URL}/api/v1/plans/skills/${skillId}/days/${dayNumber}/complete`, 
+    {}, 
+    { headers: { 'Authorization': `Bearer ${token}` } }
+  );
+  return response.data;
+}; 

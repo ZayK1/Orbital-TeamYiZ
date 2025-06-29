@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { colors } from '../constants/colors';
 import { useAuth } from '../context/AuthContext';
 import { authAPI } from '../api/auth';
-import { Sparkles, Mail, Lock } from 'lucide-react-native';
+import { Sparkles } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function LoginScreen() {
   const navigation = useNavigation();
@@ -17,7 +18,8 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
-  const slideAnim = React.useRef(new Animated.Value(50)).current;
+  const slideAnim = React.useRef(new Animated.Value(40)).current;
+  const bounceAnim = React.useRef(new Animated.Value(0)).current;
   
   React.useEffect(() => {
     Animated.parallel([
@@ -30,8 +32,15 @@ export default function LoginScreen() {
         toValue: 0,
         duration: 800,
         useNativeDriver: true,
-      })
+      }),
     ]).start();
+
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(bounceAnim, { toValue: -6, duration: 1500, useNativeDriver: true }),
+        Animated.timing(bounceAnim, { toValue: 0, duration: 1500, useNativeDriver: true }),
+      ])
+    ).start();
   }, []);
 
   const handleLogin = async () => {
@@ -46,9 +55,7 @@ export default function LoginScreen() {
       const result = await authAPI.login({ identifier, password });
       if (result.success) {
         const loginSuccess = await contextLogin(result.data.user, result.data.token);
-        if (loginSuccess) {
-          navigation.replace('Main');
-        } else {
+        if (!loginSuccess) {
           setLocalError('Failed to store login data');
         }
       } else {
@@ -70,140 +77,104 @@ export default function LoginScreen() {
   }, [identifier, password]);
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <Animated.View 
-        style={[
-          styles.header,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-        ]}
-      >
-        <View style={styles.logoContainer}>
-          <Sparkles size={32} color={colors.white} strokeWidth={2.5} />
-        </View>
-        <Text style={styles.title}>Skill Master</Text>
-        <Text style={styles.subtitle}>Login to your account</Text>
-      </Animated.View>
-      
-      <Animated.View 
-        style={[
-          styles.formContainer,
-          { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
-        ]}
-      >
-        <Input
-          label="Email"
-          placeholder="Enter your email"
-          value={identifier}
-          onChangeText={setIdentifier}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          containerStyle={styles.input}
-          icon={<Mail size={20} color={colors.textSecondary} />}
-        />
-        
-        <Input
-          label="Password"
-          placeholder="Enter your password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          containerStyle={styles.input}
-          error={localError || undefined}
-          icon={<Lock size={20} color={colors.textSecondary} />}
-        />
-        
-        <Button
-          title="Login"
-          onPress={handleLogin}
-          isLoading={isLoading}
-          disabled={!identifier.trim() || !password.trim()}
-          style={styles.button}
-        />
-        
-        <View style={styles.registerContainer}>
-          <Text style={styles.registerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.registerLink}>Register</Text>
-          </TouchableOpacity>
+    <LinearGradient colors={['#CCFBF1', '#14B8A6']} style={styles.background}>
+      {/* mascot */}
+      <Animated.View style={[styles.mascotWrapper, { transform: [{ translateY: bounceAnim }] }]}>
+        <View style={styles.mascotCircle}>
+          <Sparkles size={40} color={'white'} strokeWidth={2.5} />
         </View>
       </Animated.View>
-      
-      <Animated.View 
-        style={[
-          styles.footer,
-          { opacity: fadeAnim }
-        ]}
+
+      {/* Form */}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ width: '100%', alignItems: 'center' }}
       >
-        <View style={styles.infoCard}>
-          <Text style={styles.infoText}>
-            For demo purposes, any email with a password of 6+ characters will work
-          </Text>
-        </View>
-      </Animated.View>
-    </ScrollView>
+        <Animated.View style={[styles.card, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
+          <Text style={styles.appTitle}>YiZ Planner</Text>
+          <Text style={styles.tagline}>Login to continue</Text>
+
+          <Input
+            label="Email"
+            placeholder="Enter your email"
+            value={identifier}
+            onChangeText={setIdentifier}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <Input
+            label="Password"
+            placeholder="Enter your password"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            error={localError || undefined}
+          />
+
+          <Button
+            title="Login"
+            onPress={handleLogin}
+            isLoading={isLoading}
+            disabled={!identifier.trim() || !password.trim()}
+            style={styles.primaryButton}
+          />
+
+          <View style={styles.registerContainer}>
+            <Text style={styles.registerText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+              <Text style={styles.registerLink}>Register</Text>
+            </TouchableOpacity>
+          </View>
+        </Animated.View>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
     flex: 1,
-    backgroundColor: colors.gray100,
-  },
-  content: {
-    padding: 24,
-    paddingTop: 60,
-    minHeight: '100%',
-  },
-  header: {
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    marginBottom: 40,
   },
-  logoContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: colors.text,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
-  formContainer: {
-    backgroundColor: colors.white,
-    borderRadius: 16,
-    padding: 24,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 4,
-    marginBottom: 24,
-  },
-  input: {
+  mascotWrapper: {
+    marginTop: 80,
     marginBottom: 20,
   },
-  button: {
-    marginTop: 8,
-    width: '100%',
+  mascotCircle: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  card: {
+    width: '88%',
+    padding: 24,
+    borderRadius: 32,
+    backgroundColor: colors.white,
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.06,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  appTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    textAlign: 'center',
+    color: colors.text,
+  },
+  tagline: {
+    fontSize: 16,
+    textAlign: 'center',
+    color: colors.textSecondary,
+    marginBottom: 24,
+  },
+  primaryButton: {
+    marginTop: 12,
+    backgroundColor: colors.primary,
   },
   registerContainer: {
     flexDirection: 'row',
@@ -218,20 +189,5 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '600',
     fontSize: 15,
-  },
-  footer: {
-    alignItems: 'center',
-  },
-  infoCard: {
-    backgroundColor: colors.primaryLight,
-    padding: 16,
-    borderRadius: 12,
-    width: '100%',
-  },
-  infoText: {
-    fontSize: 14,
-    color: colors.primary,
-    textAlign: 'center',
-    fontWeight: '500',
   },
 });

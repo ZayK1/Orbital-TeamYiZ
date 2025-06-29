@@ -1,86 +1,115 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Animated } from 'react-native';
-import DayDetail from '../components/DayDetail';
+import React from 'react';
+import { View, Text, SafeAreaView, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import { CheckCircle, Circle, BookOpen, ExternalLink } from 'lucide-react-native';
 import { colors } from '../constants/colors';
-import { ArrowLeft } from 'lucide-react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Linking } from 'react-native';
 
-export default function DayDetailScreen({ route, navigation }) {
-  const { day, skillName, isCompleted: initialIsCompleted } = route.params;
-  const [isCompleted, setIsCompleted] = useState(initialIsCompleted);
+const DayDetailScreen = () => {
+  const { params } = useRoute(); 
+  const navigation = useNavigation();
 
-  const fadeAnim = React.useRef(new Animated.Value(0)).current;
+  const dayData = params.day;
+  const [taskStatus, setTaskStatus] = React.useState(() => dayData.tasks?.map(() => false) || []);
 
-  useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300, 
-      useNativeDriver: true,
-    }).start();
-  }, [fadeAnim]);
-
-  useEffect(() => {
-    const updateCompletionStatus = async () => {
-      try {
-        const storedStatus = await AsyncStorage.getItem(`completedDays_${skillName}`);
-        let completedDays = storedStatus ? JSON.parse(storedStatus) : {};
-        completedDays[day.day] = isCompleted;
-        await AsyncStorage.setItem(`completedDays_${skillName}`, JSON.stringify(completedDays));
-        
-        if (route.params.onToggleComplete) {
-            route.params.onToggleComplete(day.day); 
-        }
-
-      } catch (e) {
-        console.error("Failed to save completion status from DetailScreen.", e);
-      }
-    };
-    if (initialIsCompleted !== isCompleted) { 
-        updateCompletionStatus();
-    }
-  }, [isCompleted, skillName, day.day, initialIsCompleted, route.params]);
-
-  const handleToggleComplete = () => {
-    setIsCompleted(!isCompleted);
+  const toggleTask = (idx) => {
+    setTaskStatus((prev) => {
+      const next = [...prev];
+      next[idx] = !next[idx];
+      return next;
+    });
   };
 
-  if (!day) {
-    return <View style={styles.container}><Text>Loading day details...</Text></View>;
-  }
+  const resources = React.useMemo(() => {
+    if (!dayData?.tasks) return [];
+    const list = [];
+    dayData.tasks.forEach((t) => {
+      if (t.resources && Array.isArray(t.resources)) {
+        list.push(...t.resources);
+      }
+    });
+    return list;
+  }, [dayData]);
 
   return (
-    <Animated.View style={[styles.container, {opacity: fadeAnim}]}>
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-        <ArrowLeft size={24} color={colors.primary} />
-        <Text style={styles.backButtonText}>Back to Plan</Text>
-      </TouchableOpacity>
-      <DayDetail 
-        day={day} 
-        isCompleted={isCompleted} 
-        onToggleComplete={handleToggleComplete} 
-      />
-    </Animated.View>
+    <SafeAreaView style={styles.safeArea}>
+      <ScrollView contentContainerStyle={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()}>
+            <MaterialIcons name="arrow-back-ios" size={24} color="#4B5563" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Day {dayData.day}: {dayData.title}</Text>
+          <View style={{ width: 24 }} />
+        </View>
+
+        {/* Tasks */}
+        <Text style={styles.sectionTitle}>Tasks</Text>
+        {dayData.tasks?.map((task, idx) => (
+          <TouchableOpacity key={idx} style={styles.cardTask} onPress={() => toggleTask(idx)} activeOpacity={0.8}>
+            {taskStatus[idx] ? (
+              <CheckCircle size={20} color={colors.primary} style={styles.taskIcon} />
+            ) : (
+              <Circle size={20} color={colors.gray400} style={styles.taskIcon} />
+            )}
+            <Text style={[styles.cardText, taskStatus[idx] && { textDecorationLine: 'line-through', color: colors.gray500 }]}>{task.description || task}</Text>
+          </TouchableOpacity>
+        ))}
+
+        {/* Resources */}
+        {resources.length > 0 && (
+          <>
+            <Text style={styles.sectionTitle}>Resources</Text>
+            {resources.map((res, idx) => (
+              <TouchableOpacity key={idx} style={styles.cardResource} onPress={() => Linking.openURL(res)}>
+                <BookOpen size={18} color={colors.indigo} style={styles.taskIcon} />
+                <Text style={[styles.cardText, { color: colors.indigo }]} numberOfLines={1}>{res}</Text>
+                <ExternalLink size={16} color={colors.gray400} />
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+      </ScrollView>
+
+      {/* Bottom Buttons */}
+      <View style={styles.bottomButtons}>
+        <TouchableOpacity style={styles.primaryButton} onPress={params.onToggleComplete}>
+          <Text style={styles.primaryButtonText}>Mark Day {params.isCompleted ? 'Incomplete' : 'Complete'}</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.gray50,
-    paddingTop: 20, 
-  },
-  backButton: {
+  safeArea: { flex: 1, backgroundColor: '#F9FAFB' },
+  container: { padding: 16 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 24 },
+  headerTitle: { flex: 1, fontSize: 18, fontWeight: '600', color: '#1F2937', textAlign: 'center' },
+  sectionTitle: { fontSize: 12, fontWeight: '600', color: '#6B7280', textTransform: 'uppercase', marginVertical: 12 },
+  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 12, borderRadius: 12, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width:0, height:2 }, shadowRadius: 4 },
+  cardText: { color: '#374151', flex: 1, flexWrap: 'wrap' },
+  rowAlign: { flexDirection: 'row', alignItems: 'center' },
+  cardTask: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, padding: 16, borderRadius: 12, marginBottom: 10, shadowColor: colors.black, shadowOpacity: 0.05, shadowOffset: { width:0, height:2 }, shadowRadius: 4 },
+  cardResource: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.white, padding: 16, borderRadius: 12, marginBottom: 10, shadowColor: colors.black, shadowOpacity: 0.05, shadowOffset: { width:0, height:2 }, shadowRadius: 4 },
+  taskIcon: { marginRight: 12 },
+  indigo: { color: '#6366F1' },
+  bottomButtons: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    marginBottom: 10,
-    alignSelf: 'flex-start',
+    justifyContent: 'center',
+    padding: 16,
   },
-  backButtonText: {
-    marginLeft: 8,
+  primaryButton: {
+    backgroundColor: colors.primary,
+    padding: 16,
+    borderRadius: 12,
+  },
+  primaryButtonText: {
     fontSize: 16,
-    color: colors.primary,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: 'white',
   },
-}); 
+});
+
+export default DayDetailScreen; 

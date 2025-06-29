@@ -32,8 +32,10 @@ const DayCard = ({ day, onPress, isCompleted, onToggleComplete }) => {
   const resources = day.resource || [];
 
   const estimatedTime = tasks.length * 15; 
-  const title = tasks.length > 0 ? `Day ${day.day}: ${tasks[0].substring(0, 30)}...` : `Day ${day.day}`;
-  const description = tasks.length > 0 ? tasks.join(' ').substring(0, 100) + '...' : 'No tasks listed.';
+  const title = day.title || `Day ${day.day}`;
+  const description = day.tasks && day.tasks.length > 0 
+    ? day.tasks.map(t => t.description).join(' | ') 
+    : 'No tasks listed.';
 
   return (
     <Animated.View style={{ transform: [{ scale: scaleValue }] }}>

@@ -1,9 +1,40 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, request, jsonify, current_app, g
 from werkzeug.exceptions import BadRequest
-from auth.models import User
-from auth.utils import hash_password, verify_password
+from functools import wraps
+import jwt
+from backend.auth.models import User
+from backend.auth.utils import hash_password, verify_password
 
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/auth")
+
+def require_auth(f):
+
+    @wraps(f)
+    async def decorated_function(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers and request.headers['Authorization'].startswith('Bearer '):
+            token = request.headers['Authorization'].split(' ')[1]
+
+        if not token:
+            return jsonify({'error': 'Authentication token is missing!'}), 401
+
+        try:
+            user_id = User.verify_jwt_token(token)
+            if not user_id:
+                return jsonify({'error': 'Invalid or expired token!'}), 401
+            
+            user = User.find_by_id(user_id)
+            if not user:
+                return jsonify({'error': 'User not found!'}), 401
+
+            g.current_user = user
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token has expired!'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Invalid token!'}), 401
+
+        return await f(*args, **kwargs)
+    return decorated_function
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
@@ -13,15 +44,12 @@ def register():
         email = data.get("email", "").strip()
         password = data.get("password", "")
 
-        # Validation
         if not all([username, email, password]):
             return jsonify({'error': 'All fields are required'}), 400
         if len(password) < 6:
             return jsonify({'error': 'Password must be at least 6 characters'}), 400
-        # Check if user exists
         if User.find_by_username_or_email(username) or User.find_by_username_or_email(email):
             return jsonify({'error': 'Username or email already exists'}), 409
-        # Create user
         pw_hash = hash_password(password)
         user_id = User.create(username, email, pw_hash)
         token = User.generate_jwt_token(user_id)
@@ -64,7 +92,7 @@ def login():
 @auth_bp.route("/verify", methods=["POST"])
 def verify_token():
     try:
-        data = request.get_json()
+        data = request.get_json() or {}
         token = data.get('token')
         if not token:
             return jsonify({'error': 'Token required'}), 400

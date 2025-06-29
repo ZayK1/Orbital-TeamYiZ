@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }) => {
     loading,
     login,
     logout,
-    isAuthenticated: isAuthenticated()
+    isAuthenticated,
   };
 
   return (

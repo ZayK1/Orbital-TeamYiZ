@@ -9,7 +9,7 @@ import {
   Animated
 } from 'react-native';
 import { colors } from '../constants/colors';
-import { CheckCircle, Circle, BookOpen, ExternalLink } from 'lucide-react-native';
+import { CheckCircle, Circle, BookOpen, ExternalLink, ArrowRight } from 'lucide-react-native';
 
 const DayDetail = ({ day, isCompleted, onToggleComplete }) => {
   if (!day) {
@@ -30,16 +30,15 @@ const DayDetail = ({ day, isCompleted, onToggleComplete }) => {
     }).start();
   }, [fadeAnim]);
 
-  const estimatedTime = day.tasks.length * 15; 
-  const title = `Day ${day.day}: Overview`;
-  const description = day.tasks.join(' ');
+  const title = day.title || `Day ${day.day}`;
 
   const handleResourcePress = (url) => {
-    Linking.canOpenURL(url).then(supported => {
+    const searchableUrl = url.startsWith('http') ? url : `https://duckduckgo.com/?q=${encodeURIComponent(url)}`;
+    Linking.canOpenURL(searchableUrl).then(supported => {
       if (supported) {
-        Linking.openURL(url);
+        Linking.openURL(searchableUrl);
       } else {
-        console.log("Don't know how to open URI: " + url);
+        console.log("Don't know how to open URI: " + searchableUrl);
       }
     });
   };
@@ -48,29 +47,29 @@ const DayDetail = ({ day, isCompleted, onToggleComplete }) => {
     <Animated.ScrollView style={[styles.container, {opacity: fadeAnim}]} contentContainerStyle={styles.contentContainer}>
       <View style={styles.headerContainer}>
         <Text style={styles.title}>{title}</Text>
-        <Text style={styles.estimatedTime}>{estimatedTime} min estimated</Text>
       </View>
 
-      <Text style={styles.sectionTitle}>Tasks</Text>
-      {day.tasks.map((task, index) => (
-        <View key={index} style={styles.taskItem}>
-          <Circle size={18} color={colors.primary} style={styles.taskIcon} />
-          <Text style={styles.taskText}>{task}</Text>
+      <Text style={styles.sectionTitle}>Today's Tasks</Text>
+
+      {day.tasks && day.tasks.map((task, index) => (
+        <View key={index} style={styles.taskContainer}>
+          <View style={styles.taskHeader}>
+            <ArrowRight size={18} color={colors.primary} style={styles.taskIcon} />
+            <Text style={styles.taskDescription}>{task.description}</Text>
+          </View>
+          
+          <View style={styles.resourcesSection}>
+            <Text style={styles.resourcesTitle}>Resources:</Text>
+            {task.resources && task.resources.map((resource, rIndex) => (
+              <TouchableOpacity key={rIndex} style={styles.resourceItem} onPress={() => handleResourcePress(resource)}>
+                <BookOpen size={16} color={colors.textSecondary} style={styles.resourceIcon} />
+                <Text style={styles.resourceText} numberOfLines={1}>{resource}</Text>
+                <ExternalLink size={14} color={colors.textSecondary} />
+              </TouchableOpacity>
+            ))}
+          </View>
         </View>
       ))}
-
-      {day.resource && day.resource.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Resources</Text>
-          {day.resource.map((resource, index) => (
-            <TouchableOpacity key={index} style={styles.resourceItem} onPress={() => handleResourcePress(resource.startsWith('http') ? resource : `https://duckduckgo.com/?q=${encodeURIComponent(resource)}`)}>
-              <BookOpen size={18} color={colors.primary} style={styles.resourceIcon} />
-              <Text style={styles.resourceText} numberOfLines={1}>{resource}</Text>
-              <ExternalLink size={16} color={colors.textSecondary} />
-            </TouchableOpacity>
-          ))}
-        </>
-      )}
       
       <TouchableOpacity 
         style={[styles.completeButton, isCompleted && styles.completedButtonActive]} 
@@ -108,60 +107,67 @@ const styles = StyleSheet.create({
     color: colors.primary,
     marginBottom: 8,
   },
-  estimatedTime: {
-    fontSize: 16,
-    color: colors.textSecondary,
-  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: '600',
     color: colors.text,
-    marginTop: 20,
-    marginBottom: 12,
+    marginTop: 10,
+    marginBottom: 16,
   },
-  taskItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  taskContainer: {
     backgroundColor: colors.white,
+    borderRadius: 12,
     padding: 16,
-    borderRadius: 10,
-    marginBottom: 10,
+    marginBottom: 20,
     shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 3,
+    shadowRadius: 5,
     elevation: 2,
+  },
+  taskHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
   },
   taskIcon: {
     marginRight: 12,
+    marginTop: 3,
   },
-  taskText: {
+  taskDescription: {
     fontSize: 16,
     color: colors.textSecondary,
     flex: 1,
-    lineHeight: 22,
+    lineHeight: 24,
+  },
+  resourcesSection: {
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: colors.gray100,
+    paddingTop: 12,
+  },
+  resourcesTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 8,
   },
   resourceItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.white,
-    padding: 16,
-    borderRadius: 10,
-    marginBottom: 10,
-    shadowColor: colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 2,
+    backgroundColor: colors.gray50,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    marginBottom: 8,
   },
   resourceIcon: {
-    marginRight: 12,
+    marginRight: 10,
   },
   resourceText: {
-    fontSize: 16,
+    fontSize: 14,
     color: colors.primary,
     flex: 1,
-    textDecorationLine: 'underline',
   },
   completeButton: {
     backgroundColor: colors.primary,
@@ -170,7 +176,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    marginTop: 30,
+    marginTop: 20,
     shadowColor: colors.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
