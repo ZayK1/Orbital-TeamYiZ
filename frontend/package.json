@@ -6,7 +6,8 @@
     "start": "expo start",
     "android": "expo start --android",
     "ios": "expo start --ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "build": "expo export --platform web --output-dir web-build"
   },
   "dependencies": {
     "@expo/metro-runtime": "~5.0.4",
@@ -34,6 +35,7 @@
   "devDependencies": {
     "@babel/core": "^7.20.0",
     "@babel/plugin-transform-private-methods": "^7.27.1",
+    "babel-preset-expo": "^9.6.0",
     "@types/react": "~19.0.10",
     "@types/react-native": "^0.72.8",
     "typescript": "~5.8.3"
