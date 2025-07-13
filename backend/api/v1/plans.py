@@ -85,8 +85,11 @@ async def create_habit():
         user_id=user_id,
         title=validated_data['title'],
         category=validated_data['category'],
-        frequency=validated_data.get('frequency', 'daily'),
-        color=validated_data.get('color')
+        color=validated_data.get('color'),
+        start_date=validated_data.get('start_date'),
+        end_date=validated_data.get('end_date'),
+        reminder_time=validated_data.get('reminder_time'),
+        custom_days=validated_data.get('custom_days')
     )
     return jsonify({"message": "Habit created successfully", "habit": habit_plan}), 201
 

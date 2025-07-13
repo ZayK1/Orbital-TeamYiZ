@@ -8,10 +8,13 @@ class SkillCreateSchema(Schema):
 class HabitCreateSchema(Schema):
     title = fields.Str(required=True, validate=validate.Length(min=3, max=100))
     category = fields.Str(required=True, validate=validate.OneOf(["health", "productivity", "learning", "creative", "social"]))
-    frequency = fields.Str(validate=validate.OneOf(["daily", "weekly", "custom"]))
     target_days = fields.List(fields.Int(validate=validate.Range(min=0, max=6)))
     target_streak = fields.Int(validate=validate.Range(min=1))
     color = fields.Str(validate=validate.Regexp(r'^#[0-9A-Fa-f]{6}$'))
+    start_date = fields.Date(required=False, allow_none=True)
+    end_date = fields.Date(required=False, allow_none=True)
+    reminder_time = fields.Time(required=False, allow_none=True)
+    custom_days = fields.List(fields.Int(validate=validate.Range(min=0, max=6)), required=False, allow_none=True)
 
 class HabitCheckinSchema(Schema):
     completion_date = fields.Date()

@@ -9,19 +9,44 @@ from backend.services.unsplash_service import UnsplashService
 
 class HabitService:
     @staticmethod
-    async def create_habit(user_id: str, title: str, category: str, frequency: str = "daily", color: str | None = None) -> Dict[str, Any]:
+    async def create_habit(
+        user_id: str,
+        title: str,
+        category: str,
+        color: str | None = None,
+        start_date: date | None = None,
+        end_date: date | None = None,
+        reminder_time: Any = None,
+        custom_days: list | None = None
+    ) -> Dict[str, Any]:
         habit_repo = HabitRepository(g.db.habits)
 
         now = datetime.utcnow()
+
+        # Validate dates
+        if start_date and end_date and end_date < start_date:
+            raise ValueError("End date cannot be before start date.")
+
+        # Validate reminder_time (should be a time object or None)
+        if reminder_time and hasattr(reminder_time, 'isoformat'):
+            reminder_time_val = reminder_time.isoformat()
+        else:
+            reminder_time_val = None
+
+        # Use custom_days if provided, else default to all days
+        target_days = custom_days if custom_days else [1, 2, 3, 4, 5, 6, 7]
+
+        # Convert start_date and end_date to datetime.datetime for MongoDB compatibility
+        start_date_dt = datetime.combine(start_date, datetime.min.time()) if start_date else None
+        end_date_dt = datetime.combine(end_date, datetime.min.time()) if end_date else None
 
         habit_plan_data = {
             "user_id": user_id,
             "title": title,
             "category": category,
             "pattern": {
-                "frequency": frequency or "daily",
-                "target_days": [1, 2, 3, 4, 5, 6, 7],
-                "reminder_time": None
+                "target_days": target_days,
+                "reminder_time": reminder_time_val
             },
             "streaks": {
                 "current_streak": 0,
@@ -38,6 +63,8 @@ class HabitService:
             "color": color,
             "created_at": now,
             "updated_at": now,
+            "start_date": start_date_dt,
+            "end_date": end_date_dt
         }
 
         try:
