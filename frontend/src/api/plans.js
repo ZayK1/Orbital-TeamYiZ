@@ -73,3 +73,18 @@ export const markSkillDayComplete = async (skillId, dayNumber, token) => {
   );
   return response.data;
 }; 
+
+export const getHabitById = async (habitId, token) => {
+  const response = await axios.get(`${API_BASE_URL}/api/v1/plans/habits/${habitId}`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const updateHabit = async (habitId, data, token) => {
+  const response = await axios.patch(`${API_BASE_URL}/api/v1/plans/habits/${habitId}`,
+    data,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+}; 

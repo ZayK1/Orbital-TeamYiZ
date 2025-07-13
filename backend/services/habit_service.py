@@ -101,6 +101,37 @@ class HabitService:
         return habit
 
     @staticmethod
+    async def update_habit(habit_id: str, user_id: str, update_fields: dict) -> dict:
+        habit_repo = HabitRepository(g.db.habits)
+        habit = await habit_repo.find_by_id(habit_id, user_id)
+        if not habit:
+            raise ValueError("Habit not found or access denied")
+
+        # Convert dates and reminder_time if present
+        if 'start_date' in update_fields and update_fields['start_date']:
+            update_fields['start_date'] = datetime.combine(update_fields['start_date'], datetime.min.time())
+        if 'end_date' in update_fields and update_fields['end_date']:
+            update_fields['end_date'] = datetime.combine(update_fields['end_date'], datetime.min.time())
+        if 'reminder_time' in update_fields and update_fields['reminder_time']:
+            update_fields['reminder_time'] = update_fields['reminder_time'].isoformat()
+        if 'custom_days' in update_fields and update_fields['custom_days'] is not None:
+            if 'pattern' not in update_fields:
+                update_fields['pattern'] = habit.get('pattern', {})
+            update_fields['pattern']['target_days'] = update_fields.pop('custom_days')
+        if 'reminder_time' in update_fields:
+            if 'pattern' not in update_fields:
+                update_fields['pattern'] = habit.get('pattern', {})
+            update_fields['pattern']['reminder_time'] = update_fields.pop('reminder_time')
+        # Remove fields that should be inside pattern
+        for field in ['custom_days', 'reminder_time']:
+            if field in update_fields:
+                update_fields.pop(field)
+        await habit_repo.update(habit_id, user_id, update_fields)
+        updated = await habit_repo.find_by_id(habit_id, user_id)
+        updated['_id'] = str(updated['_id'])
+        return updated
+
+    @staticmethod
     async def record_checkin(habit_id: str, user_id: str, checkin_data: dict) -> dict:
         
         habit_repo = HabitRepository(g.db.habits)

@@ -29,3 +29,17 @@ class CheckinCreateSchema(Schema):
 
     class Meta:
         unknown = EXCLUDE 
+
+class HabitUpdateSchema(Schema):
+    title = fields.Str(validate=validate.Length(min=3, max=100))
+    category = fields.Str(validate=validate.OneOf(["health", "productivity", "learning", "creative", "social"]))
+    target_days = fields.List(fields.Int(validate=validate.Range(min=0, max=6)))
+    target_streak = fields.Int(validate=validate.Range(min=1))
+    color = fields.Str(validate=validate.Regexp(r'^#[0-9A-Fa-f]{6}$'))
+    start_date = fields.Date(allow_none=True)
+    end_date = fields.Date(allow_none=True)
+    reminder_time = fields.Time(allow_none=True)
+    custom_days = fields.List(fields.Int(validate=validate.Range(min=0, max=6)), allow_none=True)
+
+    class Meta:
+        unknown = EXCLUDE 

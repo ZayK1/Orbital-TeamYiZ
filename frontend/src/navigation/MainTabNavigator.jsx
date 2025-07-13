@@ -24,6 +24,8 @@ import AllHabitsScreen from '../screens/AllHabitsScreen';
 import SkillDetailScreen from '../screens/SkillDetailScreen';
 import PlanIndexScreen from '../screens/PlanIndexScreen';
 import DayDetailScreen from '../screens/DayDetailScreen';
+import HabitDetailScreen from '../screens/HabitDetailScreen';
+import MyHabitsScreen from '../screens/MyHabitsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -174,6 +176,7 @@ function RepositoryStackNavigator() {
       <Stack.Screen name="AllHabits" component={AllHabitsScreen} />
       <Stack.Screen name="SkillDetail" component={PlanIndexScreen} />
       <Stack.Screen name="DayDetail" component={DayDetailScreen} />
+      <Stack.Screen name="HabitDetail" component={HabitDetailScreen} />
     </Stack.Navigator>
   );
 }
@@ -199,6 +202,7 @@ export default function MainTabNavigator() {
           }}
         >
           <Tab.Screen name="RepositoryStack" component={RepositoryStackNavigator} options={{ title: 'Home' }} />
+          <Tab.Screen name="MyHabits" component={MyHabitsScreen} options={{ title: 'My Habits', tabBarIcon: ({ color, size }) => (<MaterialIcons name="list" size={size} color={color} />) }} />
           <Tab.Screen name="Explore" component={ExploreScreen} options={{ title: 'Discover' }} />
           <Tab.Screen name="Stats" component={StatsScreen} options={{ title: 'Stats' }} />
           <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />

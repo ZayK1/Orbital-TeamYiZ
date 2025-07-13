@@ -130,3 +130,18 @@ async def delete_habit(habit_id: str):
     if success:
         return jsonify({"message": "Habit deleted successfully"}), 200
     return jsonify({"error": "Delete operation failed"}), 500 
+
+
+@v1_plans_blueprint.route('/habits/<habit_id>', methods=['PATCH']) # type: ignore
+@require_auth
+async def update_habit(habit_id: str):
+    json_data = request.get_json()
+    if not json_data:
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    from backend.schemas.plan_schemas import HabitUpdateSchema
+    validated_data = cast(dict, HabitUpdateSchema().load(json_data))
+    user_id = str(g.current_user['_id'])
+
+    updated_habit = await HabitService.update_habit(habit_id, user_id, validated_data)
+    return jsonify({"message": "Habit updated successfully", "habit": updated_habit}), 200 

@@ -38,5 +38,9 @@ class HabitRepository:
     async def get_by_id_and_user(self, habit_id, user_id):
         pass
 
-    async def update(self, habit):
-        pass 
+    async def update(self, habit_id, user_id, update_fields: dict):
+        update_fields['updated_at'] = datetime.utcnow()
+        return self.collection.update_one(
+            {"_id": ObjectId(habit_id), "user_id": user_id},
+            {"$set": update_fields}
+        ) 
