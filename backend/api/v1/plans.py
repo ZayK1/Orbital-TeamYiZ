@@ -53,6 +53,20 @@ def get_skill(skill_id: str):
     skill = SkillService.get_skill_by_id(skill_id, user_id)
     return jsonify(skill), 200
 
+@v1_plans_blueprint.route('/skills/<skill_id>', methods=['PATCH'])
+@require_auth
+def update_skill(skill_id: str):
+    json_data = request.get_json()
+    if not json_data:
+        return jsonify({"error": "Invalid JSON"}), 400
+
+    from backend.schemas.plan_schemas import SkillUpdateSchema
+    validated_data = cast(dict, SkillUpdateSchema().load(json_data))
+    user_id = str(g.current_user['_id'])
+
+    updated_skill = SkillService.update_skill(skill_id, user_id, validated_data)
+    return jsonify({"message": "Skill updated successfully", "skill": updated_skill}), 200
+
 @v1_plans_blueprint.route('/skills/<skill_id>', methods=['DELETE'])
 @require_auth
 def delete_skill(skill_id: str):
@@ -69,6 +83,27 @@ def complete_skill_day_route(skill_id: str, day_number: int):
     user_id = str(g.current_user['_id'])
     progress = SkillService.complete_skill_day(skill_id, user_id, day_number)
     return jsonify({"message": "Day marked as completed", "progress": progress}), 200
+
+@v1_plans_blueprint.route('/skills/<skill_id>/days/<int:day_number>/undo', methods=['PATCH'])
+@require_auth
+def undo_skill_day_route(skill_id: str, day_number: int):
+    user_id = str(g.current_user['_id'])
+    progress = SkillService.undo_skill_day(skill_id, user_id, day_number)
+    return jsonify({"message": "Day completion undone", "progress": progress}), 200
+
+@v1_plans_blueprint.route('/skills/<skill_id>/validate', methods=['POST'])
+@require_auth
+def validate_skill_progress(skill_id: str):
+    user_id = str(g.current_user['_id'])
+    validation_result = SkillService.validate_and_fix_progress(skill_id, user_id)
+    return jsonify({"message": "Progress validation complete", "result": validation_result}), 200
+
+@v1_plans_blueprint.route('/skills/<skill_id>/refresh-image', methods=['PATCH'])
+@require_auth
+def refresh_skill_image(skill_id: str):
+    user_id = str(g.current_user['_id'])
+    updated_skill = SkillService.refresh_skill_image(skill_id, user_id)
+    return jsonify({"message": "Image refreshed successfully", "skill": updated_skill}), 200
 
 
 @v1_plans_blueprint.route('/habits', methods=['POST'])
@@ -145,3 +180,10 @@ def update_habit(habit_id: str):
 
     updated_habit = HabitService.update_habit(habit_id, user_id, validated_data)
     return jsonify({"message": "Habit updated successfully", "habit": updated_habit}), 200
+
+@v1_plans_blueprint.route('/habits/<habit_id>/validate', methods=['POST'])
+@require_auth
+def validate_habit_streaks(habit_id: str):
+    user_id = str(g.current_user['_id'])
+    validation_result = HabitService.validate_and_fix_streaks(habit_id, user_id)
+    return jsonify({"message": "Streak validation complete", "result": validation_result}), 200

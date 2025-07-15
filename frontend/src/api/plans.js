@@ -72,6 +72,15 @@ export const markSkillDayComplete = async (skillId, dayNumber, token) => {
     { headers: { 'Authorization': `Bearer ${token}` } }
   );
   return response.data;
+};
+
+export const undoSkillDayComplete = async (skillId, dayNumber, token) => {
+  const response = await axios.patch(
+    `${API_BASE_URL}/api/v1/plans/skills/${skillId}/days/${dayNumber}/undo`, 
+    {}, 
+    { headers: { 'Authorization': `Bearer ${token}` } }
+  );
+  return response.data;
 }; 
 
 export const getHabitById = async (habitId, token) => {
@@ -81,9 +90,25 @@ export const getHabitById = async (habitId, token) => {
   return response.data;
 };
 
+export const updateSkill = async (skillId, data, token) => {
+  const response = await axios.patch(`${API_BASE_URL}/api/v1/plans/skills/${skillId}`,
+    data,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+
 export const updateHabit = async (habitId, data, token) => {
   const response = await axios.patch(`${API_BASE_URL}/api/v1/plans/habits/${habitId}`,
     data,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return response.data;
+};
+
+export const refreshSkillImage = async (skillId, token) => {
+  const response = await axios.patch(`${API_BASE_URL}/api/v1/plans/skills/${skillId}/refresh-image`,
+    {},
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return response.data;

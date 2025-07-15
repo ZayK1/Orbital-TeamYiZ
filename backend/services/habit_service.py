@@ -87,9 +87,19 @@ class HabitService:
     @staticmethod
     def get_user_habits(user_id: str) -> list:
         repository = HabitRepository(g.db.habits)
+        checkin_repo = CheckinRepository(g.db.habit_checkins)
         habits = repository.find_by_user(user_id)
+        
+        # Get today's date
+        today = date.today()
+        
         for habit in habits:
             habit['_id'] = str(habit['_id'])
+            
+            # Check if habit was completed today
+            todays_checkin = checkin_repo.find_by_habit_and_date(habit['_id'], user_id, today)
+            habit['checked_today'] = todays_checkin is not None
+            
         return habits
 
     @staticmethod
@@ -165,7 +175,7 @@ class HabitService:
 
     @staticmethod
     def _recalculate_streaks(habit_id: str, user_id: str) -> dict:
-        
+        """Recalculate streaks with improved accuracy and efficiency"""
         checkin_repo = CheckinRepository(g.db.habit_checkins)
         
         checkins = checkin_repo.find_completed_by_habit(habit_id, user_id)
@@ -174,51 +184,86 @@ class HabitService:
             return {"current_streak": 0, "longest_streak": 0, "total_completions": 0}
 
         total_completions = len(checkins)
-        
-        current_streak = 0
-        longest_streak = 0
-        
         today = date.today()
         
-        checkin_dates = {c['date'].date() for c in checkins}
-
-        streak_today = today
-        temp_current_streak = 0
-        if streak_today in checkin_dates:
-            temp_current_streak += 1
-            streak_today -= timedelta(days=1)
+        # Convert to sorted date list
+        checkin_dates = sorted({c['date'].date() for c in checkins})
         
-        while streak_today in checkin_dates:
-            temp_current_streak += 1
-            streak_today -= timedelta(days=1)
+        # Calculate current streak (consecutive days ending today or yesterday)
+        current_streak = 0
+        check_date = today
         
-        current_streak = temp_current_streak
-
-        if not checkin_dates:
-            longest_streak = current_streak
+        # Check if there's a checkin today
+        if check_date in checkin_dates:
+            current_streak = 1
+            check_date -= timedelta(days=1)
         else:
-            sorted_dates = sorted(list(checkin_dates), reverse=True)
+            # If no checkin today, check if there's one yesterday
+            check_date = today - timedelta(days=1)
+            if check_date in checkin_dates:
+                current_streak = 1
+                check_date -= timedelta(days=1)
+        
+        # Count consecutive days backwards
+        while check_date in checkin_dates:
+            current_streak += 1
+            check_date -= timedelta(days=1)
+        
+        # Calculate longest streak
+        longest_streak = 0
+        if checkin_dates:
+            temp_streak = 1
+            max_streak = 1
             
-            if not sorted_dates:
-                 longest_streak = 0
-            else:
-                max_streak = 0
-                if len(sorted_dates) > 0:
-                    current_max = 1
-                    max_streak = 1
-                    for i in range(1, len(sorted_dates)):
-                        if (sorted_dates[i-1] - sorted_dates[i]).days == 1:
-                            current_max +=1
-                        else:
-                            current_max = 1
-                        if current_max > max_streak:
-                            max_streak = current_max
-                longest_streak = max_streak
+            for i in range(1, len(checkin_dates)):
+                if (checkin_dates[i] - checkin_dates[i-1]).days == 1:
+                    temp_streak += 1
+                    max_streak = max(max_streak, temp_streak)
+                else:
+                    temp_streak = 1
+            
+            longest_streak = max_streak
         
         return {
             "current_streak": current_streak,
             "longest_streak": longest_streak,
             "total_completions": total_completions
+        }
+
+    @staticmethod
+    def validate_and_fix_streaks(habit_id: str, user_id: str) -> dict:
+        """Validate and fix any streak inconsistencies"""
+        habit_repo = HabitRepository(g.db.habits)
+        checkin_repo = CheckinRepository(g.db.habit_checkins)
+        
+        habit = habit_repo.find_by_id(habit_id, user_id)
+        if not habit:
+            raise ValueError("Habit not found or access denied")
+        
+        # Force recalculation of streaks
+        updated_streaks = HabitService._recalculate_streaks(habit_id, user_id)
+        
+        # Validate checkin data consistency
+        checkins = checkin_repo.find_completed_by_habit(habit_id, user_id)
+        
+        # Remove any duplicate checkins for the same date
+        seen_dates = set()
+        for checkin in checkins:
+            checkin_date = checkin['date'].date()
+            if checkin_date in seen_dates:
+                checkin_repo.delete_by_id(checkin['_id'], user_id)
+                logging.warning(f"Removed duplicate checkin for habit {habit_id}, date {checkin_date}")
+            else:
+                seen_dates.add(checkin_date)
+        
+        # Recalculate streaks after cleanup
+        final_streaks = HabitService._recalculate_streaks(habit_id, user_id)
+        habit_repo.update_streaks(habit_id, user_id, final_streaks)
+        
+        return {
+            "habit_id": habit_id,
+            "streaks": final_streaks,
+            "validation_complete": True
         }
 
     @staticmethod

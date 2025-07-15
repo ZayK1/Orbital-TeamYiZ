@@ -106,16 +106,135 @@ class SkillService:
         
         repository.update_day_completion(skill_id, user_id, day_number)
         
-        completed_days = skill.get('progress', {}).get('completed_days', 0) + 1
+        return SkillService._recalculate_progress(skill_id, user_id, repository)
+
+    @staticmethod
+    def undo_skill_day(skill_id: str, user_id: str, day_number: int) -> dict:
+        repository = SkillRepository(g.db.skills)
+        skill = repository.find_by_id(skill_id, user_id)
+        
+        if not skill:
+            raise ValueError("Skill not found or access denied")
+        if not (1 <= day_number <= 30):
+            raise ValueError("Day number must be between 1 and 30")
+
+        daily_tasks = skill.get('curriculum', {}).get('daily_tasks', [])
+        if not (0 <= day_number - 1 < len(daily_tasks)):
+            raise ValueError("Invalid day number for the curriculum")
+
+        if not daily_tasks[day_number - 1].get('completed', False):
+            raise ValueError("Day is not completed")
+        
+        repository.update_day_completion_undo(skill_id, user_id, day_number)
+        
+        return SkillService._recalculate_progress(skill_id, user_id, repository)
+
+    @staticmethod
+    def update_skill(skill_id: str, user_id: str, update_data: Dict[str, Any]) -> Dict[str, Any]:
+        repository = SkillRepository(g.db.skills)
+        
+        if 'skill_name' in update_data:
+            update_data['title'] = update_data['skill_name']
+        
+        updated_skill = repository.update_skill(skill_id, user_id, update_data)
+        if updated_skill and '_id' in updated_skill:
+            updated_skill['_id'] = str(updated_skill['_id'])
+        
+        return updated_skill
+
+    @staticmethod
+    def _recalculate_progress(skill_id: str, user_id: str, repository: SkillRepository) -> dict:
+        skill = repository.find_by_id(skill_id, user_id)
+        if not skill:
+            raise ValueError("Skill not found or access denied")
+        
+        daily_tasks = skill.get('curriculum', {}).get('daily_tasks', [])
+        total_days = len(daily_tasks)
+        
+        actual_completed = sum(1 for task in daily_tasks if task.get('completed', False))
+        
+        current_day = 1
+        for i, task in enumerate(daily_tasks):
+            if not task.get('completed', False):
+                current_day = i + 1
+                break
+        else:
+            current_day = total_days
+        
+        completion_percentage = round((actual_completed / total_days) * 100, 2) if total_days > 0 else 0
         
         progress_data = {
-            "completed_days": completed_days,
-            "completion_percentage": round((completed_days / 30) * 100, 2),
-            "current_day": min(day_number + 1, 30),
-            "last_accessed": datetime.utcnow()
+            "completed_days": actual_completed,
+            "completion_percentage": completion_percentage,
+            "current_day": current_day,
+            "last_activity": datetime.utcnow(),
+            "projected_completion": skill.get('progress', {}).get('started_at', datetime.utcnow()) + timedelta(days=total_days)
         }
+        
         repository.update_progress_stats(skill_id, user_id, progress_data)
         return progress_data
+
+    @staticmethod
+    def validate_and_fix_progress(skill_id: str, user_id: str) -> dict:
+        repository = SkillRepository(g.db.skills)
+        skill = repository.find_by_id(skill_id, user_id)
+        
+        if not skill:
+            raise ValueError("Skill not found or access denied")
+        
+        progress_data = SkillService._recalculate_progress(skill_id, user_id, repository)
+        
+        daily_tasks = skill.get('curriculum', {}).get('daily_tasks', [])
+        total_days = len(daily_tasks)
+        
+        for i, task in enumerate(daily_tasks):
+            if 'completed' in task and not isinstance(task['completed'], bool):
+                repository.update_day_completion_undo(skill_id, user_id, i + 1)
+                logging.warning(f"Fixed invalid completion state for skill {skill_id}, day {i + 1}")
+        
+        final_progress = SkillService._recalculate_progress(skill_id, user_id, repository)
+        
+        return {
+            "skill_id": skill_id,
+            "progress": final_progress,
+            "total_days": total_days,
+            "validation_complete": True
+        }
+
+    @staticmethod
+    def refresh_skill_image(skill_id: str, user_id: str) -> dict:
+        repository = SkillRepository(g.db.skills)
+        skill = repository.find_by_id(skill_id, user_id)
+        
+        if not skill:
+            raise ValueError("Skill not found or access denied")
+        
+        skill_name = skill.get('title', 'learning')
+        logging.info(f"Refreshing image for skill '{skill_name}' (ID: {skill_id})")
+        
+        try:
+            import asyncio
+            from backend.services.unsplash_service import UnsplashService
+            
+            new_image_url = asyncio.run(UnsplashService.fetch_image(skill_name))
+            logging.info(f"Got new image URL: {new_image_url}")
+            
+            update_data = {
+                'image_url': new_image_url,
+                'updated_at': datetime.utcnow()
+            }
+            
+            repository.update_skill(skill_id, user_id, update_data)
+            logging.info(f"Updated skill {skill_id} with new image")
+            
+            updated_skill = repository.find_by_id(skill_id, user_id)
+            updated_skill['_id'] = str(updated_skill['_id'])
+            logging.info(f"Returning updated skill: {updated_skill.get('title')} with image: {updated_skill.get('image_url')}")
+            return updated_skill
+            
+        except Exception as e:
+            logging.error(f"Failed to refresh image for skill {skill_id}: {e}")
+            raise ValueError(f"Failed to refresh image: {str(e)}")
 
     @staticmethod
     def delete_skill(skill_id: str, user_id: str) -> bool:

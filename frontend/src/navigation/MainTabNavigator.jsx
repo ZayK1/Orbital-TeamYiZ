@@ -22,6 +22,7 @@ import AddHabitScreen from '../screens/AddHabitScreen';
 import AllSkillsScreen from '../screens/AllSkillsScreen';
 import AllHabitsScreen from '../screens/AllHabitsScreen';
 import SkillDetailScreen from '../screens/SkillDetailScreen';
+import SkillEditScreen from '../screens/SkillEditScreen';
 import PlanIndexScreen from '../screens/PlanIndexScreen';
 import DayDetailScreen from '../screens/DayDetailScreen';
 import HabitDetailScreen from '../screens/HabitDetailScreen';
@@ -174,7 +175,9 @@ function RepositoryStackNavigator() {
       <Stack.Screen name="AddHabit" component={AddHabitScreen} />
       <Stack.Screen name="AllSkills" component={AllSkillsScreen} />
       <Stack.Screen name="AllHabits" component={AllHabitsScreen} />
-      <Stack.Screen name="SkillDetail" component={PlanIndexScreen} />
+      <Stack.Screen name="SkillDetail" component={SkillDetailScreen} />
+      <Stack.Screen name="SkillEdit" component={SkillEditScreen} />
+      <Stack.Screen name="PlanIndex" component={PlanIndexScreen} />
       <Stack.Screen name="DayDetail" component={DayDetailScreen} />
       <Stack.Screen name="HabitDetail" component={HabitDetailScreen} />
     </Stack.Navigator>

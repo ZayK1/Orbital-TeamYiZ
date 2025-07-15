@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, SafeAreaView, StyleSheet, TouchableOpacity, ActivityIndicator, StatusBar } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ImageBackground, Dimensions, Modal } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
-import { getSkillById, markSkillDayComplete } from '../api/plans';
+import { getSkillById, markSkillDayComplete, undoSkillDayComplete, updateSkill } from '../api/plans';
+
+const { width, height } = Dimensions.get('window');
 
 const SkillDetailScreen = () => {
   const { params } = useRoute();
@@ -11,170 +14,1099 @@ const SkillDetailScreen = () => {
   const { token } = useAuth();
   const [skill, setSkill] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [operationLoading, setOperationLoading] = useState(false);
+  const [showAllDays, setShowAllDays] = useState(false);
+  const [expandedDay, setExpandedDay] = useState(null);
+  const [taskCompletionLoading, setTaskCompletionLoading] = useState(false);
 
   const fetchSkill = async () => {
     try {
+      setError(null);
       const data = await getSkillById(params.skillId, token);
       setSkill(data);
     } catch (err) {
       console.error('Failed fetch skill', err);
+      setError('Failed to load skill details. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    setLoading(true);
+    fetchSkill();
   };
 
   useEffect(() => {
     fetchSkill();
   }, [params.skillId]);
 
-  if (loading || !skill) {
-    return (
-      <SafeAreaView style={styles.safeAreaCenter}>
-        <ActivityIndicator size="large" color="#14B8A6" />
-      </SafeAreaView>
-    );
-  }
+  const handleMarkComplete = async (dayNumber) => {
+    const currentDay = skill.progress?.current_day || 1;
+    
+    if (dayNumber !== currentDay) {
+      Alert.alert(
+        'Progressive Completion',
+        `You can only complete Day ${currentDay} next. Please complete days in order.`,
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
 
-  const currentDayIdx = (skill.progress?.current_day || 1) - 1;
-  const todayTasks = skill.curriculum?.daily_tasks[currentDayIdx] || {};
-  const tomorrow = skill.curriculum?.daily_tasks[currentDayIdx + 1];
-
-  const handleMarkComplete = async () => {
     try {
-      await markSkillDayComplete(skill._id, skill.progress.current_day, token);
-      fetchSkill();
+      setOperationLoading(true);
+      await markSkillDayComplete(skill._id, dayNumber, token);
+      await fetchSkill();
+      
+      Alert.alert(
+        'Day Complete! 🎉',
+        `Great job! You've completed Day ${dayNumber}. Keep up the excellent work!`,
+        [{ text: 'Continue', style: 'default' }]
+      );
     } catch (err) {
       console.error('Complete day error', err);
+      Alert.alert('Error', 'Failed to mark day as complete. Please try again.');
+    } finally {
+      setOperationLoading(false);
     }
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-      <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 120 }}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <MaterialIcons name="arrow-back-ios" size={24} color="gray" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{skill.title}</Text>
-          <View style={{ width: 24 }} />
-        </View>
+  const handleUndoComplete = async (dayNumber) => {
+    const currentDay = skill.progress?.current_day || 1;
+    
+    if (dayNumber !== currentDay - 1) {
+      Alert.alert(
+        'Undo Restriction',
+        'You can only undo the most recently completed day to maintain progress order.',
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
 
-        <View style={styles.progressSection}>
-          <View style={styles.progressTop}>
-            <View>
-              <View style={styles.rowAlign}>
-                <MaterialIcons name="calendar-today" size={16} color="white" style={{ marginRight: 8 }} />
-                <Text style={styles.dayText}>Day {skill.progress.current_day} of 30</Text>
-              </View>
-              <Text style={styles.progressPercent}>{skill.progress.completion_percentage}% Complete</Text>
-              <Text style={styles.nextMilestone}>Keep going!</Text>
-            </View>
-            <View style={styles.progressCircleWrapper}>
-              <View style={styles.circleOuter}>
-                <Text style={styles.circleText}>{skill.progress.completion_percentage}%</Text>
-              </View>
-            </View>
-          </View>
-        </View>
+    Alert.alert(
+      'Undo Day Completion',
+      `Are you sure you want to undo completion of Day ${dayNumber}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Undo', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setOperationLoading(true);
+              await undoSkillDayComplete(skill._id, dayNumber, token);
+              await fetchSkill();
+            } catch (err) {
+              console.error('Undo day error', err);
+              Alert.alert('Error', 'Failed to undo completion. Please try again.');
+            } finally {
+              setOperationLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
 
-        <View style={styles.cardGrayWrapper}>
-          <View style={styles.cardTopRow}>
-            <View style={styles.rowAlign}>
-              <View style={[styles.iconCircle, { backgroundColor: '#CCFBF1' }]}> 
-                <MaterialIcons name="schedule" size={20} color="#0D9488" />
-              </View>
-              <View>
-                <Text style={styles.cardTitle}>Today's Tasks</Text>
-                <Text style={[styles.cardSubtitle, { color: '#0D9488' }]}>Day {skill.progress.current_day}: {todayTasks.title}</Text>
-              </View>
-            </View>
-          </View>
-          <View style={styles.rowBetween}>
-            <Text style={styles.progressLabel}>Today's Progress</Text>
-            <Text style={styles.progressLabelSecondary}>{todayTasks.tasks?.filter(t=>t.completed).length || 0}/{todayTasks.tasks?.length || 0}</Text>
-          </View>
-          <View style={styles.taskList}>
-            {todayTasks.tasks?.map((t, idx) => (
-              <View key={idx} style={styles.taskItem}>
-                <View style={idx < (todayTasks.tasks?.filter(tt=>tt.completed).length||0) ? styles.dotDone : styles.dotEmpty}>
-                  {idx < (todayTasks.tasks?.filter(tt=>tt.completed).length||0) && (
-                    <MaterialIcons name="done" size={12} color="white" />
-                  )}
-                </View>
-                <Text style={styles.taskText}>{t.description || t}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
+  const handleTaskToggle = async (taskIndex) => {
+    const currentDay = skill.progress?.current_day || 1;
+    const currentDayTasks = skill.curriculum?.daily_tasks?.[currentDay - 1];
+    
+    if (!currentDayTasks || !currentDayTasks.tasks) return;
 
-        {tomorrow && (
-          <View style={styles.cardWhiteWrapper}>
-            <View style={[styles.rowAlign, { alignItems: 'flex-start', marginBottom: 12 }]}> 
-              <View style={[styles.iconCircle, { backgroundColor: '#FEE2E2', marginTop: 4 }]}> 
-                <MaterialIcons name="event-available" size={20} color="#EF4444" />
-              </View>
-              <View>
-                <Text style={styles.cardTitle}>Tomorrow's Tasks</Text>
-                <Text style={[styles.cardSubtitle, { color: '#EF4444' }]}>Day {skill.progress.current_day + 1}: {tomorrow.title}</Text>
-              </View>
-            </View>
-            {tomorrow.tasks?.map((item, i) => (
-              <View key={i} style={styles.taskBulletRow}>
-                <View style={styles.bullet} />
-                <Text style={styles.bulletText}>{item.description || item}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </ScrollView>
-        
-      <View style={styles.bottomButtons}>
-        <TouchableOpacity style={styles.primaryButton} onPress={handleMarkComplete}>
-          <Text style={styles.primaryButtonText}>Mark Day Complete</Text>
+    try {
+      setTaskCompletionLoading(true);
+      
+      const updatedTasks = [...currentDayTasks.tasks];
+      const currentTask = updatedTasks[taskIndex];
+      
+      updatedTasks[taskIndex] = {
+        ...currentTask,
+        completed: !currentTask.completed
+      };
+
+      const updatedDailyTasks = [...skill.curriculum.daily_tasks];
+      updatedDailyTasks[currentDay - 1] = {
+        ...updatedDailyTasks[currentDay - 1],
+        tasks: updatedTasks
+      };
+
+      const updatedSkill = {
+        ...skill,
+        curriculum: {
+          ...skill.curriculum,
+          daily_tasks: updatedDailyTasks
+        }
+      };
+
+      setSkill(updatedSkill);
+
+      const updateData = {
+        curriculum: {
+          ...skill.curriculum,
+          daily_tasks: updatedDailyTasks
+        }
+      };
+
+      await updateSkill(skill._id, updateData, token);
+    } catch (err) {
+      console.error('Task toggle error', err);
+      Alert.alert('Error', 'Failed to update task. Please try again.');
+      await fetchSkill();
+    } finally {
+      setTaskCompletionLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#667eea" />
+        <Text style={styles.loadingText}>Loading skill details...</Text>
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <MaterialIcons name="error-outline" size={64} color="#EF4444" />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={handleRetry}>
+          <Text style={styles.retryButtonText}>Try Again</Text>
         </TouchableOpacity>
       </View>
-    </SafeAreaView>
+    );
+  }
+
+  if (!skill) {
+    return (
+      <View style={styles.centered}>
+        <MaterialIcons name="search-off" size={64} color="#6B7280" />
+        <Text style={styles.errorText}>Skill not found</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
+          <Text style={styles.retryButtonText}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  const currentDay = skill.progress?.current_day || 1;
+  const completionPercentage = skill.progress?.completion_percentage || 0;
+  const totalDays = skill.curriculum?.daily_tasks?.length || 30;
+  const completedDays = skill.progress?.completed_days || 0;
+  const todayTasks = skill.curriculum?.daily_tasks?.[currentDay - 1] || {};
+  const isSkillComplete = completionPercentage >= 100;
+
+  const renderDayCard = (day, index) => {
+    const dayNumber = index + 1;
+    const isCompleted = day.completed || false;
+    const isCurrent = dayNumber === currentDay;
+    const isNext = dayNumber === currentDay + 1;
+    const isLocked = dayNumber > currentDay;
+    const isExpanded = expandedDay === dayNumber;
+
+    return (
+      <View key={index} style={[
+        styles.dayCard,
+        isCompleted && styles.completedDayCard,
+        isCurrent && styles.currentDayCard,
+        isLocked && styles.lockedDayCard
+      ]}>
+        <TouchableOpacity 
+          style={styles.dayHeader}
+          onPress={() => setExpandedDay(isExpanded ? null : dayNumber)}
+        >
+          <View style={styles.dayHeaderLeft}>
+            <View style={[
+              styles.dayNumberCircle,
+              isCompleted && styles.completedCircle,
+              isCurrent && styles.currentCircle,
+              isLocked && styles.lockedCircle
+            ]}>
+              {isCompleted ? (
+                <MaterialIcons name="check" size={16} color="white" />
+              ) : isLocked ? (
+                <MaterialIcons name="lock" size={16} color="#9CA3AF" />
+              ) : (
+                <Text style={[
+                  styles.dayNumberText,
+                  isCurrent && styles.currentDayText,
+                  isLocked && styles.lockedDayText
+                ]}>
+                  {dayNumber}
+                </Text>
+              )}
+            </View>
+            <View style={styles.dayInfo}>
+              <Text style={[
+                styles.dayTitle,
+                isCompleted && styles.completedDayTitle,
+                isCurrent && styles.currentDayTitle,
+                isLocked && styles.lockedDayTitle
+              ]}>
+                {day.title || `Day ${dayNumber}`}
+              </Text>
+              <Text style={[
+                styles.daySubtitle,
+                isLocked && styles.lockedDaySubtitle
+              ]}>
+                {day.tasks?.length || 0} tasks • {day.estimated_time || '30 min'}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.dayActions}>
+            {isCompleted && dayNumber === currentDay - 1 && (
+              <TouchableOpacity
+                style={styles.undoButton}
+                onPress={() => handleUndoComplete(dayNumber)}
+                disabled={operationLoading}
+              >
+                <MaterialIcons name="undo" size={16} color="#EF4444" />
+              </TouchableOpacity>
+            )}
+            {isCurrent && (
+              <TouchableOpacity
+                style={styles.completeButton}
+                onPress={() => handleMarkComplete(dayNumber)}
+                disabled={operationLoading}
+              >
+                {operationLoading ? (
+                  <ActivityIndicator size="small" color="white" />
+                ) : (
+                  <MaterialIcons name="check" size={16} color="white" />
+                )}
+              </TouchableOpacity>
+            )}
+            <MaterialIcons 
+              name={isExpanded ? "expand-less" : "expand-more"} 
+              size={20} 
+              color="#6B7280" 
+            />
+          </View>
+        </TouchableOpacity>
+        
+        {isExpanded && (
+          <View style={styles.dayContent}>
+            <View style={styles.tasksContainer}>
+              <Text style={styles.tasksTitle}>Tasks:</Text>
+              {day.tasks?.map((task, taskIndex) => (
+                <View key={taskIndex} style={styles.taskItem}>
+                  <View style={[
+                    styles.taskBullet,
+                    task.completed && styles.completedTaskBullet
+                  ]}>
+                    {task.completed && <MaterialIcons name="check" size={10} color="white" />}
+                  </View>
+                  <Text style={[
+                    styles.taskText,
+                    task.completed && styles.completedTaskText
+                  ]}>
+                    {task.description || task}
+                  </Text>
+                </View>
+              ))}
+            </View>
+            {day.description && (
+              <Text style={styles.dayDescription}>{day.description}</Text>
+            )}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+      <ImageBackground
+        source={{ uri: skill.image_url || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800' }}
+        style={styles.headerBackground}
+        imageStyle={styles.headerImage}
+      >
+        <LinearGradient
+          colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.7)']}
+          style={styles.headerGradient}
+        >
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <MaterialIcons name="arrow-back" size={24} color="white" />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>{skill.title}</Text>
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => navigation.navigate('SkillEdit', { skillId: skill._id })}
+            >
+              <MaterialIcons name="edit" size={24} color="white" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.skillInfo}>
+            <View style={styles.skillStats}>
+              <View style={styles.statItem}>
+                <MaterialIcons name="calendar-today" size={16} color="white" />
+                <Text style={styles.statText}>Day {currentDay}/{totalDays}</Text>
+              </View>
+              <View style={styles.statItem}>
+                <MaterialIcons name="trending-up" size={16} color="white" />
+                <Text style={styles.statText}>{Math.round(completionPercentage)}% Complete</Text>
+              </View>
+              <View style={styles.statItem}>
+                <MaterialIcons name="school" size={16} color="white" />
+                <Text style={styles.statText}>{skill.difficulty || 'Beginner'}</Text>
+              </View>
+            </View>
+            
+            <View style={styles.progressContainer}>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: `${completionPercentage}%` }]} />
+              </View>
+              <Text style={styles.progressText}>{completedDays} of {totalDays} days completed</Text>
+            </View>
+          </View>
+        </LinearGradient>
+      </ImageBackground>
+      
+      <ScrollView 
+        style={styles.content} 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.currentDaySection}>
+          {isSkillComplete ? (
+            <View style={styles.completionCard}>
+              <LinearGradient
+                colors={['#10B981', '#059669']}
+                style={styles.completionGradient}
+              >
+                <View style={styles.completionIconContainer}>
+                  <MaterialIcons name="celebration" size={48} color="white" />
+                </View>
+                <Text style={styles.completionTitle}>🎉 Skill Complete!</Text>
+                <Text style={styles.completionSubtitle}>
+                  Congratulations! You've successfully completed this 30-day skill journey.
+                </Text>
+                <View style={styles.completionStats}>
+                  <View style={styles.completionStat}>
+                    <MaterialIcons name="calendar-today" size={16} color="white" />
+                    <Text style={styles.completionStatText}>{totalDays} Days</Text>
+                  </View>
+                  <View style={styles.completionStat}>
+                    <MaterialIcons name="trending-up" size={16} color="white" />
+                    <Text style={styles.completionStatText}>100% Complete</Text>
+                  </View>
+                </View>
+              </LinearGradient>
+            </View>
+          ) : (
+            <>
+              <View style={styles.focusHeader}>
+                <Text style={styles.sectionTitle}>Today's Focus</Text>
+                <View style={styles.dayBadge}>
+                  <MaterialIcons name="today" size={16} color="#667eea" />
+                  <Text style={styles.dayBadgeText}>Day {currentDay}</Text>
+                </View>
+              </View>
+              
+              <View style={styles.focusCard}>
+                <LinearGradient
+                  colors={['#667eea', '#764ba2']}
+                  style={styles.focusGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View style={styles.focusContent}>
+                    <View style={styles.focusTopSection}>
+                      <View style={styles.focusInfo}>
+                        <Text style={styles.focusTitle}>{todayTasks.title || `Day ${currentDay} Challenge`}</Text>
+                        <View style={styles.focusMetrics}>
+                          <View style={styles.focusMetric}>
+                            <MaterialIcons name="assignment" size={14} color="rgba(255,255,255,0.8)" />
+                            <Text style={styles.focusMetricText}>
+                              {todayTasks.tasks?.length || 0} tasks
+                            </Text>
+                          </View>
+                          <View style={styles.focusMetric}>
+                            <MaterialIcons name="schedule" size={14} color="rgba(255,255,255,0.8)" />
+                            <Text style={styles.focusMetricText}>
+                              {todayTasks.estimated_time || '30 min'}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                      
+                      <TouchableOpacity
+                        style={styles.focusCompleteButton}
+                        onPress={() => handleMarkComplete(currentDay)}
+                        disabled={operationLoading}
+                      >
+                        {operationLoading ? (
+                          <ActivityIndicator size="small" color="#667eea" />
+                        ) : (
+                          <>
+                            <MaterialIcons name="check-circle" size={20} color="#667eea" />
+                            <Text style={styles.focusCompleteButtonText}>Complete</Text>
+                          </>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                    
+                    {todayTasks.tasks && todayTasks.tasks.length > 0 && (
+                      <View style={styles.tasksSection}>
+                        <Text style={styles.tasksHeader}>Today's Tasks</Text>
+                        <View style={styles.tasksList}>
+                          {todayTasks.tasks.map((task, index) => (
+                            <TouchableOpacity 
+                              key={index} 
+                              style={[
+                                styles.taskRow,
+                                task.completed && styles.taskRowCompleted
+                              ]}
+                              onPress={() => handleTaskToggle(index)}
+                              disabled={taskCompletionLoading}
+                              activeOpacity={0.7}
+                            >
+                              <View style={[
+                                styles.taskIndicator,
+                                task.completed && styles.taskIndicatorCompleted
+                              ]}>
+                                {task.completed && (
+                                  <MaterialIcons name="check" size={12} color="#667eea" />
+                                )}
+                              </View>
+                              <Text style={[
+                                styles.taskDescription,
+                                task.completed && styles.taskDescriptionCompleted
+                              ]}>
+                                {task.description || task}
+                              </Text>
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        
+                        <View style={styles.focusProgressIndicator}>
+                          <View style={styles.focusProgressTrack}>
+                            <View style={[
+                              styles.focusProgressBar,
+                              { width: `${((todayTasks.tasks?.filter(t => t.completed).length || 0) / (todayTasks.tasks?.length || 1)) * 100}%` }
+                            ]} />
+                          </View>
+                          <Text style={styles.focusProgressText}>
+                            {todayTasks.tasks?.filter(t => t.completed).length || 0} of {todayTasks.tasks?.length || 0} completed
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </LinearGradient>
+              </View>
+            </>
+          )}
+        </View>
+
+        <View style={styles.allDaysSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>All Days</Text>
+            <TouchableOpacity
+              style={styles.viewAllButton}
+              onPress={() => setShowAllDays(!showAllDays)}
+            >
+              <Text style={styles.viewAllText}>
+                {showAllDays ? 'Collapse' : 'View All'}
+              </Text>
+              <MaterialIcons 
+                name={showAllDays ? "expand-less" : "expand-more"} 
+                size={18} 
+                color="#667eea" 
+              />
+            </TouchableOpacity>
+          </View>
+          
+          {showAllDays ? (
+            <View style={styles.allDaysContainer}>
+              {skill.curriculum?.daily_tasks?.map((day, index) => renderDayCard(day, index))}
+            </View>
+          ) : (
+            <View style={styles.daysPreview}>
+              {skill.curriculum?.daily_tasks?.slice(0, 3).map((day, index) => renderDayCard(day, index))}
+              {skill.curriculum?.daily_tasks?.length > 3 && (
+                <TouchableOpacity
+                  style={styles.showMoreButton}
+                  onPress={() => setShowAllDays(true)}
+                >
+                  <Text style={styles.showMoreText}>
+                    Show {skill.curriculum.daily_tasks.length - 3} more days
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+        </View>
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F3F4F6' },
-  safeAreaCenter: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  container: { flex: 1 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, backgroundColor: 'white' },
-  headerTitle: { fontSize: 20, fontWeight: '600', color: '#1F2937' },
-  progressSection: { backgroundColor: '#8B5CF6', padding: 24, borderBottomLeftRadius: 24, borderBottomRightRadius: 24 },
-  progressTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  rowAlign: { flexDirection: 'row', alignItems: 'center' },
-  dayText: { color: 'white', fontSize: 14 },
-  progressPercent: { fontSize: 28, fontWeight: 'bold', color: 'white' },
-  nextMilestone: { fontSize: 14, color: '#E5E7EB' },
-  progressCircleWrapper: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#7C3AED', justifyContent: 'center', alignItems: 'center' },
-  circleOuter: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#7C3AED', justifyContent: 'center', alignItems: 'center' },
-  circleText: { color: 'white', fontWeight: 'bold', fontSize: 18 },
-  cardGrayWrapper: { backgroundColor: '#F9FAFB', margin: 16, padding: 16, borderRadius: 16 },
-  cardTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  iconCircle: { width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  cardTitle: { fontWeight: '600', color: '#1F2937' },
-  cardSubtitle: { color: '#6B7280', fontSize: 12 },
-  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  progressLabel: { fontSize: 10, fontWeight: '600', color: '#6B7280', textTransform: 'uppercase' },
-  progressLabelSecondary: { fontSize: 10, color: '#9CA3AF' },
-  taskList: { gap: 12 },
-  taskItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', padding: 12, borderRadius: 12, marginBottom: 8 },
-  taskText: { color: '#374151', fontSize: 14 },
-  dotDone: { width: 24, height: 24, borderRadius: 12, backgroundColor: '#10B981', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
-  dotEmpty: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#D1D5DB', marginRight: 12 },
-  cardWhiteWrapper: { backgroundColor: 'white', margin: 16, padding: 16, borderRadius: 16, shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 }, shadowRadius: 8 },
-  taskBulletRow: { flexDirection: 'row', alignItems: 'center', marginLeft: 44, marginBottom: 6 },
-  bullet: { width: 8, height: 8, backgroundColor: '#D1D5DB', borderRadius: 4, marginRight: 8 },
-  bulletText: { color: '#4B5563', fontSize: 14 },
-  bottomButtons: { position: 'absolute', bottom: 40, left: 16, right: 16 },
-  primaryButton: { backgroundColor: '#14B8A6', paddingVertical: 14, borderRadius: 12 },
-  primaryButtonText: { color: 'white', fontWeight: '600', textAlign: 'center' },
-  dayRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: 12, marginHorizontal: 16, borderRadius: 12, marginBottom: 8, shadowColor: '#000', shadowOpacity: 0.03, shadowOffset: { width:0, height:1 }, shadowRadius: 2 },
-  viewLink: { color: '#4B5563', fontSize: 10, fontWeight: '600', textTransform: 'uppercase' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  headerBackground: {
+    height: height * 0.35,
+  },
+  headerImage: {
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+  },
+  headerGradient: {
+    flex: 1,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    paddingTop: 50,
+    paddingBottom: 20,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: 'white',
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 16,
+  },
+  editButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  skillInfo: {
+    paddingHorizontal: 20,
+  },
+  skillStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 20,
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  statText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  progressContainer: {
+    marginBottom: 10,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 4,
+    marginBottom: 8,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: 'white',
+    borderRadius: 4,
+  },
+  progressText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+    textAlign: 'center',
+  },
+  content: {
+    flex: 1,
+    marginTop: -30,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    backgroundColor: '#F8FAFC',
+  },
+  scrollContainer: {
+    paddingTop: 30,
+    paddingBottom: 40,
+  },
+  currentDaySection: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 16,
+  },
+  completionCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  completionGradient: {
+    padding: 32,
+    alignItems: 'center',
+  },
+  completionIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  completionTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: 'white',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  completionSubtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 24,
+  },
+  completionStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    width: '100%',
+  },
+  completionStat: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  completionStatText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  focusHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  dayBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(102, 126, 234, 0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(102, 126, 234, 0.2)',
+  },
+  dayBadgeText: {
+    color: '#667eea',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  focusCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  focusGradient: {
+    padding: 24,
+    minHeight: 200,
+  },
+  focusContent: {
+  },
+  focusTopSection: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  focusInfo: {
+    flex: 1,
+    marginRight: 16,
+  },
+  focusTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 12,
+    lineHeight: 26,
+  },
+  focusMetrics: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  focusMetric: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  focusMetricText: {
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  focusCompleteButton: {
+    backgroundColor: 'white',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    minWidth: 120,
+    justifyContent: 'center',
+  },
+  focusCompleteButtonText: {
+    color: '#667eea',
+    fontSize: 14,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+  tasksSection: {
+    marginTop: 20,
+  },
+  tasksHeader: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: 'white',
+    marginBottom: 16,
+  },
+  tasksList: {
+    marginBottom: 16,
+  },
+  taskRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  taskRowCompleted: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  taskIndicator: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.5)',
+  },
+  taskIndicatorCompleted: {
+    backgroundColor: 'white',
+    borderColor: 'white',
+    transform: [{ scale: 1.1 }],
+  },
+  taskDescription: {
+    flex: 1,
+    color: 'white',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  taskDescriptionCompleted: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    textDecorationLine: 'line-through',
+  },
+  focusProgressIndicator: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 12,
+    padding: 12,
+  },
+  focusProgressTrack: {
+    height: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 3,
+    marginBottom: 8,
+  },
+  focusProgressBar: {
+    height: '100%',
+    backgroundColor: 'white',
+    borderRadius: 3,
+  },
+  focusProgressText: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  allDaysSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    marginTop: 8,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  viewAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewAllText: {
+    color: '#667eea',
+    fontSize: 14,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  allDaysContainer: {
+    gap: 8,
+  },
+  daysPreview: {
+    gap: 8,
+  },
+  showMoreButton: {
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  showMoreText: {
+    color: '#6B7280',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  dayCard: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 3,
+    marginBottom: 2,
+  },
+  completedDayCard: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  currentDayCard: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 2,
+    borderColor: '#667eea',
+  },
+  lockedDayCard: {
+    backgroundColor: '#F9FAFB',
+  },
+  dayHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  dayHeaderLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  dayNumberCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  completedCircle: {
+    backgroundColor: '#10B981',
+  },
+  currentCircle: {
+    backgroundColor: '#667eea',
+  },
+  lockedCircle: {
+    backgroundColor: '#E5E7EB',
+  },
+  dayNumberText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  currentDayText: {
+    color: 'white',
+  },
+  lockedDayText: {
+    color: '#9CA3AF',
+  },
+  dayInfo: {
+    flex: 1,
+  },
+  dayTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 2,
+  },
+  completedDayTitle: {
+    color: '#059669',
+  },
+  currentDayTitle: {
+    color: '#667eea',
+  },
+  lockedDayTitle: {
+    color: '#9CA3AF',
+  },
+  daySubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+  },
+  lockedDaySubtitle: {
+    color: '#D1D5DB',
+  },
+  dayActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  completeButton: {
+    backgroundColor: '#10B981',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  undoButton: {
+    backgroundColor: '#FEF2F2',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayContent: {
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    padding: 16,
+  },
+  tasksContainer: {
+    marginTop: 8,
+  },
+  tasksTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 8,
+  },
+  taskItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  taskBullet: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#E5E7EB',
+    marginRight: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  completedTaskBullet: {
+    backgroundColor: '#10B981',
+  },
+  taskText: {
+    fontSize: 14,
+    color: '#4B5563',
+    flex: 1,
+  },
+  completedTaskText: {
+    color: '#059669',
+    textDecorationLine: 'line-through',
+  },
+  dayDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginTop: 12,
+    lineHeight: 20,
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  errorText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#EF4444',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  retryButton: {
+    backgroundColor: '#667eea',
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
 
-export default SkillDetailScreen; 
+export default SkillDetailScreen;

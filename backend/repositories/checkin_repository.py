@@ -25,9 +25,39 @@ class CheckinRepository:
             "completed": True
         }).sort("date", -1))
 
+    def find_by_habit_and_date(self, habit_id: str, user_id: str, date_to_check) -> dict:
+        """Find a specific checkin for a habit on a specific date"""
+        from datetime import datetime
+        
+        # Handle different date input types
+        if isinstance(date_to_check, str):
+            # Parse ISO date string like "2025-07-15"
+            date_to_check = datetime.fromisoformat(date_to_check).date()
+        elif isinstance(date_to_check, datetime):
+            date_to_check = date_to_check.date()
+        
+        # Convert date to datetime for MongoDB query (UTC)
+        start_of_day = datetime.combine(date_to_check, datetime.min.time())
+        end_of_day = datetime.combine(date_to_check, datetime.max.time())
+        
+        return self.collection.find_one({
+            "habit_id": habit_id,
+            "user_id": user_id,
+            "date": {"$gte": start_of_day, "$lte": end_of_day},
+            "completed": True
+        })
+
     def delete_by_habit_id(self, habit_id: str, user_id: str) -> DeleteResult:
         return self.collection.delete_many({
             "habit_id": habit_id,
+            "user_id": user_id
+        })
+    
+    def delete_by_id(self, checkin_id: str, user_id: str) -> DeleteResult:
+        """Delete a specific checkin by ID"""
+        from bson import ObjectId
+        return self.collection.delete_one({
+            "_id": ObjectId(checkin_id),
             "user_id": user_id
         })
 

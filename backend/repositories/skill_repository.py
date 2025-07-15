@@ -25,12 +25,37 @@ class SkillRepository:
             {"_id": ObjectId(skill_id), "user_id": user_id},
             {"$set": { f"curriculum.daily_tasks.{day_number - 1}.completed": True, "updated_at": datetime.utcnow()}}
         )
+    
+    def update_day_completion_undo(self, skill_id: str, user_id: str, day_number: int) -> UpdateResult:
+        return self.collection.update_one(
+            {"_id": ObjectId(skill_id), "user_id": user_id},
+            {"$unset": { f"curriculum.daily_tasks.{day_number - 1}.completed": ""}, "$set": {"updated_at": datetime.utcnow()}}
+        )
 
     def update_progress_stats(self, skill_id: str, user_id: str, progress_data: dict) -> UpdateResult:
         return self.collection.update_one(
             {"_id": ObjectId(skill_id), "user_id": user_id},
             {"$set": {"progress": progress_data, "updated_at": datetime.utcnow()}}
         )
+    
+    def update_skill(self, skill_id: str, user_id: str, update_data: dict) -> dict:
+        # Add updated timestamp
+        update_data["updated_at"] = datetime.utcnow()
+        
+        # Update the skill
+        result: UpdateResult = self.collection.update_one(
+            {"_id": ObjectId(skill_id), "user_id": user_id},
+            {"$set": update_data}
+        )
+        
+        if result.matched_count == 0:
+            raise ValueError("Skill not found or access denied")
+        
+        # Return the updated skill
+        return self.collection.find_one({
+            "_id": ObjectId(skill_id), 
+            "user_id": user_id
+        })
 
     def delete_by_id(self, skill_id: str, user_id: str) -> DeleteResult:
         return self.collection.delete_one({

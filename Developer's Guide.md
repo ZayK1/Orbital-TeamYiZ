@@ -4,6 +4,15 @@
 
 *Last Updated: July 15th 2025*
 
+## 🎨 Latest UI/UX Enhancements (July 2025)
+
+### ✨ Skill Detail Screen Redesign
+- **Modern Image Refresh**: Three-dot menu with refresh background image functionality
+- **Enhanced Categorization**: Skill-relevant background images with 10+ categories
+- **Today's Focus Redesign**: Sleek gradient cards with improved aesthetics
+- **Progressive Completion**: Sequential day completion with proper validation
+- **Layout Optimization**: Fixed empty white space and alignment issues
+
 
 
 ---
@@ -285,7 +294,9 @@ frontend/
 
 │ │ ├── 📄 apiConfig.js # ENV-driven base URL config
 
-│ │ └── 📄 auth.js # Auth API helpers
+│ │ ├── 📄 auth.js # Auth API helpers
+
+│ │ └── 📄 plans.js # Skills & habits API with image refresh
 
 │ ├── 📁 components/
 
@@ -379,7 +390,9 @@ backend/
 
     ├── 📄 habit_service.py     # Habit business logic
 
-    └── 📄 skill_service.py     # Skill business logic
+    ├── 📄 skill_service.py     # Skill business logic & image refresh
+
+    └── 📄 unsplash_service.py  # Enhanced image categorization & skill-relevant photos
 
 ```
 
@@ -570,6 +583,74 @@ class AIService:
 
 - ✅ **Template Categories**: Programming, Language Learning, Fitness, Creative Arts
 
+### 🖼️ Enhanced Image Management System
+
+#### 🎨 UnsplashService with Smart Categorization
+
+```python
+class UnsplashService:
+    @staticmethod
+    def _categorize_skill(query: str) -> str:
+        """Categorize skills for relevant image selection"""
+        # Comprehensive categorization with priority order:
+        # 1. Languages (Spanish, French, German, etc.)
+        # 2. Cooking & Cuisine (Italian cuisine, French cooking, etc.)
+        # 3. Creative Writing (before general design)
+        # 4. Arts & Design (UI/UX, graphic design, etc.)
+        # 5. Programming & Technology (Python, React, etc.)
+        # 6. Business & Marketing
+        # 7. Health & Fitness
+        # 8. Science & Education
+        
+    @staticmethod
+    async def fetch_image(query: str) -> str:
+        """Return skill-relevant image with cache-busting"""
+        # 1. Try Unsplash API with skill-specific query
+        # 2. Fall back to categorized local image collection
+        # 3. Add cache-busting parameters for refresh functionality
+        
+        category = UnsplashService._categorize_skill(query)
+        images = SKILL_IMAGES.get(category, SKILL_IMAGES["default"])
+        selected_image = random.choice(images)
+        cache_buster = f"?refresh={random.randint(1000, 9999)}"
+        return selected_image + cache_buster
+```
+
+#### 🔄 Skill Image Refresh Functionality
+
+```python
+# skill_service.py
+def refresh_skill_image(skill_id: str, user_id: str) -> dict:
+    """Refresh skill background image with new selection"""
+    skill = skill_repository.get_skill_by_id(skill_id)
+    
+    if not skill or skill.get('user_id') != ObjectId(user_id):
+        raise ValueError("Skill not found or access denied")
+    
+    # Generate new image URL
+    new_image_url = await UnsplashService.fetch_image(skill['title'])
+    
+    # Update skill with new image
+    skill_repository.update_skill(skill_id, {'image_url': new_image_url})
+    
+    return skill_repository.get_skill_by_id(skill_id)
+```
+
+#### 📷 Image Categories & Fallbacks
+
+| Category | Skills Matched | Example Images |
+|----------|---------------|----------------|
+| **🔤 Languages** | Spanish, French, German, Learn Korean | Books, dictionaries, language learning |
+| **🍳 Cooking** | Italian Cuisine, French Cooking, Baking | Kitchen scenes, food preparation |
+| **✍️ Writing** | Creative Writing, Journalism, Blogging | Notebooks, typewriters, writing scenes |
+| **🎨 Design** | UI/UX Design, Graphic Design, Photoshop | Design tools, creative workspaces |
+| **📸 Photography** | Portrait Photography, Landscape, Editing | Cameras, photo equipment |
+| **💻 Programming** | Python, React, Web Development | Code screens, development setups |
+| **🏋️ Fitness** | Yoga, Gym Training, Running | Exercise equipment, fitness scenes |
+| **🎵 Music** | Guitar, Piano, Music Theory | Musical instruments, music notation |
+| **📈 Business** | Marketing, Strategy, Management | Office environments, business concepts |
+| **🔬 Science** | Physics, Chemistry, Biology | Laboratory equipment, scientific imagery |
+
 
 
 ---
@@ -682,6 +763,22 @@ process.env.REACT_APP_API_BASE_URL || // Web fallback
     - Showcases achievements and key statistics in a grid.
     - Provides access to settings like "Dark Mode" and "Notifications" with custom toggle switches.
     - Contains the "Log Out" functionality.
+
+#### ✨ `SkillDetailScreen` (Enhanced)
+- **Purpose**: Complete skill learning experience with modern UI/UX design.
+- **Features**:
+    - **Header with Background Image**: Dynamic skill-relevant background with overlay gradient
+    - **Three-dot Menu**: Refresh image, edit skill, delete skill options
+    - **Progress Tracking**: Visual progress bar showing completion percentage
+    - **Today's Focus Card**: Gradient-enhanced card with current day tasks
+    - **Progressive Completion**: Users can only complete days sequentially
+    - **All Days View**: Expandable section showing all 30 days with status indicators
+    - **Completion Celebration**: Special design for completed skills
+- **UI Design**:
+    - Modern gradient backgrounds (`LinearGradient` from `#667eea` to `#764ba2`)
+    - Proper spacing and typography hierarchy
+    - Smooth animations and transitions
+    - Responsive layout with proper error handling
 
 #### ✨ `AddSkillScreen` & `AddHabitScreen`
 - **Purpose**: Dedicated forms for creating new skills and habits.
@@ -1052,6 +1149,57 @@ Authorization: Bearer <token>
 ```
 
 Soft-deletes the document (status → `archived`).
+
+#### Refresh Skill Image
+
+```http
+PATCH /api/v1/plans/skills/{id}/refresh-image
+Authorization: Bearer <token>
+```
+
+**Response: 200 OK**
+
+```json
+{
+  "message": "Image refreshed successfully",
+  "skill": {
+    "_id": "skill_id",
+    "title": "Guitar",
+    "image_url": "https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?refresh=3847",
+    "updated_at": "2025-07-15T10:30:00Z"
+  }
+}
+```
+
+**Features**:
+- Generates new skill-relevant background image based on skill title
+- Uses enhanced categorization system for better image matching
+- Includes cache-busting parameters to force UI refresh
+- Maintains skill-specific categorization (music, programming, cooking, etc.)
+
+#### Mark Skill Day Complete
+
+```http
+PATCH /api/v1/plans/skills/{id}/days/{day}/complete
+Authorization: Bearer <token>
+```
+
+**Progressive Completion Logic**:
+- Users can only complete the current day (sequential completion)
+- Completion updates skill progress and advances to next day
+- Includes validation to prevent skipping days
+
+#### Undo Skill Day Complete
+
+```http
+PATCH /api/v1/plans/skills/{id}/days/{day}/undo
+Authorization: Bearer <token>
+```
+
+**Undo Restrictions**:
+- Can only undo the most recently completed day
+- Maintains sequential completion integrity
+- Updates progress tracking accordingly
 
 ### 🔍 Health Check
 
@@ -2496,6 +2644,45 @@ npm install babel-preset-expo@13.0.0
 "newArchEnabled": false
 ```
 
+#### 🖼️ Image Refresh Not Working
+
+**Problem**: Skill background images not refreshing when refresh button is clicked
+
+**Solution**: The system now includes cache-busting parameters:
+
+```javascript
+// Check if image URL includes cache-busting parameter
+console.log('Image URL:', skill.image_url);
+// Should show: https://images.unsplash.com/photo-1234?refresh=5678
+
+// If refresh not working, check API response
+const response = await refreshSkillImage(skillId, token);
+console.log('Refresh response:', response);
+```
+
+#### 🎨 UI Layout Issues
+
+**Problem**: Empty white space or misaligned elements in SkillDetailScreen
+
+**Solution**: Layout fixes have been implemented:
+
+```javascript
+// Check content container styling
+content: {
+  marginTop: -30,        // Eliminates gap
+  paddingTop: 30,        // Maintains spacing
+  borderTopLeftRadius: 30,
+  borderTopRightRadius: 30,
+  backgroundColor: '#F8FAFC',
+}
+
+// Ensure proper section spacing
+currentDaySection: {
+  paddingHorizontal: 20,
+  paddingBottom: 20,
+}
+```
+
 
 
 ### 🚀 Performance Issues
@@ -2588,6 +2775,8 @@ windowSize={5}
 | 🟠 Medium| **Plan Persistence** | Save generated plans to a new `plans` collection and add `/plans/*` endpoints | June  |
 | 🟡 Medium| **Push Notifications**| Daily learning-reminder notifications via Expo                   | June  |
 | 🟢 Low   | **Gamification**     | Achievements & learning streak badges                             | June     |
+| 🔵 Enhancement | **Smooth Animations** | Add transitions and animations to UI components | August 2025 |
+| 🔵 Enhancement | **Enhanced Progress Visualizations** | Improve progress bars and completion indicators | August 2025 |
 
 ## ✨ Recently Implemented (June 2025)
 
@@ -2607,6 +2796,7 @@ windowSize={5}
 | **Gender-neutral Avatars** | Profile avatars now use `ui-avatars.com` for dynamic, neutral imagery based on username. |
 | **Floating Add Menu UX** | Skill/Habit quick-add buttons align centrally and animate above the nav bar. |
 | **Discover & Stats Beta** | ExploreScreen and StatsScreen now show attractive beta notices outlining upcoming upload/browse and visual analytics features. |
+| **🎨 Enhanced UI/UX (July 2025)** | • **Skill Image Refresh**: Three-dot menu with background image refresh functionality <br>• **Smart Image Categorization**: 10+ skill categories for relevant background images <br>• **SkillDetailScreen Redesign**: Modern gradient cards, improved spacing, professional layout <br>• **Progressive Day Completion**: Sequential completion with validation and undo functionality <br>• **Today's Focus Enhancement**: Sleek gradient design with task indicators and progress bars <br>• **Layout Optimization**: Fixed empty white space, improved alignment, consistent spacing |
 
 ## 🔧 Critical Fixes & Improvements (July 2025)
 
@@ -2618,6 +2808,28 @@ windowSize={5}
 | **⚡ Async/Sync Pattern Fix** | • Removed incorrect async decorators from all repository classes<br>• Fixed `require_auth` decorator to work with synchronous functions<br>• Updated all API endpoints to use synchronous patterns | **CRITICAL**: Fixed all 500 errors from async/sync mismatches |
 | **🎯 Enhanced API Endpoints** | • Updated `/api/v1/plans/skills` to work with new service architecture<br>• Enhanced habit creation with additional parameters (color, dates, reminder_time)<br>• Added proper error handling across all endpoints | **MEDIUM**: More robust API with better error responses |
 | **🔍 Improved Error Handling** | • Added comprehensive logging for plan generation<br>• Implemented graceful fallback mechanisms<br>• Enhanced debugging capabilities with detailed error messages | **MEDIUM**: Better debugging and user experience |
+| **🎨 UI/UX Enhancements** | • **Image Refresh System**: Added three-dot menu with image refresh functionality<br>• **Smart Categorization**: Enhanced UnsplashService with 10+ skill categories<br>• **SkillDetailScreen Redesign**: Modern gradient cards with improved layout<br>• **Progressive Completion**: Sequential day completion with validation<br>• **Today's Focus Enhancement**: Sleek gradient design with task indicators<br>• **Layout Optimization**: Fixed empty white space and alignment issues | **HIGH**: Professional UI with better user experience |
+
+## 📊 Development Summary
+
+### 🔧 Backend Enhancements
+- **New Service**: `unsplash_service.py` with enhanced image categorization
+- **New API Endpoint**: `PATCH /api/v1/plans/skills/{id}/refresh-image`
+- **Enhanced Skill Service**: Added `refresh_skill_image()` method
+- **Day Completion APIs**: Progressive completion with validation logic
+
+### 🎨 Frontend Improvements
+- **SkillDetailScreen**: Complete redesign with modern aesthetics
+- **Three-dot Menu**: Added skill options modal with refresh/edit/delete
+- **Progressive UI**: Sequential day completion with proper validation
+- **Today's Focus**: Gradient cards with enhanced task management
+- **Layout Fixes**: Eliminated white space and improved alignment
+
+### 🖼️ Image Management
+- **Smart Categorization**: 10+ categories (languages, cooking, programming, etc.)
+- **Cache-Busting**: Automatic refresh parameters for image updates
+- **Fallback System**: Local images when Unsplash API unavailable
+- **Skill-Relevant**: Images matched to skill type for better UX
 
 ---
 

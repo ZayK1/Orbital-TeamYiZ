@@ -63,9 +63,6 @@ def create_app():
 
     from backend.api.v1.plans import v1_plans_blueprint
     app.register_blueprint(v1_plans_blueprint, url_prefix='/api/v1/plans')
-    
-    from backend.api.v1.dashboard import dashboard_blueprint
-    app.register_blueprint(dashboard_blueprint)
 
 
     @app.route('/health', methods=['GET'])

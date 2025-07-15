@@ -30,6 +30,15 @@ class CheckinCreateSchema(Schema):
     class Meta:
         unknown = EXCLUDE 
 
+class SkillUpdateSchema(Schema):
+    title = fields.Str(validate=validate.Length(min=3, max=100))
+    skill_name = fields.Str(validate=validate.Length(min=3, max=100))
+    difficulty = fields.Str(validate=validate.OneOf(["beginner", "intermediate", "advanced"]))
+    custom_duration = fields.Int(validate=validate.Range(min=7, max=90))
+
+    class Meta:
+        unknown = EXCLUDE
+
 class HabitUpdateSchema(Schema):
     title = fields.Str(validate=validate.Length(min=3, max=100))
     category = fields.Str(validate=validate.OneOf(["health", "productivity", "learning", "creative", "social"]))
