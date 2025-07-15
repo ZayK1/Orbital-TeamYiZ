@@ -63,6 +63,9 @@ def create_app():
 
     from backend.api.v1.plans import v1_plans_blueprint
     app.register_blueprint(v1_plans_blueprint, url_prefix='/api/v1/plans')
+    
+    from backend.api.v1.dashboard import dashboard_blueprint
+    app.register_blueprint(dashboard_blueprint)
 
 
     @app.route('/health', methods=['GET'])
@@ -70,8 +73,8 @@ def create_app():
         return jsonify({'status': 'healthy', 'message': 'YiZ Planner API is running'}), 200
 
    
-    @app.route('/generate-plan', methods=['POST'])  # type: ignore
-    async def generate_plan():
+    @app.route('/generate-plan', methods=['POST'])
+    def generate_plan():
         try:
             data = request.get_json()
             if not data:
@@ -81,7 +84,8 @@ def create_app():
             if not skill:
                 return jsonify({"error": "skill_name is required"}), 400
 
-            plan_tasks = await AIService.generate_structured_plan(skill)
+            import asyncio
+            plan_tasks = asyncio.run(AIService.generate_structured_plan(skill))
 
             return jsonify({
                 "skill": skill,

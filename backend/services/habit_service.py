@@ -9,7 +9,7 @@ from backend.services.unsplash_service import UnsplashService
 
 class HabitService:
     @staticmethod
-    async def create_habit(
+    def create_habit(
         user_id: str,
         title: str,
         category: str,
@@ -68,12 +68,13 @@ class HabitService:
         }
 
         try:
-            habit_plan_data["icon_url"] = await UnsplashService.fetch_image(category or title)
+            import asyncio
+            habit_plan_data["icon_url"] = asyncio.run(UnsplashService.fetch_image(category or title))
         except Exception as e:
             logging.error(f"Unsplash fetch failed for habit '{title}': {e}")
 
         try:
-            created_plan_dict = await habit_repo.create(habit_plan_data)
+            created_plan_dict = habit_repo.create(habit_plan_data)
         except Exception as e:
             logging.error(f"Failed to save habit plan for user {user_id}: {e}")
             raise
@@ -84,26 +85,26 @@ class HabitService:
         return created_plan_dict
 
     @staticmethod
-    async def get_user_habits(user_id: str) -> list:
+    def get_user_habits(user_id: str) -> list:
         repository = HabitRepository(g.db.habits)
-        habits = await repository.find_by_user(user_id)
+        habits = repository.find_by_user(user_id)
         for habit in habits:
             habit['_id'] = str(habit['_id'])
         return habits
 
     @staticmethod
-    async def get_habit_by_id(habit_id: str, user_id: str) -> dict:
+    def get_habit_by_id(habit_id: str, user_id: str) -> dict:
         repository = HabitRepository(g.db.habits)
-        habit = await repository.find_by_id(habit_id, user_id)
+        habit = repository.find_by_id(habit_id, user_id)
         if not habit:
             raise ValueError("Habit not found or access denied")
         habit['_id'] = str(habit['_id'])
         return habit
 
     @staticmethod
-    async def update_habit(habit_id: str, user_id: str, update_fields: dict) -> dict:
+    def update_habit(habit_id: str, user_id: str, update_fields: dict) -> dict:
         habit_repo = HabitRepository(g.db.habits)
-        habit = await habit_repo.find_by_id(habit_id, user_id)
+        habit = habit_repo.find_by_id(habit_id, user_id)
         if not habit:
             raise ValueError("Habit not found or access denied")
 
@@ -126,18 +127,18 @@ class HabitService:
         for field in ['custom_days', 'reminder_time']:
             if field in update_fields:
                 update_fields.pop(field)
-        await habit_repo.update(habit_id, user_id, update_fields)
-        updated = await habit_repo.find_by_id(habit_id, user_id)
+        habit_repo.update(habit_id, user_id, update_fields)
+        updated = habit_repo.find_by_id(habit_id, user_id)
         updated['_id'] = str(updated['_id'])
         return updated
 
     @staticmethod
-    async def record_checkin(habit_id: str, user_id: str, checkin_data: dict) -> dict:
+    def record_checkin(habit_id: str, user_id: str, checkin_data: dict) -> dict:
         
         habit_repo = HabitRepository(g.db.habits)
         checkin_repo = CheckinRepository(g.db.habit_checkins)
 
-        habit = await habit_repo.find_by_id(habit_id, user_id)
+        habit = habit_repo.find_by_id(habit_id, user_id)
         if not habit:
             raise ValueError("Habit not found or access denied")
 
@@ -151,11 +152,11 @@ class HabitService:
             "created_at": datetime.utcnow()
         }
         
-        created_checkin = await checkin_repo.create_or_update(full_checkin_data)
+        created_checkin = checkin_repo.create_or_update(full_checkin_data)
 
-        updated_streaks = await HabitService._recalculate_streaks(habit_id, user_id)
+        updated_streaks = HabitService._recalculate_streaks(habit_id, user_id)
 
-        await habit_repo.update_streaks(habit_id, user_id, updated_streaks)
+        habit_repo.update_streaks(habit_id, user_id, updated_streaks)
 
         return {
             "checkin": created_checkin,
@@ -163,11 +164,11 @@ class HabitService:
         }
 
     @staticmethod
-    async def _recalculate_streaks(habit_id: str, user_id: str) -> dict:
+    def _recalculate_streaks(habit_id: str, user_id: str) -> dict:
         
         checkin_repo = CheckinRepository(g.db.habit_checkins)
         
-        checkins = await checkin_repo.find_completed_by_habit(habit_id, user_id)
+        checkins = checkin_repo.find_completed_by_habit(habit_id, user_id)
 
         if not checkins:
             return {"current_streak": 0, "longest_streak": 0, "total_completions": 0}
@@ -221,14 +222,14 @@ class HabitService:
         }
 
     @staticmethod
-    async def delete_habit(habit_id: str, user_id: str) -> bool:
+    def delete_habit(habit_id: str, user_id: str) -> bool:
         habit_repo = HabitRepository(g.db.habits)
         checkin_repo = CheckinRepository(g.db.habit_checkins)
         
-        if not await habit_repo.find_by_id(habit_id, user_id):
+        if not habit_repo.find_by_id(habit_id, user_id):
             raise ValueError("Habit not found or access denied")
         
-        await checkin_repo.delete_by_habit_id(habit_id, user_id)
+        checkin_repo.delete_by_habit_id(habit_id, user_id)
         
-        result = await habit_repo.delete_by_id(habit_id, user_id)
+        result = habit_repo.delete_by_id(habit_id, user_id)
         return result.deleted_count > 0 

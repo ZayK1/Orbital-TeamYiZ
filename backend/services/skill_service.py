@@ -10,12 +10,13 @@ from backend.services.unsplash_service import UnsplashService
 
 class SkillService:
     @staticmethod
-    async def create_skill(user_id: str, title: str, start_date_str: Optional[str] = None) -> Dict[str, Any]:
+    def create_skill(user_id: str, title: str, start_date_str: Optional[str] = None) -> Dict[str, Any]:
      
         skill_repo = SkillRepository(g.db.skills)
 
         try:
-            daily_tasks_list = await AIService.generate_structured_plan(topic=title, plan_type="skill")
+            import asyncio
+            daily_tasks_list = asyncio.run(AIService.generate_structured_plan(topic=title, plan_type="skill"))
         except (ValueError, ConnectionError) as e:
             logging.error(f"AI Service failed to generate plan for skill '{title}': {e}")
             raise
@@ -31,7 +32,7 @@ class SkillService:
 
         image_url = None
         try:
-            image_url = await UnsplashService.fetch_image(title)
+            image_url = asyncio.run(UnsplashService.fetch_image(title))
         except Exception as e:
             logging.error(f"Unsplash fetch failed for skill '{title}': {e}")
 
@@ -59,7 +60,7 @@ class SkillService:
         }
 
         try:
-            created_plan_dict = await skill_repo.create(skill_plan_data)
+            created_plan_dict = skill_repo.create(skill_plan_data)
         except Exception as e:
             logging.error(f"Failed to save skill plan for user {user_id}: {e}")
             raise
@@ -70,26 +71,26 @@ class SkillService:
         return created_plan_dict
     
     @staticmethod
-    async def get_user_skills(user_id: str) -> list:
+    def get_user_skills(user_id: str) -> list:
         repository = SkillRepository(g.db.skills)
-        skills = await repository.find_by_user(user_id)
+        skills = repository.find_by_user(user_id)
         for skill in skills:
             skill['_id'] = str(skill['_id'])
         return skills
 
     @staticmethod
-    async def get_skill_by_id(skill_id: str, user_id: str) -> dict:
+    def get_skill_by_id(skill_id: str, user_id: str) -> dict:
         repository = SkillRepository(g.db.skills)
-        skill = await repository.find_by_id(skill_id, user_id)
+        skill = repository.find_by_id(skill_id, user_id)
         if not skill:
             raise ValueError("Skill not found or access denied")
         skill['_id'] = str(skill['_id'])
         return skill
 
     @staticmethod
-    async def complete_skill_day(skill_id: str, user_id: str, day_number: int) -> dict:
+    def complete_skill_day(skill_id: str, user_id: str, day_number: int) -> dict:
         repository = SkillRepository(g.db.skills)
-        skill = await repository.find_by_id(skill_id, user_id)
+        skill = repository.find_by_id(skill_id, user_id)
         
         if not skill:
             raise ValueError("Skill not found or access denied")
@@ -103,7 +104,7 @@ class SkillService:
         if daily_tasks[day_number - 1].get('completed', False):
             raise ValueError("Day is already completed")
         
-        await repository.update_day_completion(skill_id, user_id, day_number)
+        repository.update_day_completion(skill_id, user_id, day_number)
         
         completed_days = skill.get('progress', {}).get('completed_days', 0) + 1
         
@@ -113,13 +114,13 @@ class SkillService:
             "current_day": min(day_number + 1, 30),
             "last_accessed": datetime.utcnow()
         }
-        await repository.update_progress_stats(skill_id, user_id, progress_data)
+        repository.update_progress_stats(skill_id, user_id, progress_data)
         return progress_data
 
     @staticmethod
-    async def delete_skill(skill_id: str, user_id: str) -> bool:
+    def delete_skill(skill_id: str, user_id: str) -> bool:
         repository = SkillRepository(g.db.skills)
-        if not await repository.find_by_id(skill_id, user_id):
+        if not repository.find_by_id(skill_id, user_id):
             raise ValueError("Skill not found or access denied")
-        result = await repository.delete_by_id(skill_id, user_id)
+        result = repository.delete_by_id(skill_id, user_id)
         return result.deleted_count > 0 
