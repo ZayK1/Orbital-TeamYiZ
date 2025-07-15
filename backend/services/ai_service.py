@@ -2,61 +2,73 @@ import os
 import httpx
 import json
 import logging
+import time
 from typing import Dict, Any, List
+from datetime import datetime, timedelta
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 MODEL_NAME = os.getenv("AI_MODEL_NAME", "deepseek/deepseek-r1-0528:free")
 
 class AIService:
+    # Cache for generated plans to avoid repeated API calls
+    _plan_cache = {}
+    _last_api_call = 0
+    _api_cooldown = 60  # 1 minute cooldown between API calls
+    
     @staticmethod
     async def generate_structured_plan(topic: str, plan_type: str = "skill") -> List[Dict[str, Any]]:
-        
-        prompt = f"""
-        As an expert in curriculum design and habit formation, create a detailed 30-day plan for the following topic: "{topic}".
-        The plan should be for building a new {plan_type}.
-
-        The output MUST be a valid JSON object. Do not include any text, explanation, or markdown formatting before or after the JSON object.
-
-        The JSON object must have a single key "daily_tasks", which is an array of 30 objects.
-        Each object in the array represents one day and MUST have the following keys:
-        - "day": (Integer) The day number from 1 to 30.
-        - "title": (String) A concise, motivating title for the day's theme.
-        - "tasks": (Array) An array containing exactly two task objects for the day.
-
-        Each object inside the "tasks" array MUST have the following keys:
-        - "description": (String) A short, actionable description of the task. It should be easy to follow and not too verbose.
-        - "resources": (Array) An array of exactly two strings, where each string is a resource. A resource should be a specific, actionable item like a searchable topic, a book chapter, or a URL.
-
-        Example for a single day object:
-        {{
-          "day": 1,
-          "title": "Foundations of Python",
-          "tasks": [
-            {{
-              "description": "Install Python and set up your VS Code environment.",
-              "resources": [
-                "Official Python website: python.org/downloads",
-                "VS Code Python extension marketplace page"
-              ]
-            }},
-            {{
-              "description": "Write and run your first 'Hello, World!' program.",
-              "resources": [
-                "Tutorial: Real Python - Your First Python Program",
-                "Book: 'Python for Everybody' - Chapter 1"
-              ]
-            }}
-          ]
-        }}
         """
-
-        if not OPENROUTER_API_KEY:
-            logging.error("OPENROUTER_API_KEY is not set.")
-            raise ValueError("API key for AI service is not configured.")
-
-        ai_response_content = ""
+        Generate a structured 30-day plan with smart fallbacks:
+        1. Check cache first
+        2. Try AI service if cooldown period passed
+        3. Fall back to local template generation
+        """
+        
+        # Check cache first
+        cache_key = f"{topic.lower().strip()}_{plan_type}"
+        if cache_key in AIService._plan_cache:
+            logging.info(f"Using cached plan for {topic}")
+            return AIService._plan_cache[cache_key]
+        
+        # Check if we should try AI service (rate limiting)
+        current_time = time.time()
+        if current_time - AIService._last_api_call < AIService._api_cooldown:
+            logging.info(f"API cooldown active, using local generation for {topic}")
+            return AIService._generate_local_plan(topic, plan_type)
+        
+        # Try AI service first
+        if OPENROUTER_API_KEY:
+            try:
+                plan = await AIService._generate_ai_plan(topic, plan_type)
+                AIService._plan_cache[cache_key] = plan
+                AIService._last_api_call = current_time
+                return plan
+            except Exception as e:
+                logging.warning(f"AI service failed for {topic}: {e}")
+                # Fall back to local generation
+                return AIService._generate_local_plan(topic, plan_type)
+        
+        # No API key or service unavailable, use local generation
+        logging.info(f"No API key available, using local generation for {topic}")
+        return AIService._generate_local_plan(topic, plan_type)
+    
+    @staticmethod
+    async def _generate_ai_plan(topic: str, plan_type: str) -> List[Dict[str, Any]]:
+        """Generate plan using AI service with timeout and error handling"""
+        
+        prompt = f"""Create a concise 30-day {plan_type} plan for "{topic}". 
+        
+        Return JSON with "daily_tasks" array containing 30 objects. Each object needs:
+        - "day": number (1-30)
+        - "title": short day theme
+        - "tasks": array of 2 task objects with "description" and "resources" (2 items each)
+        
+        Example:
+        {{"daily_tasks": [{{"day": 1, "title": "Getting Started", "tasks": [{{"description": "Learn basics", "resources": ["Tutorial", "Documentation"]}}, {{"description": "Practice", "resources": ["Exercise", "Example"]}}]}}]}}
+        """
+        
         try:
-            async with httpx.AsyncClient(timeout=60.0) as client:
+            async with httpx.AsyncClient(timeout=30.0) as client:  # Reduced timeout
                 response = await client.post(
                     "https://openrouter.ai/api/v1/chat/completions",
                     headers={
@@ -66,95 +78,159 @@ class AIService:
                     json={
                         "model": MODEL_NAME,
                         "messages": [{"role": "user", "content": prompt}],
-                        "response_format": {"type": "json_object"}
-                    }
-                )
-                response.raise_for_status()
-
-            response_data = response.json()
-            ai_response_content = response_data["choices"][0]["message"]["content"]
-            logging.info(f"Raw AI Response: {ai_response_content}")
-            
-            parsed_plan = json.loads(ai_response_content)
-
-        
-            if isinstance(parsed_plan, dict) and "daily_tasks" in parsed_plan and isinstance(parsed_plan["daily_tasks"], list):
-                return parsed_plan["daily_tasks"]
-            
-            if isinstance(parsed_plan, list):
-                return parsed_plan
-
-            raise ValueError("AI response is missing 'daily_tasks' list or is malformed.")
-
-        except httpx.RequestError as e:
-            logging.error(f"HTTP request to AI service failed: {e}")
-            raise ConnectionError(f"Failed to connect to AI service: {e}")
-        except (KeyError, IndexError) as e:
-            logging.error(f"Failed to parse AI response structure: {e} - Response: {response_data}")
-            raise ValueError("Received an invalid response structure from the AI service.")
-        except json.JSONDecodeError:
-            logging.error(f"Failed to decode JSON from AI response. Raw content: {ai_response_content}")
-            raise ValueError("Received a non-JSON response from the AI service.")
-        except Exception as e:
-            logging.error(f"An unexpected error occurred in AIService: {e}")
-            raise
-
-    def __init__(self, api_key: str, model: str = "deepseek/deepseek-r1-0528:free"):
-        self.api_key = api_key
-        self.model = model
-        self.base_url = "https://openrouter.ai/api/v1"
-        
-    async def generate_skill_curriculum(
-        self,
-        skill_name: str,
-        difficulty: str,
-        duration_days: int
-    ) -> Dict[str, Any]:
-        
-        prompt = self._build_curriculum_prompt(skill_name, difficulty, duration_days)
-        
-        async with httpx.AsyncClient(timeout=90.0) as client:
-            try:
-                response = await client.post(
-                    f"{self.base_url}/chat/completions",
-                    headers={"Authorization": f"Bearer {self.api_key}"},
-                    json={
-                        "model": self.model,
                         "response_format": {"type": "json_object"},
-                        "messages": [
-                            {"role": "system", "content": "You are a world-class instructional designer..."},
-                            {"role": "user", "content": prompt}
-                        ]
+                        "max_tokens": 4000,  # Limit response size
+                        "temperature": 0.7
                     }
                 )
+                
+                if response.status_code == 429:  # Rate limited
+                    raise Exception("Rate limited by AI service")
+                
                 response.raise_for_status()
+                response_data = response.json()
+                ai_response_content = response_data["choices"][0]["message"]["content"]
                 
-                return response.json()["choices"][0]["message"]["content"]
+                parsed_plan = json.loads(ai_response_content)
                 
-            except httpx.HTTPStatusError as e:
-                raise AIGenerationError(f"AI service returned an error: {e.response.status_code}")
-            except Exception as e:
-                raise AIGenerationError(f"An unexpected error occurred: {str(e)}")
-
-    def _build_curriculum_prompt(self, skill_name, difficulty, duration_days) -> str:
-        return f"""
-        Generate a structured {duration_days}-day learning curriculum for the skill "{skill_name}"
-        at a "{difficulty}" level.
+                if isinstance(parsed_plan, dict) and "daily_tasks" in parsed_plan:
+                    return parsed_plan["daily_tasks"]
+                
+                raise ValueError("Invalid AI response format")
+                
+        except Exception as e:
+            logging.error(f"AI service error: {e}")
+            raise
+    
+    @staticmethod
+    def _generate_local_plan(topic: str, plan_type: str) -> List[Dict[str, Any]]:
+        """Generate a plan using local templates - fast and reliable"""
         
-        The output MUST be a single JSON object with the following structure:
-        {{
-          "total_days": {duration_days},
-          "days": [
-            {{
-              "day_number": 1,
-              "title": "Title for Day 1",
-              "tasks": ["Task 1", "Task 2"],
-              "resources": ["Resource URL or book name"],
-              "estimated_time": 60
-            }}
-          ]
-        }}
-        """
+        # Common skill templates
+        skill_templates = {
+            "programming": {
+                "weeks": [
+                    "Fundamentals and Setup",
+                    "Core Concepts",
+                    "Practical Application",
+                    "Advanced Topics"
+                ],
+                "daily_patterns": [
+                    "Learn syntax and setup development environment",
+                    "Practice basic concepts with examples",
+                    "Build a small project",
+                    "Review and debug code",
+                    "Explore advanced features"
+                ]
+            },
+            "language": {
+                "weeks": [
+                    "Basic Vocabulary",
+                    "Grammar Foundations", 
+                    "Conversation Practice",
+                    "Cultural Context"
+                ],
+                "daily_patterns": [
+                    "Learn new vocabulary words",
+                    "Practice grammar rules",
+                    "Listen to native speakers",
+                    "Practice speaking/writing",
+                    "Review and memorize"
+                ]
+            },
+            "fitness": {
+                "weeks": [
+                    "Foundation Building",
+                    "Strength Development",
+                    "Endurance Training",
+                    "Advanced Techniques"
+                ],
+                "daily_patterns": [
+                    "Basic exercises and form",
+                    "Strength training routine",
+                    "Cardio workout",
+                    "Flexibility and recovery",
+                    "Skill practice"
+                ]
+            },
+            "creative": {
+                "weeks": [
+                    "Tools and Basics",
+                    "Fundamental Techniques",
+                    "Creative Expression",
+                    "Advanced Skills"
+                ],
+                "daily_patterns": [
+                    "Learn basic tools and techniques",
+                    "Practice fundamental skills",
+                    "Create original work",
+                    "Study examples and styles",
+                    "Refine and improve"
+                ]
+            }
+        }
+        
+        # Determine template based on topic
+        template_key = AIService._categorize_topic(topic)
+        template = skill_templates.get(template_key, skill_templates["programming"])
+        
+        plan = []
+        
+        for day in range(1, 31):
+            week_index = (day - 1) // 7
+            week_theme = template["weeks"][min(week_index, len(template["weeks"]) - 1)]
+            
+            pattern_index = (day - 1) % len(template["daily_patterns"])
+            base_pattern = template["daily_patterns"][pattern_index]
+            
+            # Customize based on topic and day
+            title = f"Day {day}: {week_theme}"
+            
+            tasks = [
+                {
+                    "description": f"{base_pattern} related to {topic}",
+                    "resources": [
+                        f"Search: '{topic} {base_pattern.split()[0].lower()}'",
+                        f"Documentation: {topic} official guide"
+                    ]
+                },
+                {
+                    "description": f"Practice {topic} skills with hands-on exercises",
+                    "resources": [
+                        f"Tutorial: {topic} beginner guide",
+                        f"Practice: {topic} exercises"
+                    ]
+                }
+            ]
+            
+            plan.append({
+                "day": day,
+                "title": title,
+                "tasks": tasks
+            })
+        
+        # Cache the generated plan
+        cache_key = f"{topic.lower().strip()}_{plan_type}"
+        AIService._plan_cache[cache_key] = plan
+        
+        logging.info(f"Generated local plan for {topic} with {len(plan)} days")
+        return plan
+    
+    @staticmethod
+    def _categorize_topic(topic: str) -> str:
+        """Categorize topic to select appropriate template"""
+        topic_lower = topic.lower()
+        
+        if any(word in topic_lower for word in ['python', 'javascript', 'java', 'programming', 'coding', 'development', 'software']):
+            return "programming"
+        elif any(word in topic_lower for word in ['spanish', 'french', 'german', 'language', 'english', 'mandarin']):
+            return "language"
+        elif any(word in topic_lower for word in ['fitness', 'exercise', 'gym', 'running', 'yoga', 'workout']):
+            return "fitness"
+        elif any(word in topic_lower for word in ['art', 'drawing', 'painting', 'music', 'creative', 'design']):
+            return "creative"
+        else:
+            return "programming"  # Default fallback
 
 class AIGenerationError(Exception):
-    pass 
+    pass
