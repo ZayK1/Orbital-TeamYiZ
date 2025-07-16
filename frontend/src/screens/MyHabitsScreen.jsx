@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, StyleSheet, ActivityIndicator, TouchableOpacity, Alert } from 'react-native';
 import { useAuth } from '../context/AuthContext';
-import { getAllPlans } from '../api/plans';
+import { getAllPlans, deleteHabit } from '../api/plans';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
@@ -10,6 +10,8 @@ const MyHabitsScreen = () => {
   const navigation = useNavigation();
   const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [deletingId, setDeletingId] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchHabits = async () => {
@@ -25,17 +27,61 @@ const MyHabitsScreen = () => {
     if (token) fetchHabits();
   }, [token]);
 
+  const handleDelete = async (habitId) => {
+    setError(null);
+    setDeletingId(habitId);
+    try {
+      await deleteHabit(habitId, token);
+      setHabits((prev) => prev.filter((h) => h._id !== habitId));
+    } catch (err) {
+      setError('Failed to delete habit.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const confirmDelete = (habitId, title) => {
+    Alert.alert(
+      'Delete Habit',
+      `Are you sure you want to delete "${title}"? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Delete', style: 'destructive', onPress: () => handleDelete(habitId) },
+      ]
+    );
+  };
+
   const renderItem = ({ item }) => (
-    <TouchableOpacity style={styles.card} onPress={() => navigation.navigate('HabitDetail', { habitId: item._id })}>
-      <View style={styles.cardContent}>
-        <MaterialIcons name="check-circle" size={24} color={item.color || '#14B8A6'} style={{ marginRight: 12 }} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.subtitle}>{item.pattern?.frequency || 'Custom'}</Text>
+    <View style={styles.card}>
+      <TouchableOpacity style={{ flex: 1 }} onPress={() => navigation.navigate('RepositoryStack', { screen: 'HabitDetail', params: { habitId: item._id } })}>
+        <View style={styles.cardContent}>
+          <MaterialIcons name="check-circle" size={24} color={item.color || '#14B8A6'} style={{ marginRight: 12 }} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>{item.title}</Text>
+            <Text style={styles.subtitle}>{item.pattern?.frequency || 'Custom'}</Text>
+          </View>
         </View>
-        <MaterialIcons name="chevron-right" size={24} color="#9CA3AF" />
+      </TouchableOpacity>
+      <View style={styles.actionButtons}>
+        <TouchableOpacity
+          style={styles.editButton}
+          onPress={() => navigation.navigate('RepositoryStack', { screen: 'HabitDetail', params: { habitId: item._id } })}
+        >
+          <MaterialIcons name="edit" size={22} color="#6366F1" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.deleteButton}
+          onPress={() => confirmDelete(item._id, item.title)}
+          disabled={deletingId === item._id}
+        >
+          {deletingId === item._id ? (
+            <ActivityIndicator size="small" color="#EF4444" />
+          ) : (
+            <MaterialIcons name="delete" size={22} color="#EF4444" />
+          )}
+        </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   if (loading) {
@@ -49,6 +95,7 @@ const MyHabitsScreen = () => {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>My Habits</Text>
+      {error && <Text style={{ color: '#EF4444', textAlign: 'center', marginBottom: 8 }}>{error}</Text>}
       <FlatList
         data={habits}
         keyExtractor={(item) => item._id}
@@ -72,6 +119,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 18, fontWeight: '600', color: '#1F2937' },
   subtitle: { fontSize: 14, color: '#6B7280' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  actionButtons: { flexDirection: 'row', alignItems: 'center', marginLeft: 8 },
+  editButton: { padding: 6, marginRight: 2 },
+  deleteButton: { padding: 6 },
 });
 
 export default MyHabitsScreen; 
