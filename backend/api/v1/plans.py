@@ -6,6 +6,7 @@ from backend.auth.routes import require_auth
 from backend.schemas.plan_schemas import SkillCreateSchema, HabitCreateSchema, CheckinCreateSchema
 from backend.services.skill_service import SkillService
 from backend.services.habit_service import HabitService
+from backend.services.stats_service import StatsService
 v1_plans_blueprint = Blueprint('plans', __name__)
 
 
@@ -187,3 +188,28 @@ def validate_habit_streaks(habit_id: str):
     user_id = str(g.current_user['_id'])
     validation_result = HabitService.validate_and_fix_streaks(habit_id, user_id)
     return jsonify({"message": "Streak validation complete", "result": validation_result}), 200
+
+@v1_plans_blueprint.route('/stats', methods=['GET'])
+@require_auth
+def get_user_stats():
+    """Get comprehensive user statistics for the stats dashboard"""
+    from flask import current_app
+    from backend.repositories.skill_repository import SkillRepository
+    from backend.repositories.habit_repository import HabitRepository
+    from backend.repositories.checkin_repository import CheckinRepository
+    from backend.repositories.skill_completion_repository import SkillCompletionRepository
+    
+    user_id = str(g.current_user['_id'])
+    
+    # Create repository instances using Flask g.db
+    skill_repo = SkillRepository(g.db.skills)
+    habit_repo = HabitRepository(g.db.habits)
+    checkin_repo = CheckinRepository(g.db.checkins)
+    completion_repo = SkillCompletionRepository(g.db.skill_completions)
+    
+    try:
+        stats = StatsService.get_user_stats(user_id, skill_repo, habit_repo, checkin_repo, completion_repo)
+        return jsonify({"message": "Stats retrieved successfully", "stats": stats}), 200
+    except Exception as e:
+        current_app.logger.error(f"Error getting user stats: {str(e)}")
+        return jsonify({"error": "Failed to retrieve stats"}), 500

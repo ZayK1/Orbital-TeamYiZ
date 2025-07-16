@@ -2,6 +2,7 @@ from typing import List, Optional, Dict, Any, cast
 from datetime import datetime, timedelta
 from backend.models.base import SkillPlan
 from backend.repositories.skill_repository import SkillRepository
+from backend.repositories.skill_completion_repository import SkillCompletionRepository
 from backend.services.ai_service import AIService
 import logging
 from flask import g
@@ -90,6 +91,7 @@ class SkillService:
     @staticmethod
     def complete_skill_day(skill_id: str, user_id: str, day_number: int) -> dict:
         repository = SkillRepository(g.db.skills)
+        completion_repo = SkillCompletionRepository(g.db.skill_completions)
         skill = repository.find_by_id(skill_id, user_id)
         
         if not skill:
@@ -104,13 +106,23 @@ class SkillService:
         if daily_tasks[day_number - 1].get('completed', False):
             raise ValueError("Day is already completed")
         
+        # Update skill document
         repository.update_day_completion(skill_id, user_id, day_number)
+        
+        # Record completion in history
+        completion_data = {
+            "skill_title": skill.get('title', skill.get('skill_name', 'Unknown')),
+            "day_title": daily_tasks[day_number - 1].get('title', f'Day {day_number}'),
+            "day_description": daily_tasks[day_number - 1].get('description', ''),
+        }
+        completion_repo.create_completion(skill_id, user_id, day_number, completion_data)
         
         return SkillService._recalculate_progress(skill_id, user_id, repository)
 
     @staticmethod
     def undo_skill_day(skill_id: str, user_id: str, day_number: int) -> dict:
         repository = SkillRepository(g.db.skills)
+        completion_repo = SkillCompletionRepository(g.db.skill_completions)
         skill = repository.find_by_id(skill_id, user_id)
         
         if not skill:
@@ -125,7 +137,11 @@ class SkillService:
         if not daily_tasks[day_number - 1].get('completed', False):
             raise ValueError("Day is not completed")
         
+        # Update skill document
         repository.update_day_completion_undo(skill_id, user_id, day_number)
+        
+        # Remove completion from history
+        completion_repo.delete_completion(skill_id, user_id, day_number)
         
         return SkillService._recalculate_progress(skill_id, user_id, repository)
 
