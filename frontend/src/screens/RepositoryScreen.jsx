@@ -399,7 +399,7 @@ const FocusCard = ({
   const getProgressColor = (progress) => {
     if (progress >= 80) return backgroundColors[0];
     if (progress >= 50) return '#F59E0B';
-    return '#EF4444';
+    return '#14B8A6';
   };
   
   const progressColor = getProgressColor(progress);
