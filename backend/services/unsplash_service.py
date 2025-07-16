@@ -209,34 +209,161 @@ class UnsplashService:
         return "default"
 
     @staticmethod
-    async def fetch_image(query: str) -> str:
+    async def fetch_image(query: str, use_specific_query: bool = True) -> str:
+        """
+        Fetch a skill-relevant image from Unsplash API
+        
+        Args:
+            query: The skill name or topic
+            use_specific_query: If True, use the exact query; if False, use category-based keywords
+        
+        Returns:
+            URL of the fetched image
+        """
         if not ACCESS_KEY:
             logging.warning("UNSPLASH_ACCESS_KEY not set; returning random skill-relevant image")
-            category = UnsplashService._categorize_skill(query)
-            
-            images = SKILL_IMAGES.get(category, SKILL_IMAGES["default"])
-            selected_image = random.choice(images)
-            cache_buster = f"?refresh={random.randint(1000, 9999)}"
-            selected_image_with_cache = selected_image + cache_buster
-            logging.info(f"Selected {category} image for '{query}': {selected_image_with_cache}")
-            return selected_image_with_cache
+            return UnsplashService._get_fallback_image(query)
 
-        params = {"query": query, "orientation": "squarish"}
-        async with aiohttp.ClientSession() as session:
+        search_query = UnsplashService._generate_search_query(query, use_specific_query)
+        
+
+        search_strategies = [
+            search_query,
+            UnsplashService._get_category_keywords(query),
+            UnsplashService._get_broader_keywords(query)
+        ]
+        
+        for strategy_query in search_strategies:
             try:
-                async with session.get(UNSPLASH_API, headers=HEADERS, params=params, timeout=10) as resp:
-                    if resp.status != 200:
-                        raise ValueError(f"Unsplash API returned status {resp.status}")
-                    data = await resp.json()
-                    image_url = data.get("urls", {}).get("regular") or data.get("urls", {}).get("small")
-                    logging.info(f"Fetched image from Unsplash for '{query}': {image_url}")
+                image_url = await UnsplashService._fetch_from_unsplash(strategy_query)
+                if image_url:
+                    logging.info(f"Fetched image from Unsplash for '{query}' using query '{strategy_query}': {image_url}")
                     return image_url
             except Exception as e:
-                logging.error(f"Unsplash fetch failed: {e}")
-                category = UnsplashService._categorize_skill(query)
-                images = SKILL_IMAGES.get(category, SKILL_IMAGES["default"])
-                selected_image = random.choice(images)
-                cache_buster = f"?refresh={random.randint(1000, 9999)}"
-                fallback_image = selected_image + cache_buster
-                logging.info(f"Fallback to {category} image for '{query}': {fallback_image}")
-                return fallback_image
+                logging.warning(f"Failed to fetch image with query '{strategy_query}': {e}")
+                continue
+        
+        logging.warning(f"All Unsplash strategies failed for '{query}', using fallback")
+        return UnsplashService._get_fallback_image(query)
+    
+    @staticmethod
+    async def _fetch_from_unsplash(query: str) -> str:
+        """Make the actual API call to Unsplash"""
+        params = {
+            "query": query,
+            "orientation": "landscape",  
+            "per_page": 1,
+            "content_filter": "high"  
+        }
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(UNSPLASH_API, headers=HEADERS, params=params, timeout=15) as resp:
+                if resp.status != 200:
+                    raise ValueError(f"Unsplash API returned status {resp.status}")
+                
+                data = await resp.json()
+                
+                image_url = (
+                    data.get("urls", {}).get("regular") or 
+                    data.get("urls", {}).get("small") or
+                    data.get("urls", {}).get("thumb")
+                )
+                
+                if not image_url:
+                    raise ValueError("No image URL found in response")
+                
+                return image_url
+    
+    @staticmethod
+    def _generate_search_query(query: str, use_specific: bool = True) -> str:
+        """Generate an enhanced search query for Unsplash"""
+        if not use_specific:
+            return UnsplashService._get_category_keywords(query)
+        
+        cleaned_query = query.lower().strip()
+        
+        category = UnsplashService._categorize_skill(query)
+        
+        if category == "programming":
+            return f"{cleaned_query} coding development computer"
+        elif category == "language":
+            return f"{cleaned_query} language learning books study"
+        elif category == "design":
+            return f"{cleaned_query} design creative art workspace"
+        elif category == "photography":
+            return f"{cleaned_query} photography camera lens"
+        elif category == "music":
+            return f"{cleaned_query} music instrument sound"
+        elif category == "fitness":
+            return f"{cleaned_query} fitness exercise workout"
+        elif category == "cooking":
+            return f"{cleaned_query} cooking food kitchen"
+        elif category == "business":
+            return f"{cleaned_query} business office professional"
+        elif category == "science":
+            return f"{cleaned_query} science research laboratory"
+        elif category == "writing":
+            return f"{cleaned_query} writing books author"
+        else:
+            return f"{cleaned_query} learning education study"
+    
+    @staticmethod
+    def _get_category_keywords(query: str) -> str:
+        """Get category-specific keywords for broader search"""
+        category = UnsplashService._categorize_skill(query)
+        
+        category_keywords = {
+            "programming": "programming code developer computer technology",
+            "web_development": "web development coding computer screen",
+            "data_science": "data science analytics computer charts",
+            "mobile_development": "mobile app development smartphone",
+            "language": "language learning books education study",
+            "design": "design creative art workspace tablet",
+            "photography": "photography camera equipment lens",
+            "music": "music instrument piano guitar",
+            "business": "business office professional meeting",
+            "marketing": "marketing digital advertising creative",
+            "fitness": "fitness exercise gym workout",
+            "cooking": "cooking food kitchen ingredients",
+            "science": "science laboratory research experiment",
+            "writing": "writing books author notebook",
+            "default": "learning education study books"
+        }
+        
+        return category_keywords.get(category, category_keywords["default"])
+    
+    @staticmethod
+    def _get_broader_keywords(query: str) -> str:
+        """Get very broad keywords as last resort"""
+        category = UnsplashService._categorize_skill(query)
+        
+        broad_keywords = {
+            "programming": "technology",
+            "web_development": "technology",
+            "data_science": "technology",
+            "mobile_development": "technology",
+            "language": "education",
+            "design": "creative",
+            "photography": "creative",
+            "music": "creative",
+            "business": "professional",
+            "marketing": "professional",
+            "fitness": "health",
+            "cooking": "lifestyle",
+            "science": "education",
+            "writing": "creative",
+            "default": "learning"
+        }
+        
+        return broad_keywords.get(category, broad_keywords["default"])
+    
+    @staticmethod
+    def _get_fallback_image(query: str) -> str:
+        """Get fallback image from hardcoded list"""
+        category = UnsplashService._categorize_skill(query)
+        images = SKILL_IMAGES.get(category, SKILL_IMAGES["default"])
+        selected_image = random.choice(images)
+        cache_buster = f"?refresh={random.randint(1000, 9999)}"
+        fallback_image = selected_image + cache_buster
+        logging.info(f"Using fallback {category} image for '{query}': {fallback_image}")
+        return fallback_image

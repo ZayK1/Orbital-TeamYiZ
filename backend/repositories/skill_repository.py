@@ -39,10 +39,8 @@ class SkillRepository:
         )
     
     def update_skill(self, skill_id: str, user_id: str, update_data: dict) -> dict:
-        # Add updated timestamp
         update_data["updated_at"] = datetime.utcnow()
         
-        # Update the skill
         result: UpdateResult = self.collection.update_one(
             {"_id": ObjectId(skill_id), "user_id": user_id},
             {"$set": update_data}
@@ -51,7 +49,6 @@ class SkillRepository:
         if result.matched_count == 0:
             raise ValueError("Skill not found or access denied")
         
-        # Return the updated skill
         return self.collection.find_one({
             "_id": ObjectId(skill_id), 
             "user_id": user_id

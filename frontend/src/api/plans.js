@@ -112,4 +112,11 @@ export const refreshSkillImage = async (skillId, token) => {
     { headers: { Authorization: `Bearer ${token}` } }
   );
   return response.data;
+};
+
+export const getUserStats = async (token) => {
+  const response = await axios.get(`${API_BASE_URL}/api/v1/plans/stats`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
 }; 

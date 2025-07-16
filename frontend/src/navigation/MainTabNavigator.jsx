@@ -112,14 +112,21 @@ const MyTabBar = ({ state, descriptors, navigation, setTabBarVisible }) => {
 
             const iconName =
               route.name === 'RepositoryStack'
-                ? 'dashboard'
+                ? 'home'
+                : route.name === 'MyHabits'
+                ? 'track-changes'
                 : route.name === 'Explore'
                 ? 'explore'
                 : route.name === 'Stats'
-                ? 'insights'
+                ? 'bar-chart'
                 : 'person';
 
-            const tabColor = isFocused ? '#14B8A6' : '#888';
+            const tabColor = isFocused ? '#14B8A6' : '#9CA3AF';
+
+            // Skip the middle tab (reserved for add button)
+            if (route.name === 'Explore') {
+              return <View key={route.key} style={styles.tabSpacer} />;
+            }
 
             return (
               <TouchableOpacity
@@ -128,37 +135,39 @@ const MyTabBar = ({ state, descriptors, navigation, setTabBarVisible }) => {
                 accessibilityState={isFocused ? { selected: true } : {}}
                 onPress={onPress}
                 onLongPress={onLongPress}
-                style={{
-                  flex: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginRight: route.name === 'Explore' ? 40 : 0,
-                  marginLeft: route.name === 'Stats' ? 40 : 0,
-                }}
+                style={styles.tabItem}
               >
-                <MaterialIcons name={iconName} size={24} color={tabColor} />
-                <Text style={{ color: tabColor, fontSize: 11, marginTop: 4 }}>
+                <View style={[styles.tabIconContainer, isFocused && styles.tabIconContainerActive]}>
+                  <MaterialIcons name={iconName} size={22} color={tabColor} />
+                </View>
+                <Text style={[styles.tabLabel, { color: tabColor }]}>
                   {label}
                 </Text>
               </TouchableOpacity>
             );
           })}
         </BlurView>
-        <TouchableOpacity style={styles.addButton} onPress={toggleMenu}>
-          <MaterialIcons name={addMenuVisible ? "close" : "add"} size={32} color="white" />
+        <TouchableOpacity style={styles.addButton} onPress={toggleMenu} activeOpacity={0.8}>
+          <View style={styles.addButtonInner}>
+            <MaterialIcons name={addMenuVisible ? "close" : "add"} size={28} color="white" />
+          </View>
         </TouchableOpacity>
       </View>
       <View style={styles.actionButtonContainer}>
-        <Animated.View style={[styles.actionButton, { borderColor: '#8B5CF6' }, skillButtonStyle]}>
-          <TouchableOpacity onPress={() => navigateAndClose('AddSkill')} style={styles.actionButtonContent}>
-            <MaterialIcons name="psychology" size={28} color="#8B5CF6" />
-            <Text style={styles.actionButtonLabel}>Skill</Text>
+        <Animated.View style={[styles.actionButton, skillButtonStyle]}>
+          <TouchableOpacity onPress={() => navigateAndClose('AddSkill')} style={styles.actionButtonContent} activeOpacity={0.8}>
+            <View style={[styles.actionButtonIconBg, { backgroundColor: '#8B5CF6' + '15' }]}>
+              <MaterialIcons name="psychology" size={24} color="#8B5CF6" />
+            </View>
+            <Text style={[styles.actionButtonLabel, { color: '#8B5CF6' }]}>Skill</Text>
           </TouchableOpacity>
         </Animated.View>
         <Animated.View style={[styles.actionButton, habitButtonStyle]}>
-          <TouchableOpacity onPress={() => navigateAndClose('AddHabit')} style={styles.actionButtonContent}>
-            <MaterialIcons name="repeat" size={28} color="#14B8A6" />
-            <Text style={styles.actionButtonLabel}>Habit</Text>
+          <TouchableOpacity onPress={() => navigateAndClose('AddHabit')} style={styles.actionButtonContent} activeOpacity={0.8}>
+            <View style={[styles.actionButtonIconBg, { backgroundColor: '#14B8A6' + '15' }]}>
+              <MaterialIcons name="repeat" size={24} color="#14B8A6" />
+            </View>
+            <Text style={[styles.actionButtonLabel, { color: '#14B8A6' }]}>Habit</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -204,7 +213,7 @@ export default function MainTabNavigator() {
           }}
         >
           <Tab.Screen name="RepositoryStack" component={RepositoryStackNavigator} options={{ title: 'Home' }} />
-          <Tab.Screen name="MyHabits" component={MyHabitsScreen} options={{ title: 'My Habits', tabBarIcon: ({ color, size }) => (<MaterialIcons name="list" size={size} color={color} />) }} />
+          <Tab.Screen name="MyHabits" component={MyHabitsScreen} options={{ title: 'Habits' }} />
           <Tab.Screen name="Explore" component={ExploreScreen} options={{ title: 'Discover' }} />
           <Tab.Screen name="Stats" component={StatsScreen} options={{ title: 'Stats' }} />
           <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
@@ -213,8 +222,9 @@ export default function MainTabNavigator() {
           <TouchableOpacity
             onPress={() => setTabBarVisible(true)}
             style={styles.catalogButton}
+            activeOpacity={0.8}
           >
-            <MaterialIcons name="menu" size={28} color="#111827" />
+            <MaterialIcons name="apps" size={24} color="#14B8A6" />
           </TouchableOpacity>
         )}
       </View>
@@ -225,10 +235,10 @@ export default function MainTabNavigator() {
 const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
-    bottom: 25,
-    left: 20,
-    right: 20,
-    height: 60,
+    bottom: Platform.OS === 'ios' ? 34 : 20,
+    left: 16,
+    right: 16,
+    height: 70,
     elevation: 0,
     alignItems: 'center',
     justifyContent: 'center',
@@ -237,68 +247,108 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
     height: '100%',
-    borderRadius: 30,
+    borderRadius: 24,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: '#14B8A6',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.9)' : 'white',
+    borderWidth: 0.5,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+  },
+  tabSpacer: {
+    width: 60,
+    height: '100%',
+  },
+  tabIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  tabIconContainerActive: {
+    backgroundColor: 'rgba(20, 184, 166, 0.1)',
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    textAlign: 'center',
   },
   addButton: {
     position: 'absolute',
-    top: -20,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    top: -12,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: '#14B8A6',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowColor: '#14B8A6',
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 8,
+    shadowRadius: 8,
+    elevation: 12,
+  },
+  addButtonInner: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   catalogButton: {
     position: 'absolute',
-    bottom: 25,
-    right: 20,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    bottom: Platform.OS === 'ios' ? 50 : 36,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: '#14B8A6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   actionButtonContainer: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: 200,
+    bottom: Platform.OS === 'ios' ? 180 : 160,
     alignItems: 'center',
   },
   actionButton: {
     position: 'absolute',
     left: '50%',
-    marginLeft: -40,
-    width: 80,
-    height: 70,
-    borderRadius: 16,
+    marginLeft: -45,
+    width: 90,
+    height: 80,
+    borderRadius: 20,
     backgroundColor: 'white',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
-    borderWidth: 1,
-    borderColor: '#14B8A6',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    borderWidth: 0.5,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   actionButtonContent: {
     flex: 1,
@@ -306,9 +356,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionButtonLabel: {
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    fontWeight: '600',
     color: '#374151',
-    marginTop: 4,
+    marginTop: 6,
   },
 }); 
