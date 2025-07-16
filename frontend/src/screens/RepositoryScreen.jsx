@@ -326,7 +326,7 @@ export default function RepositoryScreen() {
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Today's Habits</Text>
           {habits.length > 4 && (
-            <TouchableOpacity style={styles.viewAll} onPress={() => navigation.navigate('AllHabits')}>
+            <TouchableOpacity style={styles.viewAll} onPress={() => navigation.navigate('MyHabits')}>
               <Text style={styles.viewAllText}>See All</Text>
               <MaterialIcons name="chevron-right" size={18} color="#14B8A6" />
             </TouchableOpacity>

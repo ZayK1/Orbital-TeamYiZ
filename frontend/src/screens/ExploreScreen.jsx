@@ -10,7 +10,7 @@ const ExploreScreen = () => {
         <Text style={styles.title}>Discover Skills – Beta</Text>
         <Text style={styles.paragraph}>
           We're busy crafting an awesome discovery experience! Soon you'll be able to upload your own skills
-          or browse popular learning paths from the community and instantly add them to your repository.
+          or browse popular learning paths from the community and instantly add them to your personal repository.
           Stay tuned – you're about to unlock a world of knowledge!
         </Text>
       </View>
