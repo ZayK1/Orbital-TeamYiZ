@@ -4,7 +4,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
-import { getSkillById, markSkillDayComplete, undoSkillDayComplete, updateSkill } from '../api/plans';
+import { getSkillById, markSkillDayComplete, undoSkillDayComplete, updateSkill, refreshSkillImage } from '../api/plans';
 
 const { width, height } = Dimensions.get('window');
 
@@ -20,6 +20,8 @@ const SkillDetailScreen = () => {
   const [expandedDay, setExpandedDay] = useState(null);
   const [taskCompletionLoading, setTaskCompletionLoading] = useState(false);
   const [showResourcesModal, setShowResourcesModal] = useState(false);
+  const [showMenuModal, setShowMenuModal] = useState(false);
+  const [imageRefreshLoading, setImageRefreshLoading] = useState(false);
 
   const fetchSkill = async () => {
     try {
@@ -50,6 +52,22 @@ const SkillDetailScreen = () => {
     } catch (error) {
       console.error('Error opening URL:', error);
       Alert.alert('Error', 'Unable to open this link');
+    }
+  };
+
+  const handleImageRefresh = async () => {
+    setImageRefreshLoading(true);
+    setShowMenuModal(false);
+    
+    try {
+      const updatedSkill = await refreshSkillImage(skill._id, token);
+      setSkill(updatedSkill);
+      Alert.alert('Success', 'Background image refreshed successfully!');
+    } catch (error) {
+      console.error('Error refreshing image:', error);
+      Alert.alert('Error', 'Failed to refresh background image. Please try again.');
+    } finally {
+      setImageRefreshLoading(false);
     }
   };
 
@@ -352,10 +370,10 @@ const SkillDetailScreen = () => {
             </TouchableOpacity>
             <Text style={styles.headerTitle}>{skill.title}</Text>
             <TouchableOpacity
-              style={styles.editButton}
-              onPress={() => navigation.navigate('SkillEdit', { skillId: skill._id })}
+              style={styles.menuButton}
+              onPress={() => setShowMenuModal(true)}
             >
-              <MaterialIcons name="edit" size={24} color="white" />
+              <MaterialIcons name="more-vert" size={24} color="white" />
             </TouchableOpacity>
           </View>
           
@@ -634,6 +652,72 @@ const SkillDetailScreen = () => {
             </View>
           </ScrollView>
         </View>
+      </Modal>
+      
+      {/* Three-dot Menu Modal */}
+      <Modal
+        visible={showMenuModal}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setShowMenuModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.menuOverlay}
+          activeOpacity={1}
+          onPress={() => setShowMenuModal(false)}
+        >
+          <View style={styles.menuContainer}>
+            <View style={styles.menuHeader}>
+              <Text style={styles.menuTitle}>Skill Options</Text>
+            </View>
+            
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={handleImageRefresh}
+              disabled={imageRefreshLoading}
+            >
+              <MaterialIcons name="refresh" size={20} color="#667eea" />
+              <Text style={styles.menuItemText}>
+                {imageRefreshLoading ? 'Refreshing...' : 'Refresh Background Image'}
+              </Text>
+              {imageRefreshLoading && (
+                <ActivityIndicator size="small" color="#667eea" style={styles.menuItemLoader} />
+              )}
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setShowMenuModal(false);
+                navigation.navigate('SkillEdit', { skillId: skill._id });
+              }}
+            >
+              <MaterialIcons name="edit" size={20} color="#667eea" />
+              <Text style={styles.menuItemText}>Edit Skill</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[styles.menuItem, styles.deleteMenuItem]}
+              onPress={() => {
+                setShowMenuModal(false);
+                Alert.alert(
+                  'Delete Skill',
+                  'Are you sure you want to delete this skill? This action cannot be undone.',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: 'Delete', style: 'destructive', onPress: () => {
+                      // Handle delete functionality here
+                      Alert.alert('Info', 'Delete functionality will be implemented soon');
+                    }}
+                  ]
+                );
+              }}
+            >
+              <MaterialIcons name="delete" size={20} color="#ef4444" />
+              <Text style={[styles.menuItemText, styles.deleteMenuItemText]}>Delete Skill</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
       </Modal>
     </View>
   );
@@ -1325,6 +1409,75 @@ const styles = StyleSheet.create({
     color: '#6b7280',
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // Menu Modal Styles
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  menuContainer: {
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
+    padding: 8,
+    minWidth: 250,
+    maxWidth: 300,
+    borderWidth: 1,
+    borderColor: '#334155',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  menuHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  menuTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#cbd5e1',
+    textAlign: 'center',
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 8,
+    margin: 4,
+  },
+  menuItemText: {
+    fontSize: 14,
+    color: '#cbd5e1',
+    marginLeft: 12,
+    flex: 1,
+    fontWeight: '500',
+  },
+  menuItemLoader: {
+    marginLeft: 8,
+  },
+  deleteMenuItem: {
+    marginTop: 4,
+  },
+  deleteMenuItemText: {
+    color: '#ef4444',
+  },
+  // Update button styles
+  menuButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 
