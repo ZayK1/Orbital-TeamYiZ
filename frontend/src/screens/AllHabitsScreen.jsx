@@ -39,7 +39,6 @@ const AllHabitsScreen = () => {
     }
   }, [token]);
 
-  // Refresh habits when screen comes into focus
   useFocusEffect(
     React.useCallback(() => {
       if (token) {
@@ -61,7 +60,7 @@ const AllHabitsScreen = () => {
             try {
               setLoading(true);
               await deleteHabit(habit._id, token);
-              await fetchHabits(); // Refresh the list
+              await fetchHabits(); 
               Alert.alert('Success', 'Habit deleted successfully');
             } catch (err) {
               console.error('Failed to delete habit', err);

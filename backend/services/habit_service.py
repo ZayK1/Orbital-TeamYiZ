@@ -23,20 +23,16 @@ class HabitService:
 
         now = datetime.utcnow()
 
-        # Validate dates
         if start_date and end_date and end_date < start_date:
             raise ValueError("End date cannot be before start date.")
 
-        # Validate reminder_time (should be a time object or None)
         if reminder_time and hasattr(reminder_time, 'isoformat'):
             reminder_time_val = reminder_time.isoformat()
         else:
             reminder_time_val = None
 
-        # Use custom_days if provided, else default to all days
         target_days = custom_days if custom_days else [1, 2, 3, 4, 5, 6, 7]
 
-        # Convert start_date and end_date to datetime.datetime for MongoDB compatibility
         start_date_dt = datetime.combine(start_date, datetime.min.time()) if start_date else None
         end_date_dt = datetime.combine(end_date, datetime.min.time()) if end_date else None
 
@@ -90,13 +86,11 @@ class HabitService:
         checkin_repo = CheckinRepository(g.db.habit_checkins)
         habits = repository.find_by_user(user_id)
         
-        # Get today's date
         today = date.today()
         
         for habit in habits:
             habit['_id'] = str(habit['_id'])
             
-            # Check if habit was completed today
             todays_checkin = checkin_repo.find_by_habit_and_date(habit['_id'], user_id, today)
             habit['checked_today'] = todays_checkin is not None
             
@@ -118,7 +112,6 @@ class HabitService:
         if not habit:
             raise ValueError("Habit not found or access denied")
 
-        # Convert dates and reminder_time if present
         if 'start_date' in update_fields and update_fields['start_date']:
             update_fields['start_date'] = datetime.combine(update_fields['start_date'], datetime.min.time())
         if 'end_date' in update_fields and update_fields['end_date']:
@@ -133,7 +126,6 @@ class HabitService:
             if 'pattern' not in update_fields:
                 update_fields['pattern'] = habit.get('pattern', {})
             update_fields['pattern']['reminder_time'] = update_fields.pop('reminder_time')
-        # Remove fields that should be inside pattern
         for field in ['custom_days', 'reminder_time']:
             if field in update_fields:
                 update_fields.pop(field)
@@ -186,30 +178,24 @@ class HabitService:
         total_completions = len(checkins)
         today = date.today()
         
-        # Convert to sorted date list
         checkin_dates = sorted({c['date'].date() for c in checkins})
         
-        # Calculate current streak (consecutive days ending today or yesterday)
         current_streak = 0
         check_date = today
         
-        # Check if there's a checkin today
         if check_date in checkin_dates:
             current_streak = 1
             check_date -= timedelta(days=1)
         else:
-            # If no checkin today, check if there's one yesterday
             check_date = today - timedelta(days=1)
             if check_date in checkin_dates:
                 current_streak = 1
                 check_date -= timedelta(days=1)
         
-        # Count consecutive days backwards
         while check_date in checkin_dates:
             current_streak += 1
             check_date -= timedelta(days=1)
         
-        # Calculate longest streak
         longest_streak = 0
         if checkin_dates:
             temp_streak = 1
@@ -240,13 +226,10 @@ class HabitService:
         if not habit:
             raise ValueError("Habit not found or access denied")
         
-        # Force recalculation of streaks
         updated_streaks = HabitService._recalculate_streaks(habit_id, user_id)
         
-        # Validate checkin data consistency
         checkins = checkin_repo.find_completed_by_habit(habit_id, user_id)
         
-        # Remove any duplicate checkins for the same date
         seen_dates = set()
         for checkin in checkins:
             checkin_date = checkin['date'].date()
@@ -256,7 +239,6 @@ class HabitService:
             else:
                 seen_dates.add(checkin_date)
         
-        # Recalculate streaks after cleanup
         final_streaks = HabitService._recalculate_streaks(habit_id, user_id)
         habit_repo.update_streaks(habit_id, user_id, final_streaks)
         

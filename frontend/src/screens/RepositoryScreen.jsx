@@ -100,11 +100,9 @@ export default function RepositoryScreen() {
   const firstSkill = skills.length > 0 ? skills[0] : null;
   const todaysHabits = habits.slice(0, 4);
 
-  // Calculate today's focus data
   const getTodaysFocusData = () => {
     const today = new Date();
     
-    // Daily Goals: Calculate today's completed tasks across all skills
     let totalTodaysTasks = 0;
     let completedTodaysTasks = 0;
     
@@ -118,7 +116,6 @@ export default function RepositoryScreen() {
       }
     });
     
-    // Add today's habits to daily goals
     const todaysHabitsCount = todaysHabits.length;
     const completedHabitsCount = todaysHabits.filter(h => completedHabits.has(h._id)).length;
     
@@ -127,19 +124,16 @@ export default function RepositoryScreen() {
     
     const dailyGoalsProgress = totalTodaysTasks > 0 ? Math.round((completedTodaysTasks / totalTodaysTasks) * 100) : 0;
     
-    // Weekly Progress: Calculate this week's activity
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay());
     
     let weeklyActiveDays = 0;
     const daysInWeek = 7;
     
-    // Check skill activity for each day of the week
     for (let i = 0; i < daysInWeek; i++) {
       const checkDate = new Date(startOfWeek);
       checkDate.setDate(startOfWeek.getDate() + i);
       if (checkDate <= today) {
-        // Check if any skill had activity on this day
         const hasActivity = skills.some(skill => {
           const skillStartDate = new Date(skill.progress?.started_at || skill.created_at);
           const daysSinceStart = Math.floor((checkDate - skillStartDate) / (1000 * 60 * 60 * 24)) + 1;

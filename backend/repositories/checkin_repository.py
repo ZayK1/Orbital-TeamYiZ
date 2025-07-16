@@ -29,14 +29,11 @@ class CheckinRepository:
         """Find a specific checkin for a habit on a specific date"""
         from datetime import datetime
         
-        # Handle different date input types
         if isinstance(date_to_check, str):
-            # Parse ISO date string like "2025-07-15"
             date_to_check = datetime.fromisoformat(date_to_check).date()
         elif isinstance(date_to_check, datetime):
             date_to_check = date_to_check.date()
         
-        # Convert date to datetime for MongoDB query (UTC)
         start_of_day = datetime.combine(date_to_check, datetime.min.time())
         end_of_day = datetime.combine(date_to_check, datetime.max.time())
         

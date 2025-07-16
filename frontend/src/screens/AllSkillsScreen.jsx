@@ -70,7 +70,7 @@ const AllSkillsScreen = () => {
       const response = await refreshSkillImage(selectedSkill._id, token);
       console.log('Refresh response:', response);
       
-      await fetchSkills(); // Refresh the list
+      await fetchSkills(); 
       Alert.alert('Success', 'Background image refreshed successfully! A new image has been selected from our collection.');
     } catch (err) {
       console.error('Failed to refresh image', err);
@@ -109,7 +109,7 @@ const AllSkillsScreen = () => {
             try {
               setLoading(true);
               await deleteSkill(selectedSkill._id, token);
-              await fetchSkills(); // Refresh the list
+              await fetchSkills(); 
               Alert.alert('Success', 'Skill deleted successfully');
             } catch (err) {
               console.error('Failed to delete skill', err);

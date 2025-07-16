@@ -13,20 +13,15 @@ class StatsService:
         Generate comprehensive user statistics for the stats dashboard
         """
         
-        # Get all user data
         skills = skill_repo.find_by_user(user_id)
         habits = habit_repo.find_by_user(user_id)
         
-        # Calculate skills statistics
         skills_stats = StatsService._calculate_skills_stats(skills, completion_repo, user_id)
         
-        # Calculate habits statistics
         habits_stats = StatsService._calculate_habits_stats(habits, checkin_repo, user_id)
         
-        # Calculate overall user progress
         overall_stats = StatsService._calculate_overall_stats(skills, habits)
         
-        # Calculate activity timeline data
         activity_timeline = StatsService._calculate_activity_timeline(skills, habits, checkin_repo, completion_repo, user_id)
         
         return {
@@ -55,7 +50,6 @@ class StatsService:
         active_skills = len([s for s in skills if s.get('status') == 'active'])
         completed_skills = len([s for s in skills if s.get('status') == 'completed'])
         
-        # Calculate completion statistics
         completion_percentages = []
         total_days_completed = 0
         skills_breakdown = []
@@ -82,7 +76,6 @@ class StatsService:
         
         average_completion = sum(completion_percentages) / len(completion_percentages) if completion_percentages else 0
         
-        # Calculate completion trend (last 7 days)
         completion_trend = StatsService._calculate_skills_completion_trend(skills, completion_repo, user_id)
         
         return {
@@ -113,7 +106,6 @@ class StatsService:
         total_habits = len(habits)
         active_habits = len([h for h in habits if h.get('status') == 'active'])
         
-        # Calculate habit statistics
         total_checkins = 0
         all_current_streaks = []
         all_longest_streaks = []
@@ -130,7 +122,6 @@ class StatsService:
             all_current_streaks.append(current_streak)
             all_longest_streaks.append(longest_streak)
             
-            # Get recent checkins for this habit
             recent_checkins = checkin_repo.get_recent_for_habit(habit_id, 30)
             
             habits_breakdown.append({
@@ -147,10 +138,8 @@ class StatsService:
                 "recent_activity": len(recent_checkins)
             })
         
-        # Calculate weekly checkins (last 7 days)
         weekly_checkins = StatsService._calculate_weekly_checkins(habits, checkin_repo, user_id)
         
-        # Calculate consistency score (percentage of expected checkins completed)
         consistency_score = StatsService._calculate_consistency_score(habits, checkin_repo, user_id)
         
         return {
@@ -167,7 +156,6 @@ class StatsService:
     @staticmethod
     def _calculate_overall_stats(skills: List[Dict], habits: List[Dict]) -> Dict:
         """Calculate overall user progress statistics"""
-        # Calculate days since user started (based on oldest creation date)
         all_items = skills + habits
         if not all_items:
             days_active = 0
@@ -181,7 +169,6 @@ class StatsService:
             else:
                 days_active = 0
         
-        # Calculate total progress points
         total_skills = len(skills)
         total_habits = len(habits)
         total_skill_days = sum([skill.get('progress', {}).get('completed_days', 0) for skill in skills])
@@ -205,7 +192,6 @@ class StatsService:
         for i in range(7):
             date = base_date + timedelta(days=i)
             
-            # Count actual skill completions for this date
             skill_completions = completion_repo.find_completions_by_date(user_id, date)
             completed_days = len(skill_completions)
             
@@ -227,7 +213,6 @@ class StatsService:
             date = base_date + timedelta(days=i)
             day_checkins = 0
             
-            # Count checkins for this specific date across all habits
             for habit in habits:
                 habit_id = str(habit.get('_id'))
                 checkin = checkin_repo.find_by_habit_and_date(habit_id, user_id, date.date())
@@ -251,22 +236,19 @@ class StatsService:
         total_expected = 0
         total_completed = 0
         
-        # Calculate for last 30 days
         for habit in habits:
             habit_id = str(habit.get('_id'))
             frequency = habit.get('pattern', {}).get('frequency', 'daily')
             
-            # For daily habits, expect 30 checkins in 30 days
             if frequency == 'daily':
                 expected_checkins = 30
             elif frequency == 'weekly':
-                expected_checkins = 4  # ~4 weeks
+                expected_checkins = 4  
             else:
-                expected_checkins = 15  # Custom/other frequencies
+                expected_checkins = 15  
             
             total_expected += expected_checkins
             
-            # Count actual checkins in last 30 days
             recent_checkins = checkin_repo.get_recent_for_habit(habit_id, 30)
             total_completed += len(recent_checkins)
         
@@ -284,11 +266,9 @@ class StatsService:
         for i in range(30):
             date = base_date + timedelta(days=i)
             
-            # Count actual skill completions for this date
             skill_completions = completion_repo.find_completions_by_date(user_id, date)
             skill_activity = len(skill_completions)
             
-            # Count habit checkins for this date
             habit_checkins = 0
             for habit in habits:
                 habit_id = str(habit.get('_id'))
@@ -298,11 +278,9 @@ class StatsService:
             
             total_activity = skill_activity + habit_checkins
             
-            # Calculate intensity based on total possible activities
             max_possible = len(skills) + len(habits)
             intensity = min(total_activity / max(max_possible, 1), 1.0) if max_possible > 0 else 0
             
-            # Get completion details for tooltip
             completion_details = []
             for completion in skill_completions:
                 completion_details.append({
@@ -312,7 +290,6 @@ class StatsService:
                     "completed_at": completion.get('completed_at').strftime("%H:%M") if completion.get('completed_at') else "Unknown"
                 })
             
-            # Add habit checkin details
             for habit in habits:
                 habit_id = str(habit.get('_id'))
                 checkin = checkin_repo.find_by_habit_and_date(habit_id, user_id, date.date())

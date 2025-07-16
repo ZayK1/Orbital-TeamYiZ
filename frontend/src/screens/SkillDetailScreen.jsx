@@ -706,7 +706,6 @@ const SkillDetailScreen = () => {
                   [
                     { text: 'Cancel', style: 'cancel' },
                     { text: 'Delete', style: 'destructive', onPress: () => {
-                      // Handle delete functionality here
                       Alert.alert('Info', 'Delete functionality will be implemented soon');
                     }}
                   ]
@@ -1280,7 +1279,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  // Resources Button Styles
   resourcesButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1306,7 +1304,6 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     marginRight: 4,
   },
-  // Resources Modal Styles
   modalContainer: {
     flex: 1,
     backgroundColor: '#0f172a',
@@ -1410,7 +1407,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
-  // Menu Modal Styles
   menuOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -1470,7 +1466,6 @@ const styles = StyleSheet.create({
   deleteMenuItemText: {
     color: '#ef4444',
   },
-  // Update button styles
   menuButton: {
     width: 40,
     height: 40,

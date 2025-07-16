@@ -6,7 +6,6 @@ from typing import List, Dict, Any
 class ResourceService:
     """Service for generating real, actionable learning resources with live URLs"""
     
-    # Resource databases organized by skill category
     PROGRAMMING_RESOURCES = {
         "python": {
             "documentation": "https://docs.python.org/3/",
@@ -97,7 +96,6 @@ class ResourceService:
         }
     }
     
-    # General fallback resources
     GENERAL_RESOURCES = {
         "documentation": "https://www.w3schools.com/",
         "tutorial": "https://www.codecademy.com/",
@@ -115,7 +113,6 @@ class ResourceService:
         
         resources = []
         
-        # Get skill-specific resources
         if skill_category == "programming" and skill_type in ResourceService.PROGRAMMING_RESOURCES:
             skill_resources = ResourceService.PROGRAMMING_RESOURCES[skill_type]
         elif skill_category == "language" and skill_type in ResourceService.LANGUAGE_RESOURCES:
@@ -145,7 +142,6 @@ class ResourceService:
                         task['description'], skill_title, skill_resources
                     ))
         
-        # Ensure we have exactly 4 resources, removing duplicates
         unique_resources = []
         seen_urls = set()
         
@@ -156,7 +152,6 @@ class ResourceService:
                 if len(unique_resources) >= 4:
                     break
         
-        # Fill remaining slots with general resources if needed
         while len(unique_resources) < 4:
             general_resource = ResourceService._get_general_resource(skill_title, len(unique_resources))
             if general_resource['url'] not in seen_urls:
@@ -191,7 +186,6 @@ class ResourceService:
         """Get specific skill type within category"""
         skill_lower = skill_title.lower()
         
-        # Check for specific technologies/languages
         if 'python' in skill_lower:
             return 'python'
         elif 'javascript' in skill_lower or 'js' in skill_lower:
@@ -276,7 +270,6 @@ class ResourceService:
         """Get resources for intermediate learners (days 15-21)"""
         resources = []
         
-        # Add community resources
         if 'community' in skill_resources:
             resources.append({
                 "title": f"{skill_title} Community",
@@ -286,7 +279,6 @@ class ResourceService:
                 "icon": "group"
             })
         
-        # Add advanced tutorials
         if 'advanced' in skill_resources:
             resources.append({
                 "title": f"Advanced {skill_title} Concepts",
@@ -303,7 +295,6 @@ class ResourceService:
         """Get resources for advanced learners (days 22-30)"""
         resources = []
         
-        # Add project-based resources
         resources.append({
             "title": f"{skill_title} Project Ideas",
             "description": "Real-world projects to showcase your skills",
@@ -312,7 +303,6 @@ class ResourceService:
             "icon": "code"
         })
         
-        # Add certification resources
         resources.append({
             "title": f"{skill_title} Certification",
             "description": "Get certified in your new skill",
@@ -329,7 +319,6 @@ class ResourceService:
         resources = []
         task_lower = task_description.lower()
         
-        # Check for specific keywords in task description
         if 'setup' in task_lower or 'install' in task_lower:
             resources.append({
                 "title": f"{skill_title} Setup Guide",

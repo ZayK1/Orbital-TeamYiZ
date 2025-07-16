@@ -33,10 +33,9 @@ const StatsScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
   
-  // Animation values
-  const fadeAnim = useRef(new Animated.Value(1)).current; // Start with 1 for immediate visibility
-  const slideAnim = useRef(new Animated.Value(0)).current; // Start at 0 for no offset
-  const scaleAnim = useRef(new Animated.Value(1)).current; // Start at 1 for normal scale
+  const fadeAnim = useRef(new Animated.Value(1)).current; 
+  const slideAnim = useRef(new Animated.Value(0)).current; 
+  const scaleAnim = useRef(new Animated.Value(1)).current; 
 
   const fetchStats = useCallback(async () => {
     try {
@@ -46,7 +45,6 @@ const StatsScreen = () => {
       console.log('Stats response:', response);
       setStats(response.stats);
       
-      // Simple animation
       Animated.parallel([
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -78,7 +76,6 @@ const StatsScreen = () => {
     fetchStats();
   }, [fetchStats]);
 
-  // Refresh data every time screen is focused
   useFocusEffect(
     useCallback(() => {
       console.log('StatsScreen focused, fetching fresh data');
@@ -88,7 +85,6 @@ const StatsScreen = () => {
     }, [token, fetchStats])
   );
   
-  // Also fetch on mount
   useEffect(() => {
     console.log('StatsScreen mounted');
     if (token) {
@@ -96,7 +92,6 @@ const StatsScreen = () => {
     }
   }, [token, fetchStats]);
 
-  // Loading state
   if (loading) {
     return (
       <View style={styles.container}>
@@ -108,7 +103,6 @@ const StatsScreen = () => {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <View style={styles.container}>
@@ -124,7 +118,6 @@ const StatsScreen = () => {
     );
   }
 
-  // Stats loaded
   const hasSkills = stats?.overview?.total_skills > 0;
   const hasHabits = stats?.overview?.total_habits > 0;
   const hasAnyData = hasSkills || hasHabits;

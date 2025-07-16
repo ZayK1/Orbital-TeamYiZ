@@ -38,7 +38,6 @@ class SkillService:
             logging.info(f"Successfully fetched image: {image_url}")
         except Exception as e:
             logging.error(f"Unsplash fetch failed for skill '{title}': {e}")
-            # Fallback to ensure we always have an image
             image_url = UnsplashService._get_fallback_image(title)
 
         skill_plan_data = {
@@ -110,10 +109,8 @@ class SkillService:
         if daily_tasks[day_number - 1].get('completed', False):
             raise ValueError("Day is already completed")
         
-        # Update skill document
         repository.update_day_completion(skill_id, user_id, day_number)
         
-        # Record completion in history
         completion_data = {
             "skill_title": skill.get('title', skill.get('skill_name', 'Unknown')),
             "day_title": daily_tasks[day_number - 1].get('title', f'Day {day_number}'),
@@ -141,10 +138,8 @@ class SkillService:
         if not daily_tasks[day_number - 1].get('completed', False):
             raise ValueError("Day is not completed")
         
-        # Update skill document
         repository.update_day_completion_undo(skill_id, user_id, day_number)
         
-        # Remove completion from history
         completion_repo.delete_completion(skill_id, user_id, day_number)
         
         return SkillService._recalculate_progress(skill_id, user_id, repository)
@@ -236,10 +231,9 @@ class SkillService:
             import asyncio
             from backend.services.unsplash_service import UnsplashService
             
-            # Try multiple strategies to get a fresh image
             strategies = [
-                (True, "specific query"),    # Use specific skill name with keywords
-                (False, "category query"),   # Use category-based keywords
+                (True, "specific query"),    
+                (False, "category query"),  
             ]
             
             new_image_url = None
@@ -250,7 +244,6 @@ class SkillService:
                     logging.info(f"Trying {strategy_name} for skill '{skill_name}'")
                     candidate_url = asyncio.run(UnsplashService.fetch_image(skill_name, use_specific))
                     
-                    # Ensure we get a different image than the current one
                     if candidate_url and candidate_url != current_image:
                         new_image_url = candidate_url
                         logging.info(f"Successfully got new image with {strategy_name}: {new_image_url}")
@@ -263,7 +256,6 @@ class SkillService:
                     logging.warning(f"{strategy_name} failed: {e}")
                     continue
             
-            # If we still don't have a new image, force a fallback
             if not new_image_url:
                 logging.info("All strategies failed, forcing fallback image")
                 new_image_url = UnsplashService._get_fallback_image(skill_name)

@@ -11,10 +11,9 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 MODEL_NAME = os.getenv("AI_MODEL_NAME", "deepseek/deepseek-r1-0528:free")
 
 class AIService:
-    # Cache for generated plans to avoid repeated API calls
     _plan_cache = {}
     _last_api_call = 0
-    _api_cooldown = 60  # 1 minute cooldown between API calls
+    _api_cooldown = 60  
     
     @staticmethod
     async def generate_structured_plan(topic: str, plan_type: str = "skill") -> List[Dict[str, Any]]:
@@ -25,19 +24,16 @@ class AIService:
         3. Fall back to local template generation
         """
         
-        # Check cache first
         cache_key = f"{topic.lower().strip()}_{plan_type}"
         if cache_key in AIService._plan_cache:
             logging.info(f"Using cached plan for {topic}")
             return AIService._plan_cache[cache_key]
         
-        # Check if we should try AI service (rate limiting)
         current_time = time.time()
         if current_time - AIService._last_api_call < AIService._api_cooldown:
             logging.info(f"API cooldown active, using local generation for {topic}")
             return AIService._generate_local_plan(topic, plan_type)
         
-        # Try AI service first
         if OPENROUTER_API_KEY:
             try:
                 plan = await AIService._generate_ai_plan(topic, plan_type)
@@ -46,10 +42,8 @@ class AIService:
                 return plan
             except Exception as e:
                 logging.warning(f"AI service failed for {topic}: {e}")
-                # Fall back to local generation
                 return AIService._generate_local_plan(topic, plan_type)
         
-        # No API key or service unavailable, use local generation
         logging.info(f"No API key available, using local generation for {topic}")
         return AIService._generate_local_plan(topic, plan_type)
     
@@ -69,7 +63,7 @@ class AIService:
         """
         
         try:
-            async with httpx.AsyncClient(timeout=30.0) as client:  # Reduced timeout
+            async with httpx.AsyncClient(timeout=30.0) as client:  
                 response = await client.post(
                     "https://openrouter.ai/api/v1/chat/completions",
                     headers={
@@ -80,12 +74,12 @@ class AIService:
                         "model": MODEL_NAME,
                         "messages": [{"role": "user", "content": prompt}],
                         "response_format": {"type": "json_object"},
-                        "max_tokens": 4000,  # Limit response size
+                        "max_tokens": 4000,  
                         "temperature": 0.7
                     }
                 )
                 
-                if response.status_code == 429:  # Rate limited
+                if response.status_code == 429:  
                     raise Exception("Rate limited by AI service")
                 
                 response.raise_for_status()
@@ -95,7 +89,7 @@ class AIService:
                 parsed_plan = json.loads(ai_response_content)
                 
                 if isinstance(parsed_plan, dict) and "daily_tasks" in parsed_plan:
-                    # Enhance AI-generated plan with real resources
+                   
                     enhanced_plan = AIService._enhance_plan_with_resources(parsed_plan["daily_tasks"], topic)
                     return enhanced_plan
                 
@@ -109,7 +103,7 @@ class AIService:
     def _generate_local_plan(topic: str, plan_type: str) -> List[Dict[str, Any]]:
         """Generate a plan using local templates - fast and reliable"""
         
-        # Common skill templates
+        
         skill_templates = {
             "programming": {
                 "weeks": [
@@ -173,7 +167,6 @@ class AIService:
             }
         }
         
-        # Determine template based on topic
         template_key = AIService._categorize_topic(topic)
         template = skill_templates.get(template_key, skill_templates["programming"])
         
@@ -186,7 +179,6 @@ class AIService:
             pattern_index = (day - 1) % len(template["daily_patterns"])
             base_pattern = template["daily_patterns"][pattern_index]
             
-            # Customize based on topic and day
             title = f"Day {day}: {week_theme}"
             
             tasks = [
@@ -212,10 +204,8 @@ class AIService:
                 "tasks": tasks
             })
         
-        # Enhance local plan with real resources
         enhanced_plan = AIService._enhance_plan_with_resources(plan, topic)
         
-        # Cache the enhanced plan
         cache_key = f"{topic.lower().strip()}_{plan_type}"
         AIService._plan_cache[cache_key] = enhanced_plan
         
@@ -230,10 +220,8 @@ class AIService:
         for day_index, day_data in enumerate(plan):
             day_number = day_index + 1
             
-            # Generate resources for this day
             resources = ResourceService.generate_resources_for_day(topic, day_number, day_data)
             
-            # Add resources to the day data
             enhanced_day = day_data.copy()
             enhanced_day['resources'] = resources
             
@@ -255,7 +243,7 @@ class AIService:
         elif any(word in topic_lower for word in ['art', 'drawing', 'painting', 'music', 'creative', 'design']):
             return "creative"
         else:
-            return "programming"  # Default fallback
+            return "programming"  
 
 class AIGenerationError(Exception):
     pass

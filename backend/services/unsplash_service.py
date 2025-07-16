@@ -224,10 +224,9 @@ class UnsplashService:
             logging.warning("UNSPLASH_ACCESS_KEY not set; returning random skill-relevant image")
             return UnsplashService._get_fallback_image(query)
 
-        # Generate enhanced search query
         search_query = UnsplashService._generate_search_query(query, use_specific_query)
         
-        # Try multiple search strategies
+
         search_strategies = [
             search_query,
             UnsplashService._get_category_keywords(query),
@@ -244,7 +243,6 @@ class UnsplashService:
                 logging.warning(f"Failed to fetch image with query '{strategy_query}': {e}")
                 continue
         
-        # If all strategies fail, use fallback
         logging.warning(f"All Unsplash strategies failed for '{query}', using fallback")
         return UnsplashService._get_fallback_image(query)
     
@@ -253,9 +251,9 @@ class UnsplashService:
         """Make the actual API call to Unsplash"""
         params = {
             "query": query,
-            "orientation": "landscape",  # Better for backgrounds
+            "orientation": "landscape",  
             "per_page": 1,
-            "content_filter": "high"  # High quality images only
+            "content_filter": "high"  
         }
         
         async with aiohttp.ClientSession() as session:
@@ -265,7 +263,6 @@ class UnsplashService:
                 
                 data = await resp.json()
                 
-                # Get the best quality image URL
                 image_url = (
                     data.get("urls", {}).get("regular") or 
                     data.get("urls", {}).get("small") or
@@ -283,10 +280,8 @@ class UnsplashService:
         if not use_specific:
             return UnsplashService._get_category_keywords(query)
         
-        # Clean and enhance the query
         cleaned_query = query.lower().strip()
         
-        # Add relevant keywords based on skill type
         category = UnsplashService._categorize_skill(query)
         
         if category == "programming":
