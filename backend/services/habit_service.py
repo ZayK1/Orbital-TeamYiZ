@@ -17,7 +17,8 @@ class HabitService:
         start_date: date | None = None,
         end_date: date | None = None,
         reminder_time: Any = None,
-        custom_days: list | None = None
+        custom_days: list | None = None,
+        reminder_message: str | None = None
     ) -> Dict[str, Any]:
         habit_repo = HabitRepository(g.db.habits)
 
@@ -62,6 +63,8 @@ class HabitService:
             "start_date": start_date_dt,
             "end_date": end_date_dt
         }
+        if reminder_message:
+            habit_plan_data["reminder_message"] = reminder_message
 
         try:
             import asyncio
@@ -129,6 +132,9 @@ class HabitService:
         for field in ['custom_days', 'reminder_time']:
             if field in update_fields:
                 update_fields.pop(field)
+        if 'reminder_message' in update_fields:
+            # Directly update the reminder_message field
+            pass  # No transformation needed, just store as-is
         habit_repo.update(habit_id, user_id, update_fields)
         updated = habit_repo.find_by_id(habit_id, user_id)
         updated['_id'] = str(updated['_id'])
