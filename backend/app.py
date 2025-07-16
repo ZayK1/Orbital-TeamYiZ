@@ -70,8 +70,8 @@ def create_app():
         return jsonify({'status': 'healthy', 'message': 'YiZ Planner API is running'}), 200
 
    
-    @app.route('/generate-plan', methods=['POST'])  # type: ignore
-    async def generate_plan():
+    @app.route('/generate-plan', methods=['POST'])
+    def generate_plan():
         try:
             data = request.get_json()
             if not data:
@@ -81,7 +81,8 @@ def create_app():
             if not skill:
                 return jsonify({"error": "skill_name is required"}), 400
 
-            plan_tasks = await AIService.generate_structured_plan(skill)
+            import asyncio
+            plan_tasks = asyncio.run(AIService.generate_structured_plan(skill))
 
             return jsonify({
                 "skill": skill,

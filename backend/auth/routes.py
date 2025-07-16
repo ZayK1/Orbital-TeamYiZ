@@ -8,9 +8,8 @@ from backend.auth.utils import hash_password, verify_password
 auth_bp = Blueprint("auth_bp", __name__, url_prefix="/auth")
 
 def require_auth(f):
-
     @wraps(f)
-    async def decorated_function(*args, **kwargs):
+    def decorated_function(*args, **kwargs):
         token = None
         if 'Authorization' in request.headers and request.headers['Authorization'].startswith('Bearer '):
             token = request.headers['Authorization'].split(' ')[1]
@@ -33,7 +32,7 @@ def require_auth(f):
         except jwt.InvalidTokenError:
             return jsonify({'error': 'Invalid token!'}), 401
 
-        return await f(*args, **kwargs)
+        return f(*args, **kwargs)
     return decorated_function
 
 @auth_bp.route("/register", methods=["POST"])

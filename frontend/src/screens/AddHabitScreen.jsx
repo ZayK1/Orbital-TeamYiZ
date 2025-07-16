@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { createHabitPlan } from '../api/plans';
 import HabitSuccessModal from '../components/HabitSuccessModel';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 
 const suggestionList = [
@@ -28,32 +29,49 @@ export default function AddHabitScreen({ navigation }) {
   const { token } = useAuth();
   const [habit, setHabit] = useState('');
   const [reminderEnabled, setReminderEnabled] = useState(false);
-  const [selectedFrequency, setSelectedFrequency] = useState('Daily');
   const [selectedColor, setSelectedColor] = useState('green');
   const [loading, setLoading] = useState(false);
   const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [startDate, setStartDate] = useState(null);
+  const [endDate, setEndDate] = useState(null);
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [showEndDatePicker, setShowEndDatePicker] = useState(false);
+  const [reminderTime, setReminderTime] = useState(null);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [customDays, setCustomDays] = useState([]);
 
+  const weekdays = [
+    { label: 'Sun', value: 0 },
+    { label: 'Mon', value: 1 },
+    { label: 'Tue', value: 2 },
+    { label: 'Wed', value: 3 },
+    { label: 'Thu', value: 4 },
+    { label: 'Fri', value: 5 },
+    { label: 'Sat', value: 6 },
+  ];
+
+  const toggleDay = (day) => {
+    setCustomDays((prev) =>
+      prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]
+    );
+  };
 
   const handleAddHabit = async () => {
     if (!habit.trim()) {
       Alert.alert('Validation', 'Please enter a habit title.');
       return;
     }
-
-    const frequencyMap = {
-      Daily: 'daily',
-      Weekdays: 'weekly',
-      Custom: 'custom',
-    };
-
     try {
       setLoading(true);
       await createHabitPlan(
         habit.trim(),
-        'health', 
-        frequencyMap[selectedFrequency],
+        'health',
         habitColors[selectedColor],
-        token
+        token,
+        startDate ? startDate.toISOString().split('T')[0] : undefined,
+        endDate ? endDate.toISOString().split('T')[0] : undefined,
+        reminderEnabled && reminderTime ? reminderTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : undefined,
+        customDays
       );
       setSuccessModalVisible(true);
     } catch (err) {
@@ -120,15 +138,15 @@ export default function AddHabitScreen({ navigation }) {
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.fieldLabel}>Frequency</Text>
-            <View style={styles.frequencyContainer}>
-              {["Daily", "Weekdays", "Custom"].map(f => (
+            <Text style={styles.fieldLabel}>Select Days</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+              {weekdays.map((d) => (
                 <TouchableOpacity
-                  key={f}
-                  style={[styles.frequencyButton, selectedFrequency === f && styles.frequencyButtonSelected]}
-                  onPress={() => setSelectedFrequency(f)}
+                  key={d.value}
+                  style={[styles.dayButton, customDays.includes(d.value) && styles.dayButtonSelected]}
+                  onPress={() => toggleDay(d.value)}
                 >
-                  <Text style={[styles.frequencyButtonText, selectedFrequency === f && styles.frequencyButtonTextSelected]}>{f}</Text>
+                  <Text style={customDays.includes(d.value) ? styles.dayButtonTextSelected : styles.dayButtonText}>{d.label}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -156,6 +174,58 @@ export default function AddHabitScreen({ navigation }) {
                 />
               ))}
             </View>
+          </View>
+
+          <View style={styles.section}>
+            <Text style={styles.fieldLabel}>Start Date</Text>
+            <TouchableOpacity onPress={() => setShowStartDatePicker(true)} style={styles.datePickerButton}>
+              <Text style={styles.datePickerText}>{startDate ? startDate.toDateString() : 'Select start date'}</Text>
+            </TouchableOpacity>
+            {showStartDatePicker && (
+              <DateTimePicker
+                value={startDate || new Date()}
+                mode="date"
+                display="default"
+                onChange={(event, date) => {
+                  setShowStartDatePicker(false);
+                  if (date) setStartDate(date);
+                }}
+              />
+            )}
+          </View>
+          <View style={styles.section}>
+            <Text style={styles.fieldLabel}>End Date</Text>
+            <TouchableOpacity onPress={() => setShowEndDatePicker(true)} style={styles.datePickerButton}>
+              <Text style={styles.datePickerText}>{endDate ? endDate.toDateString() : 'Select end date'}</Text>
+            </TouchableOpacity>
+            {showEndDatePicker && (
+              <DateTimePicker
+                value={endDate || new Date()}
+                mode="date"
+                display="default"
+                onChange={(event, date) => {
+                  setShowEndDatePicker(false);
+                  if (date) setEndDate(date);
+                }}
+              />
+            )}
+          </View>
+          <View style={styles.section}>
+            <Text style={styles.fieldLabel}>Reminder Time</Text>
+            <TouchableOpacity disabled={!reminderEnabled} onPress={() => setShowTimePicker(true)} style={styles.datePickerButton}>
+              <Text style={styles.datePickerText}>{reminderTime ? reminderTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : 'Select time'}</Text>
+            </TouchableOpacity>
+            {showTimePicker && (
+              <DateTimePicker
+                value={reminderTime || new Date()}
+                mode="time"
+                display="default"
+                onChange={(event, time) => {
+                  setShowTimePicker(false);
+                  if (time) setReminderTime(time);
+                }}
+              />
+            )}
           </View>
         </ScrollView>
 
@@ -414,5 +484,39 @@ const styles = StyleSheet.create({
     color: '#4F46E5',
     fontWeight: '600',
     textAlign: 'center',
+  },
+  datePickerButton: {
+    width: '100%',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    marginTop: 8,
+  },
+  datePickerText: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#374151',
+  },
+  dayButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: '#E5E7EB',
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  dayButtonSelected: {
+    backgroundColor: '#4F46E5',
+  },
+  dayButtonText: {
+    color: '#374151',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  dayButtonTextSelected: {
+    color: 'white',
   },
 }); 
