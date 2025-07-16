@@ -5,6 +5,7 @@ import logging
 import time
 from typing import Dict, Any, List
 from datetime import datetime, timedelta
+from backend.services.resource_service import ResourceService
 
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 MODEL_NAME = os.getenv("AI_MODEL_NAME", "deepseek/deepseek-r1-0528:free")
@@ -94,7 +95,9 @@ class AIService:
                 parsed_plan = json.loads(ai_response_content)
                 
                 if isinstance(parsed_plan, dict) and "daily_tasks" in parsed_plan:
-                    return parsed_plan["daily_tasks"]
+                    # Enhance AI-generated plan with real resources
+                    enhanced_plan = AIService._enhance_plan_with_resources(parsed_plan["daily_tasks"], topic)
+                    return enhanced_plan
                 
                 raise ValueError("Invalid AI response format")
                 
@@ -209,12 +212,34 @@ class AIService:
                 "tasks": tasks
             })
         
-        # Cache the generated plan
-        cache_key = f"{topic.lower().strip()}_{plan_type}"
-        AIService._plan_cache[cache_key] = plan
+        # Enhance local plan with real resources
+        enhanced_plan = AIService._enhance_plan_with_resources(plan, topic)
         
-        logging.info(f"Generated local plan for {topic} with {len(plan)} days")
-        return plan
+        # Cache the enhanced plan
+        cache_key = f"{topic.lower().strip()}_{plan_type}"
+        AIService._plan_cache[cache_key] = enhanced_plan
+        
+        logging.info(f"Generated local plan for {topic} with {len(enhanced_plan)} days")
+        return enhanced_plan
+    
+    @staticmethod
+    def _enhance_plan_with_resources(plan: List[Dict[str, Any]], topic: str) -> List[Dict[str, Any]]:
+        """Enhance plan with real resources using ResourceService"""
+        enhanced_plan = []
+        
+        for day_index, day_data in enumerate(plan):
+            day_number = day_index + 1
+            
+            # Generate resources for this day
+            resources = ResourceService.generate_resources_for_day(topic, day_number, day_data)
+            
+            # Add resources to the day data
+            enhanced_day = day_data.copy()
+            enhanced_day['resources'] = resources
+            
+            enhanced_plan.append(enhanced_day)
+        
+        return enhanced_plan
     
     @staticmethod
     def _categorize_topic(topic: str) -> str:

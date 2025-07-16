@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ImageBackground, Dimensions, Modal } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, ImageBackground, Dimensions, Modal, Linking } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,6 +19,7 @@ const SkillDetailScreen = () => {
   const [showAllDays, setShowAllDays] = useState(false);
   const [expandedDay, setExpandedDay] = useState(null);
   const [taskCompletionLoading, setTaskCompletionLoading] = useState(false);
+  const [showResourcesModal, setShowResourcesModal] = useState(false);
 
   const fetchSkill = async () => {
     try {
@@ -36,6 +37,20 @@ const SkillDetailScreen = () => {
   const handleRetry = () => {
     setLoading(true);
     fetchSkill();
+  };
+
+  const handleResourcePress = async (url) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('Error', 'Unable to open this link');
+      }
+    } catch (error) {
+      console.error('Error opening URL:', error);
+      Alert.alert('Error', 'Unable to open this link');
+    }
   };
 
   useEffect(() => {
@@ -498,6 +513,19 @@ const SkillDetailScreen = () => {
                             {todayTasks.tasks?.filter(t => t.completed).length || 0} of {todayTasks.tasks?.length || 0} completed
                           </Text>
                         </View>
+                        
+                        {/* Resources Button */}
+                        {todayTasks.resources && todayTasks.resources.length > 0 && (
+                          <TouchableOpacity
+                            style={styles.resourcesButton}
+                            onPress={() => setShowResourcesModal(true)}
+                            activeOpacity={0.8}
+                          >
+                            <MaterialIcons name="library-books" size={16} color="#667eea" />
+                            <Text style={styles.resourcesButtonText}>View Resources</Text>
+                            <MaterialIcons name="open-in-new" size={14} color="#667eea" />
+                          </TouchableOpacity>
+                        )}
                       </View>
                     )}
                   </View>
@@ -546,6 +574,67 @@ const SkillDetailScreen = () => {
           )}
         </View>
       </ScrollView>
+      
+      {/* Resources Modal */}
+      <Modal
+        visible={showResourcesModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowResourcesModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Day {currentDay} Resources</Text>
+            <TouchableOpacity
+              style={styles.modalCloseButton}
+              onPress={() => setShowResourcesModal(false)}
+            >
+              <MaterialIcons name="close" size={24} color="#cbd5e1" />
+            </TouchableOpacity>
+          </View>
+          
+          <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+            <Text style={styles.resourcesSubtitle}>
+              Curated resources to help you complete today's tasks
+            </Text>
+            
+            {todayTasks.resources && todayTasks.resources.map((resource, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.resourceCard}
+                onPress={() => handleResourcePress(resource.url)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.resourceCardContent}>
+                  <View style={styles.resourceIcon}>
+                    <MaterialIcons 
+                      name={resource.icon || 'link'} 
+                      size={20} 
+                      color="#667eea" 
+                    />
+                  </View>
+                  <View style={styles.resourceInfo}>
+                    <Text style={styles.resourceTitle}>{resource.title}</Text>
+                    <Text style={styles.resourceDescription}>{resource.description}</Text>
+                    <View style={styles.resourceMeta}>
+                      <View style={styles.resourceCategory}>
+                        <Text style={styles.resourceCategoryText}>{resource.category}</Text>
+                      </View>
+                      <MaterialIcons name="open-in-new" size={14} color="#94a3b8" />
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+            
+            <View style={styles.modalFooter}>
+              <Text style={styles.footerText}>
+                Resources are curated for your learning journey. Tap any resource to open it in your browser.
+              </Text>
+            </View>
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -1106,6 +1195,136 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
+  },
+  // Resources Button Styles
+  resourcesButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  resourcesButtonText: {
+    color: '#667eea',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+    marginRight: 4,
+  },
+  // Resources Modal Styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#334155',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#cbd5e1',
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+  },
+  resourcesSubtitle: {
+    fontSize: 16,
+    color: '#94a3b8',
+    marginBottom: 24,
+    lineHeight: 24,
+  },
+  resourceCard: {
+    backgroundColor: '#1e293b',
+    borderRadius: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  resourceCardContent: {
+    flexDirection: 'row',
+    padding: 20,
+  },
+  resourceIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#667eea20',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  resourceInfo: {
+    flex: 1,
+  },
+  resourceTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#cbd5e1',
+    marginBottom: 6,
+  },
+  resourceDescription: {
+    fontSize: 14,
+    color: '#94a3b8',
+    lineHeight: 20,
+    marginBottom: 12,
+  },
+  resourceMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  resourceCategory: {
+    backgroundColor: '#667eea30',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  resourceCategoryText: {
+    fontSize: 12,
+    color: '#667eea',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  modalFooter: {
+    paddingVertical: 32,
+    alignItems: 'center',
+  },
+  footerText: {
+    fontSize: 14,
+    color: '#6b7280',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 
