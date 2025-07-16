@@ -100,6 +100,73 @@ export default function RepositoryScreen() {
   const firstSkill = skills.length > 0 ? skills[0] : null;
   const todaysHabits = habits.slice(0, 4);
 
+  // Calculate today's focus data
+  const getTodaysFocusData = () => {
+    const today = new Date();
+    
+    // Daily Goals: Calculate today's completed tasks across all skills
+    let totalTodaysTasks = 0;
+    let completedTodaysTasks = 0;
+    
+    skills.forEach(skill => {
+      const currentDay = skill.progress?.current_day || 1;
+      const dailyTasks = skill.curriculum?.daily_tasks || [];
+      if (currentDay <= dailyTasks.length) {
+        const todaysTasks = dailyTasks[currentDay - 1]?.tasks || [];
+        totalTodaysTasks += todaysTasks.length;
+        completedTodaysTasks += todaysTasks.filter(task => task.completed).length;
+      }
+    });
+    
+    // Add today's habits to daily goals
+    const todaysHabitsCount = todaysHabits.length;
+    const completedHabitsCount = todaysHabits.filter(h => completedHabits.has(h._id)).length;
+    
+    totalTodaysTasks += todaysHabitsCount;
+    completedTodaysTasks += completedHabitsCount;
+    
+    const dailyGoalsProgress = totalTodaysTasks > 0 ? Math.round((completedTodaysTasks / totalTodaysTasks) * 100) : 0;
+    
+    // Weekly Progress: Calculate this week's activity
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    
+    let weeklyActiveDays = 0;
+    const daysInWeek = 7;
+    
+    // Check skill activity for each day of the week
+    for (let i = 0; i < daysInWeek; i++) {
+      const checkDate = new Date(startOfWeek);
+      checkDate.setDate(startOfWeek.getDate() + i);
+      if (checkDate <= today) {
+        // Check if any skill had activity on this day
+        const hasActivity = skills.some(skill => {
+          const skillStartDate = new Date(skill.progress?.started_at || skill.created_at);
+          const daysSinceStart = Math.floor((checkDate - skillStartDate) / (1000 * 60 * 60 * 24)) + 1;
+          return daysSinceStart > 0 && daysSinceStart <= (skill.progress?.current_day || 1);
+        });
+        if (hasActivity) weeklyActiveDays++;
+      }
+    }
+    
+    const weeklyProgress = Math.round((weeklyActiveDays / daysInWeek) * 100);
+    
+    return {
+      dailyGoals: {
+        progress: dailyGoalsProgress,
+        completed: completedTodaysTasks,
+        total: totalTodaysTasks
+      },
+      weeklyProgress: {
+        progress: weeklyProgress,
+        activeDays: weeklyActiveDays,
+        totalDays: daysInWeek
+      }
+    };
+  };
+  
+  const focusData = getTodaysFocusData();
+
   const showAddSkill = () => navigation.navigate('AddSkill');
   const showAddHabit = () => navigation.navigate('AddHabit');
 
@@ -153,22 +220,57 @@ export default function RepositoryScreen() {
 
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Today's Focus</Text>
-        <View style={styles.focusGrid}>
-          <FocusCard
-            title="Daily Goals"
-            icon="checklist"
-            progress={67}
-            backgroundColors={['#14B8A6', '#06B6D4']}
-            subtitle="4/6 tasks"
-          />
-          <FocusCard
-            title="Weekly Progress"
-            icon="calendar-today"
-            progress={40}
-            backgroundColors={['#8B5CF6', '#6366F1']}
-            subtitle="2/5 days"
-          />
-        </View>
+        {loading ? (
+          <View style={styles.focusGrid}>
+            <View style={styles.focusCardTouchable}>
+              <View style={[styles.focusCard, styles.loadingCard]}>
+                <ActivityIndicator size="small" color="#14B8A6" />
+                <Text style={styles.loadingText}>Loading...</Text>
+              </View>
+            </View>
+            <View style={styles.focusCardTouchable}>
+              <View style={[styles.focusCard, styles.loadingCard]}>
+                <ActivityIndicator size="small" color="#8B5CF6" />
+                <Text style={styles.loadingText}>Loading...</Text>
+              </View>
+            </View>
+          </View>
+        ) : (
+          <View style={styles.focusGrid}>
+            <TouchableOpacity 
+              style={styles.focusCardTouchable}
+              onPress={() => {
+                if (skills.length > 0) {
+                  navigation.navigate('SkillDetail', { skillId: skills[0]._id });
+                } else {
+                  navigation.navigate('AddSkill');
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <FocusCard
+                title="Daily Goals"
+                icon="today"
+                progress={focusData.dailyGoals.progress}
+                backgroundColors={['#14B8A6', '#06B6D4']}
+                subtitle={focusData.dailyGoals.total > 0 ? `${focusData.dailyGoals.completed}/${focusData.dailyGoals.total} tasks` : 'No tasks today'}
+              />
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.focusCardTouchable}
+              onPress={() => navigation.navigate('AllSkills')}
+              activeOpacity={0.7}
+            >
+              <FocusCard
+                title="Weekly Progress"
+                icon="calendar-today"
+                progress={focusData.weeklyProgress.progress}
+                backgroundColors={['#8B5CF6', '#6366F1']}
+                subtitle={`${focusData.weeklyProgress.activeDays}/${focusData.weeklyProgress.totalDays} days`}
+              />
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       <View style={styles.section}>
@@ -294,30 +396,46 @@ const FocusCard = ({
   backgroundColors,
   subtitle,
 }) => {
+  const getProgressColor = (progress) => {
+    if (progress >= 80) return backgroundColors[0];
+    if (progress >= 50) return '#F59E0B';
+    return '#EF4444';
+  };
+  
+  const progressColor = getProgressColor(progress);
+  
   return (
     <View style={styles.focusCard}>
-      <MaterialIcons
-        name={icon}
-        size={16}
-        color={backgroundColors[0]}
-        style={styles.focusIcon}
-      />
+      <View style={styles.focusCardHeader}>
+        <View style={[styles.focusIconBackground, { backgroundColor: progressColor + '15' }]}>
+          <MaterialIcons
+            name={icon}
+            size={18}
+            color={progressColor}
+          />
+        </View>
+      </View>
       <View style={styles.progressContainer}>
         <CircularProgress
-          size={60}
+          size={70}
           strokeWidth={6}
           progress={progress}
-          color={backgroundColors[0]}
+          color={progressColor}
           backgroundColor="#F3F4F6"
         />
         <View style={styles.progressContent}>
-          <Text style={styles.progressText}>{progress}%</Text>
+          <Text style={[styles.progressText, { color: progressColor }]}>{progress}%</Text>
         </View>
       </View>
       <View style={styles.focusInfo}>
         <Text style={styles.focusTitle}>{title}</Text>
         <Text style={styles.focusSubtitle}>{subtitle}</Text>
       </View>
+      {progress === 100 && (
+        <View style={styles.completedBadge}>
+          <MaterialIcons name="check" size={12} color="white" />
+        </View>
+      )}
     </View>
   );
 };
@@ -367,31 +485,67 @@ const styles = StyleSheet.create({
     gap: 16,
     marginTop: 12,
   },
-  focusCard: {
+  focusCardTouchable: {
     flex: 1,
+  },
+  focusCard: {
     backgroundColor: 'white',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 8,
+    borderRadius: 20,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 3,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
     position: 'relative',
+    minHeight: 140,
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
-  focusIcon: {
+  focusCardHeader: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  focusIconBackground: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressContainer: {
+    width: 70,
+    height: 70,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+    marginTop: 12,
+  },
+  loadingCard: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  completedBadge: {
     position: 'absolute',
     top: 12,
     left: 12,
-  },
-  progressContainer: {
-    width: 60,
-    height: 60,
+    backgroundColor: '#22C55E',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
   },
   progressContent: {
     position: 'absolute',
@@ -399,22 +553,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   progressText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontSize: 16,
+    fontWeight: '800',
   },
   focusInfo: {
     alignItems: 'center',
   },
   focusTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#374151',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#111827',
+    textAlign: 'center',
   },
   focusSubtitle: {
-    fontSize: 10,
+    fontSize: 12,
     color: '#6B7280',
-    marginTop: 2,
+    marginTop: 4,
+    textAlign: 'center',
+    fontWeight: '500',
   },
 
   skillCard: {
