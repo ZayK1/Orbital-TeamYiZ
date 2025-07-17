@@ -5,6 +5,8 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { getHabitById, updateHabit, deleteHabit } from '../api/plans';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { scheduleHabitNotification, cancelNotification } from '../utils/notifications';
 
 const weekdays = [
   { label: 'Sun', value: 0 },
@@ -77,6 +79,15 @@ const HabitDetailScreen = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Cancel old notifications if any
+      const notifKey = `habit_notifications_${habit._id}`;
+      const oldNotifIdsStr = await AsyncStorage.getItem(notifKey);
+      if (oldNotifIdsStr) {
+        const oldNotifIds = JSON.parse(oldNotifIdsStr);
+        for (const id of oldNotifIds) {
+          try { await cancelNotification(id); } catch (e) { console.warn('Failed to cancel old notification', e); }
+        }
+      }
       await updateHabit(habit._id, {
         title,
         color: habitColors[selectedColor],
@@ -86,6 +97,25 @@ const HabitDetailScreen = () => {
         custom_days: customDays,
         reminder_message: reminderEnabled && reminderMessage ? reminderMessage : undefined
       }, token);
+      // Schedule new notifications if enabled
+      if (reminderEnabled && reminderTime && customDays && customDays.length > 0) {
+        try {
+          const notifIds = await scheduleHabitNotification({
+            id: habit._id,
+            title,
+            message: reminderMessage || 'Time to build your habit!',
+            time: reminderTime,
+            days: customDays
+          });
+          await AsyncStorage.setItem(notifKey, JSON.stringify(notifIds));
+        } catch (notifErr) {
+          console.error('Failed to schedule notification:', notifErr);
+          Alert.alert('Notification Error', 'Could not schedule local notifications.');
+        }
+      } else {
+        // If reminders are disabled, clear stored notif IDs
+        await AsyncStorage.removeItem(notifKey);
+      }
       Alert.alert('Success', 'Habit updated successfully');
       fetchHabit();
     } catch (err) {
@@ -103,6 +133,16 @@ const HabitDetailScreen = () => {
         text: 'Delete', style: 'destructive', onPress: async () => {
           setDeleting(true);
           try {
+            // Cancel all notifications for this habit
+            const notifKey = `habit_notifications_${habit._id}`;
+            const notifIdsStr = await AsyncStorage.getItem(notifKey);
+            if (notifIdsStr) {
+              const notifIds = JSON.parse(notifIdsStr);
+              for (const id of notifIds) {
+                try { await cancelNotification(id); } catch (e) { console.warn('Failed to cancel notification', e); }
+              }
+              await AsyncStorage.removeItem(notifKey);
+            }
             await deleteHabit(habit._id, token);
             Alert.alert('Deleted', 'Habit deleted');
             navigation.goBack();
