@@ -6,6 +6,7 @@
     "dotenv": "^16.5.0",
     "expo-blur": "^14.1.5",
     "expo-constants": "^17.1.6",
+    "expo-device": "~7.1.4",
     "expo-notifications": "^0.31.4",
     "lucide-react-native": "^0.511.0",
     "react-native-svg": "^15.12.0"

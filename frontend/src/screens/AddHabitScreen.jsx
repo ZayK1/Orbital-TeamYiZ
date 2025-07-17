@@ -38,6 +38,7 @@ export default function AddHabitScreen({ navigation }) {
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [reminderTime, setReminderTime] = useState(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [reminderMessage, setReminderMessage] = useState("");
   const [customDays, setCustomDays] = useState([]);
 
   const weekdays = [
@@ -71,7 +72,8 @@ export default function AddHabitScreen({ navigation }) {
         startDate ? startDate.toISOString().split('T')[0] : undefined,
         endDate ? endDate.toISOString().split('T')[0] : undefined,
         reminderEnabled && reminderTime ? reminderTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : undefined,
-        customDays
+        customDays,
+        reminderEnabled && reminderMessage ? reminderMessage : undefined
       );
       setSuccessModalVisible(true);
     } catch (err) {
@@ -227,6 +229,20 @@ export default function AddHabitScreen({ navigation }) {
               />
             )}
           </View>
+          {reminderEnabled && (
+            <View style={styles.section}>
+              <Text style={styles.fieldLabel}>Reminder Message</Text>
+              <TextInput
+                value={reminderMessage}
+                onChangeText={text => setReminderMessage(text.slice(0, 60))}
+                placeholder="e.g., Time to build your habit!"
+                placeholderTextColor="#9CA3AF"
+                style={[styles.textInput, { backgroundColor: 'white', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, marginBottom: 4 }]}
+                maxLength={60}
+              />
+              <Text style={{ textAlign: 'right', fontSize: 12, color: '#9CA3AF' }}>{reminderMessage.length}/60 characters</Text>
+            </View>
+          )}
         </ScrollView>
 
         <View style={styles.footer}>
