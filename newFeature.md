@@ -81,11 +81,12 @@ Transform YiZ Planner into a collaborative learning ecosystem where users share,
 <td width="50%">
 
 ### ✨ **Key Features**
-- 📤 **Share** learning plans publicly
-- 🔍 **Discover** community content  
-- 💬 **Interact** with likes & comments
+- 📤 **Share** customized skill plans with the community
+- 🔍 **Discover** community-improved learning content
+- 💬 **Interact** with likes, comments & ratings
 - 👥 **Collaborate** in learning groups
-- 📊 **Track** social engagement
+- 📊 **Track** social engagement & completion rates
+- ✏️ **Customize** - Add your own tasks, instructions & resources to any day
 
 ### 🎯 **Success Metrics**
 - User engagement increase
@@ -116,9 +117,10 @@ graph TB
     end
     
     subgraph "Data Layer"
-        I[(MongoDB Atlas)] --> J[Shared Plans]
+        I[(MongoDB Atlas)] --> J[Shared Skills]
         I --> K[Social Interactions]
         I --> L[User Profiles]
+        I --> M[Custom Tasks]
     end
     
     subgraph "External Services"
@@ -153,18 +155,53 @@ graph TB
 <tr>
 <td>
 
-**`shared_plans`** 📚
+**`shared_skills`** 📚
 
 </td>
-<td>Public learning content</td>
+<td>Community-shared learning plans</td>
 <td>
 
 ```javascript
 {
-  plan_type: "skill|habit",
-  visibility: "public|private",
+  original_skill_id: ObjectId,
+  shared_by: ObjectId,
+  title: String,
+  description: String,
+  curriculum: Array, // 30-day plan with custom tasks
+  difficulty: "beginner|intermediate|advanced",
+  category: String,
+  tags: Array,
   likes_count: Number,
-  rating: { average, count }
+  downloads_count: Number,
+  rating: { average, count },
+  has_custom_tasks: Boolean
+}
+```
+
+</td>
+</tr>
+<tr>
+<td>
+
+**`custom_tasks`** ✏️
+
+</td>
+<td>User-added custom tasks for specific days</td>
+<td>
+
+```javascript
+{
+  skill_id: ObjectId,
+  day: Number,
+  user_id: ObjectId,
+  task: {
+    title: String,
+    description: String,
+    instructions: String,
+    resources: Array,
+    estimated_time: Number,
+    task_type: "reading|exercise|project|video"
+  }
 }
 ```
 
@@ -233,12 +270,12 @@ graph TB
 
 ```javascript
 // Performance-optimized indexes
-db.shared_plans.createIndex({ 
+db.shared_skills.createIndex({ 
   "title": "text", 
   "description": "text" 
 });
 
-db.shared_plans.createIndex({ 
+db.shared_skills.createIndex({ 
   "category": 1, 
   "likes_count": -1 
 });
@@ -247,6 +284,12 @@ db.plan_interactions.createIndex({
   "user_id": 1, 
   "plan_id": 1, 
   "interaction_type": 1 
+}, { unique: true });
+
+db.custom_tasks.createIndex({ 
+  "skill_id": 1, 
+  "day": 1, 
+  "user_id": 1 
 }, { unique: true });
 ```
 
@@ -259,26 +302,45 @@ db.plan_interactions.createIndex({
 <details>
 <summary><b>📤 Plan Sharing APIs</b></summary>
 
-#### **Share a Plan**
+#### **Share a Skill**
 ```http
-POST /api/v1/social/plans/share
+POST /api/v1/social/skills/share
 Authorization: Bearer {token}
 
 {
-  "plan_id": "507f1f77bcf86cd799439011",
-  "plan_type": "skill",
+  "skill_id": "507f1f77bcf86cd799439011",
   "description": "Master Python with hands-on projects",
   "tags": ["python", "programming", "projects"],
-  "visibility": "public"
+  "visibility": "public",
+  "include_custom_tasks": true
+}
+```
+
+#### **Add Custom Task to Day**
+```http
+POST /api/v1/social/skills/{id}/days/{day}/tasks
+Authorization: Bearer {token}
+
+{
+  "title": "Build a Calculator App",
+  "description": "Create a functional calculator using Python",
+  "instructions": "1. Design the UI layout\n2. Implement basic operations\n3. Add error handling",
+  "resources": [
+    "https://docs.python.org/3/library/tkinter.html",
+    "https://realpython.com/python-gui-tkinter/"
+  ],
+  "estimated_time": 120,
+  "task_type": "project"
 }
 ```
 
 #### **Response**
 ```json
 {
-  "shared_plan_id": "607f1f77bcf86cd799439012",
-  "url": "/social/plans/607f1f77bcf86cd799439012",
-  "status": "published"
+  "shared_skill_id": "607f1f77bcf86cd799439012",
+  "url": "/social/skills/607f1f77bcf86cd799439012",
+  "status": "published",
+  "has_custom_tasks": true
 }
 ```
 
@@ -287,16 +349,24 @@ Authorization: Bearer {token}
 <details>
 <summary><b>🔍 Discovery APIs</b></summary>
 
-#### **Search Plans**
+#### **Search Skills**
 ```http
 GET /api/v1/social/search
-Query params: q, category, difficulty, sort, page
+Query params: q, category, difficulty, sort, page, has_custom_tasks
+# sort: "popularity|rating|recent|downloads"
+# has_custom_tasks: "true|false|all"
 ```
 
-#### **Trending Plans**
+#### **Trending Skills**
 ```http
 GET /api/v1/social/trending
 Query params: period (today|week|month), limit
+```
+
+#### **Get Skill Custom Tasks**
+```http
+GET /api/v1/social/skills/{id}/custom-tasks
+Query params: day (optional)
 ```
 
 #### **Categories**
@@ -343,22 +413,27 @@ POST /api/v1/social/plans/{id}/rate
 ```
 src/
 ├── 📁 screens/social/
-│   ├── 📄 BrowsePlansScreen.jsx      # Discovery hub
-│   ├── 📄 SharedPlanDetailScreen.jsx  # Plan viewer
-│   ├── 📄 UserProfileScreen.jsx       # Public profiles
-│   └── 📄 GroupChatScreen.jsx         # Group collaboration
+│   ├── 📄 BrowseSkillsScreen.jsx       # Discovery hub
+│   ├── 📄 SharedSkillDetailScreen.jsx  # Shared skill viewer
+│   ├── 📄 CustomTaskEditorScreen.jsx   # Custom task creation
+│   ├── 📄 UserProfileScreen.jsx        # User profiles
+│   └── 📄 GroupChatScreen.jsx          # Group collaboration
 │
 ├── 📁 components/social/
-│   ├── 🧩 SharedPlanCard.jsx         # Plan preview card
-│   ├── 🧩 SocialActionBar.jsx        # Like/Share buttons
-│   ├── 🧩 CommentThread.jsx          # Nested comments
-│   ├── 🧩 RatingDisplay.jsx          # Star ratings
-│   └── 🧩 UserCard.jsx               # User info card
+│   ├── 🧩 SkillCard.jsx               # Community skill card
+│   ├── 🧩 CustomTaskCard.jsx          # User-added task card
+│   ├── 🧩 TaskEditor.jsx              # Inline task editing
+│   ├── 🧩 SocialActionBar.jsx         # Like/Share buttons
+│   ├── 🧩 CommentThread.jsx           # Nested comments
+│   ├── 🧩 RatingDisplay.jsx           # Star ratings
+│   ├── 🧩 CustomTaskBadge.jsx         # Custom content indicator
+│   └── 🧩 ResourceList.jsx            # Task resources display
 │
 └── 📁 hooks/social/
-    ├── 🪝 useSocialPlans.js          # Plan data hook
-    ├── 🪝 useComments.js             # Comments hook
-    └── 🪝 useWebSocket.js            # Real-time updates
+    ├── 🪝 useSocialSkills.js          # Skill data hook
+    ├── 🪝 useCustomTasks.js           # Custom task management
+    ├── 🪝 useComments.js              # Comments hook
+    └── 🪝 useWebSocket.js             # Real-time updates
 ```
 
 ### 🖼️ **UI Components Gallery**
@@ -367,19 +442,39 @@ src/
 <tr>
 <td width="50%">
 
-#### **📇 SharedPlanCard**
+#### **📚 SkillCard**
 ```jsx
-// Elegant plan preview with social metrics
-<SharedPlanCard
+// Community-shared skill with customization info
+<SkillCard
   title="30-Day Python Mastery"
   author={{ name: "Sarah Chen", avatar: "..." }}
+  badge={hasCustomTasks ? "Enhanced" : "Standard"}
   stats={{
     likes: 234,
     downloads: 89,
-    rating: 4.8
+    rating: 4.2,
+    customTasks: 12
   }}
   tags={["python", "beginner"]}
+  hasCustomTasks={true}
   onPress={navigateToDetail}
+/>
+```
+
+#### **✏️ CustomTaskCard**
+```jsx
+// User-added custom task
+<CustomTaskCard
+  title="Build a Calculator App"
+  description="Create a functional calculator using Python"
+  taskType="project"
+  estimatedTime={120}
+  resources={[
+    "https://docs.python.org/3/library/tkinter.html",
+    "https://realpython.com/python-gui-tkinter/"
+  ]}
+  addedBy="community"
+  onEdit={handleEdit}
 />
 ```
 
@@ -433,25 +528,33 @@ src/
 
 ### 🎯 **Screen Designs**
 
-#### **📱 BrowsePlansScreen**
+#### **📱 BrowseSkillsScreen**
 
 ```
 ┌─────────────────────────────────┐
-│  🔍 Search Plans...             │
+│  🔍 Search Skills...            │
 ├─────────────────────────────────┤
-│ [All] [Skills] [Habits] [★4.5+] │
+│ [All] [📚Standard] [✏️Enhanced] │
+│ [Beginner] [★4.5+] [Most Custom]│
 ├─────────────────────────────────┤
 │ 🔥 Trending This Month          │
 │ ┌─────────────┐ ┌─────────────┐ │
-│ │   Python    │ │   Guitar    │ │
-│ │   Mastery   │ │   Basics    │ │
-│ │ ⭐ 4.8 (234)│ │ ⭐ 4.6 (189)│ │
+│ │📚 Python    │ │✏️ Web Dev   │ │
+│ │  Basics     │ │  Mastery    │ │
+│ │⭐4.2 (234)  │ │⭐4.8 (456)  │ │
+│ │Standard Plan│ │+12 Custom   │ │
 │ └─────────────┘ └─────────────┘ │
 │                                 │
 │ 📚 Browse by Category           │
 │ ┌─────┐ ┌─────┐ ┌─────┐       │
 │ │ Tech │ │Music│ │ Art │ ...   │
 │ └─────┘ └─────┘ └─────┘       │
+│                                 │
+│ 🏆 Top Contributors This Week   │
+│ ┌─────────────┐ ┌─────────────┐ │
+│ │Sarah Chen   │ │Alex Rodriguez│ │
+│ │+23 tasks    │ │+18 tasks     │ │
+│ └─────────────┘ └─────────────┘ │
 └─────────────────────────────────┘
 ```
 
@@ -479,10 +582,10 @@ src/
 </td>
 <td>
 
-- [ ] Design BrowsePlansScreen UI
-- [ ] Create SharedPlanCard component
+- [ ] Design BrowseSkillsScreen UI
+- [ ] Create SharedSkillCard component
 - [ ] Implement search interface
-- [ ] Build plan detail viewer
+- [ ] Build skill detail viewer with custom tasks
 - [ ] Add loading states & animations
 
 </td>
@@ -551,131 +654,534 @@ src/
 
 ---
 
-## 🎯 Detailed Task Distribution & Workflow
+## 🎯 Skill Customization & Enhancement Strategy
 
-### 📝 **Task Assignment Matrix**
+### 🛠️ **Skill Plan Flexibility**
 
 <table>
 <tr>
-<th width="30%">Feature</th>
-<th width="35%">🔙 Zayan Tasks</th>
-<th width="35%">🎨 Yifei Tasks</th>
+<th width="50%">📚 **Standard Skills**</th>
+<th width="50%">✏️ **Enhanced Skills**</th>
 </tr>
 <tr>
 <td>
 
-**🏗️ Foundation Setup**
-*Week 1-2*
+**🎯 Purpose**: AI-generated baseline learning paths
+**👤 Creator**: AI + Original user
+**💰 Price**: Always free
+**⏱️ Duration**: 30 days (standard)
+**🎨 UI Badge**: "Standard" (Blue)
+
+**Key Features**:
+- AI-generated daily tasks
+- Basic resources and instructions
+- Community feedback and ratings
+- Download and share easily
+- Perfect starting point for learning
+
+**Success Metrics**:
+- Likes and downloads
+- Community ratings
+- Completion rates
+- Share frequency
 
 </td>
 <td>
 
-**Priority 1 (Critical)**
-- [ ] Create MongoDB collections with proper schemas
-- [ ] Set up Flask social service module
-- [ ] Implement JWT middleware for social endpoints
-- [ ] Create basic CRUD operations for shared plans
-- [ ] Set up Redis caching infrastructure
+**🎯 Purpose**: Community-improved learning curricula
+**👤 Creator**: Community contributors
+**💰 Price**: Always free
+**⏱️ Duration**: 30+ days (flexible)
+**🎨 UI Badge**: "Enhanced" (Gold)
 
-**Files to Create:**
-- `backend/services/social_service.py`
-- `backend/repositories/social_repository.py`
-- `backend/api/v1/social.py`
-- `backend/models/social_models.py`
+**Key Features**:
+- User-added custom tasks
+- Detailed instructions and resources
+- Rich multimedia content
+- Step-by-step guidance
+- Community-refined quality
 
-</td>
-<td>
-
-**Priority 1 (Critical)**
-- [ ] Create social navigation structure
-- [ ] Design SharedPlanCard component
-- [ ] Set up BrowsePlansScreen scaffold
-- [ ] Create social API client functions
-- [ ] Implement basic loading states
-
-**Files to Create:**
-- `frontend/src/screens/social/BrowsePlansScreen.jsx`
-- `frontend/src/components/social/SharedPlanCard.jsx`
-- `frontend/src/api/social.js`
-- `frontend/src/hooks/social/useSocialPlans.js`
+**Success Metrics**:
+- Custom task count
+- User engagement depth
+- Community contributions
+- Learning outcomes
 
 </td>
+</tr>
+</table>
+
+### 🔄 **Skill Enhancement Pipeline**
+
+```mermaid
+graph TD
+    A[User Creates Skill] --> B[AI Generates 30-Day Plan]
+    B --> C[User Adds Custom Tasks]
+    C --> D[User Shares Enhanced Skill]
+    D --> E[Community Discovers]
+    E --> F[Community Adds More Tasks]
+    F --> G[Skill Becomes Highly Enhanced]
+    G --> H[Featured in Trending]
+    
+    style A fill:#8B5CF6,stroke:#fff,color:#fff
+    style G fill:#F59E0B,stroke:#fff,color:#fff
+```
+
+### 🎨 **Task Customization Features**
+
+#### **Custom Task Types**
+```javascript
+const taskTypes = {
+  reading: {
+    icon: "📖",
+    description: "Articles, tutorials, documentation",
+    fields: ["title", "description", "resources", "estimated_time"]
+  },
+  exercise: {
+    icon: "💪",
+    description: "Hands-on practice and drills",
+    fields: ["title", "instructions", "validation_criteria", "estimated_time"]
+  },
+  project: {
+    icon: "🛠️",
+    description: "Build something practical",
+    fields: ["title", "description", "requirements", "deliverables", "resources"]
+  },
+  video: {
+    icon: "🎥",
+    description: "Video tutorials and courses",
+    fields: ["title", "video_url", "duration", "key_points"]
+  },
+  quiz: {
+    icon: "🧠",
+    description: "Knowledge assessment",
+    fields: ["title", "questions", "answers", "explanation"]
+  }
+};
+```
+
+#### **Enhanced Task Structure**
+```javascript
+{
+  task_id: ObjectId,
+  skill_id: ObjectId,
+  day: 15,
+  added_by: ObjectId,
+  task: {
+    title: "Build a Weather App",
+    description: "Create a weather app using Python and API integration",
+    task_type: "project",
+    estimated_time: 180, // minutes
+    
+    // Detailed instructions
+    instructions: `
+      1. Set up project structure
+      2. Get API key from OpenWeatherMap
+      3. Create main application file
+      4. Implement weather data fetching
+      5. Add error handling
+      6. Create user interface
+      7. Test with different cities
+    `,
+    
+    // Learning resources
+    resources: [
+      {
+        type: "documentation",
+        title: "OpenWeatherMap API Docs",
+        url: "https://openweathermap.org/api",
+        description: "Official API documentation"
+      },
+      {
+        type: "tutorial",
+        title: "Python Requests Tutorial",
+        url: "https://realpython.com/python-requests/",
+        description: "Learn to make HTTP requests"
+      },
+      {
+        type: "video",
+        title: "Building Weather Apps",
+        url: "https://youtube.com/watch?v=...",
+        duration: "45 minutes"
+      }
+    ],
+    
+    // Success criteria
+    validation_criteria: [
+      "App fetches current weather data",
+      "Handles invalid city names gracefully",
+      "Displays temperature, humidity, and conditions",
+      "Code is well-commented and structured"
+    ],
+    
+    // Community features
+    likes_count: 23,
+    usage_count: 156,
+    difficulty_rating: 3.5,
+    
+    // Metadata
+    created_at: ISODate,
+    updated_at: ISODate
+  }
+}
+```
+
+### 🔍 **Discovery & Filtering Strategy**
+
+#### **Enhanced Search Options**
+```javascript
+// Frontend filter options
+const skillFilters = {
+  enhancement: ['all', 'standard', 'enhanced'],
+  difficulty: ['beginner', 'intermediate', 'advanced'],
+  rating: ['4.5+', '4.0+', '3.5+'],
+  customTasks: ['any', '5+', '10+', '20+'],
+  taskTypes: ['reading', 'exercise', 'project', 'video', 'quiz'],
+  duration: ['30-days', '30-45-days', '45+ days'],
+  category: ['programming', 'languages', 'music', 'art', 'fitness']
+};
+```
+
+#### **Smart Skill Ranking**
+```python
+def calculate_skill_score(skill, query, user_preferences):
+    base_score = text_similarity(skill.title + skill.description, query)
+    
+    # Boost enhanced skills
+    if skill.has_custom_tasks:
+        custom_task_boost = min(skill.custom_tasks_count / 10, 1.0)
+        base_score *= (1 + custom_task_boost * 0.4)
+    
+    # Community engagement boost
+    engagement_score = (skill.likes_count + skill.downloads_count) / 1000
+    base_score *= (1 + engagement_score * 0.3)
+    
+    # Quality indicators
+    if skill.rating.average >= 4.5:
+        base_score *= 1.2
+    
+    return base_score
+```
+
+---
+
+## 🎯 Detailed Task Distribution & Workflow
+
+### 📝 **Feature-Based Task Assignment & Git Workflow**
+
+<table>
+<tr>
+<th width="50%">🔍 **Zayan - Search & Discovery Feature**</th>
+<th width="50%">✏️ **Yifei - Skill Customization Feature**</th>
 </tr>
 <tr>
 <td>
 
-**🔍 Discovery System**
-*Week 3-4*
+## **🚀 Day 1-2: Search Foundation**
+
+### **📋 Tasks:**
+- [ ] **Backend**: 
+  - Create MongoDB text search indexes (see *Indexing Strategy* section)
+  - Implement search aggregation pipelines using `$text` and `$search`
+  - Build Flask search endpoints with filtering capabilities
+  - Add Redis caching for search results (30s TTL)
+  - Follow existing Flask patterns from `backend/repositories/`
+
+- [ ] **Frontend**: 
+  - Design BrowseSkillsScreen layout (see *Screen Designs* section)
+  - Create SearchBar component with 300ms debouncing
+  - Build SearchFilters component with category/difficulty options
+  - Follow existing React Native patterns from `frontend/src/components/`
+
+- [ ] **Integration**: 
+  - Connect search API to frontend using existing `src/api/` patterns
+  - Implement search result display with pagination (10 items per page)
+  - Add loading states and error handling following existing patterns
+
+### **🌿 Git Commands:**
+
+**Before Starting:**
+```bash
+# Pull latest changes
+git checkout develop
+git pull origin develop
+
+# Create feature branch
+git checkout -b feature/search-discovery
+```
+
+**During Development:**
+```bash
+# Daily commits
+git add .
+git commit -m "feat(search): add search API endpoints"
+git push origin feature/search-discovery
+```
+
+**After Completion:**
+```bash
+# Final commit and PR
+git add .
+git commit -m "feat(search): complete search foundation"
+git push origin feature/search-discovery
+
+# Create PR
+gh pr create --title "Feature: Search & Discovery Foundation" --body "Complete search functionality with backend APIs and frontend UI"
+```
+
+---
+
+## **🔥 Day 3-4: Advanced Discovery**
+
+### **📋 Tasks:**
+- [ ] **Backend**: 
+  - Implement trending algorithm with time windows (see *Smart Skill Ranking* section)
+  - Create category-based filtering system with popularity scoring
+  - Build analytics tracking for search behavior and user engagement
+  - Add Redis caching for trending content (15min TTL)
+  - Follow existing service patterns from `backend/services/`
+
+- [ ] **Frontend**: 
+  - Create TrendingSkills carousel component with horizontal scrolling
+  - Build CategorySelector interface with visual category icons
+  - Implement infinite scroll for search results using FlatList
+  - Add PopularSkills showcase section
+  - Follow existing component patterns and styling
+
+- [ ] **Integration**: 
+  - Connect trending API to frontend carousel component
+  - Implement category filtering with real-time search updates
+  - Add performance optimization with React.memo and useMemo
+
+### **🌿 Git Commands:**
+
+**Before Starting:**
+```bash
+# Continue on same branch or create new
+git checkout feature/search-discovery
+git pull origin develop
+git merge develop  # merge latest changes
+```
+
+**After Completion:**
+```bash
+git add .
+git commit -m "feat(search): complete advanced discovery features"
+git push origin feature/search-discovery
+
+# Update PR or create new one
+gh pr create --title "Feature: Advanced Search & Discovery" --body "Complete trending, categories, and advanced search features"
+```
 
 </td>
 <td>
 
-**Priority 2 (High)**
-- [ ] Implement search endpoints with filters
-- [ ] Create trending algorithm
-- [ ] Add pagination for large datasets
-- [ ] Implement category-based filtering
-- [ ] Add search result caching
+## **🚀 Day 1-2: Custom Task System**
 
-**API Endpoints:**
-- `GET /api/v1/social/search`
-- `GET /api/v1/social/trending`
-- `GET /api/v1/social/categories`
+### **📋 Tasks:**
+- [ ] **Backend**: 
+  - Create `custom_tasks` collection schema (see *Database Design* section)
+  - Implement task CRUD operations with proper validation
+  - Build task validation system for 5 task types (see *Custom Task Types*)
+  - Add task versioning and history tracking
+  - Follow existing repository patterns from `backend/repositories/`
 
-</td>
-<td>
+- [ ] **Frontend**: 
+  - Design CustomTaskEditor with rich text input capabilities
+  - Create TaskTypeSelector with 5 task types (reading, exercise, project, video, quiz)
+  - Build ResourceManager for adding links, videos, documents
+  - Implement task preview functionality with real-time updates
+  - Follow existing form patterns and component structure
 
-**Priority 2 (High)**
-- [ ] Build search interface with filters
-- [ ] Create trending plans carousel
-- [ ] Implement infinite scroll
-- [ ] Add category selection UI
-- [ ] Create search result animations
+- [ ] **Integration**: 
+  - Connect task creation APIs to frontend editor
+  - Implement task creation workflow with validation feedback
+  - Add task preview that shows exactly how learners will see it
 
-**Key Components:**
-- `SearchFilters.jsx`
-- `TrendingPlans.jsx`
-- `CategorySelector.jsx`
-- `PlanGrid.jsx`
+### **🌿 Git Commands:**
+
+**Before Starting:**
+```bash
+# Pull latest changes
+git checkout develop
+git pull origin develop
+
+# Create feature branch
+git checkout -b feature/skill-customization
+```
+
+**During Development:**
+```bash
+# Daily commits
+git add .
+git commit -m "feat(tasks): add custom task creation API"
+git push origin feature/skill-customization
+```
+
+**After Completion:**
+```bash
+# Final commit and PR
+git add .
+git commit -m "feat(tasks): complete custom task system"
+git push origin feature/skill-customization
+
+# Create PR
+gh pr create --title "Feature: Custom Task System" --body "Complete custom task creation with backend APIs and frontend editor"
+```
+
+---
+
+## **🏆 Day 3-4: Community Features**
+
+### **📋 Tasks:**
+- [ ] **Backend**: 
+  - Implement task voting system with upvote/downvote functionality
+  - Create contributor tier system (see *Contributor Recognition* section)
+  - Build community moderation tools with reporting system
+  - Add reputation scoring based on task quality and community feedback
+  - Follow existing service patterns for user management
+
+- [ ] **Frontend**: 
+  - Create TaskVoting component with upvote/downvote buttons
+  - Build ContributorProfile interface showing user achievements
+  - Implement task quality indicators (rating stars, vote counts)
+  - Add community guidelines UI and reporting interface
+  - Follow existing user profile patterns and styling
+
+- [ ] **Integration**: 
+  - Connect voting APIs to frontend voting components
+  - Implement contributor recognition with real-time badge updates
+  - Add task approval workflow with community voting integration
+
+### **🌿 Git Commands:**
+
+**Before Starting:**
+```bash
+# Continue on same branch or create new
+git checkout feature/skill-customization
+git pull origin develop
+git merge develop  # merge latest changes
+```
+
+**After Completion:**
+```bash
+git add .
+git commit -m "feat(community): complete voting and contributor system"
+git push origin feature/skill-customization
+
+# Update PR or create new one
+gh pr create --title "Feature: Community & Voting System" --body "Complete community features with voting, contributor recognition, and moderation"
+```
 
 </td>
 </tr>
+</table>
+
+### 🤝 **Shared Integration (Day 5-7)**
+
+<table>
 <tr>
-<td>
+<th width="100%" colspan="2">**Both Team Members - Cross-Feature Integration**</th>
+</tr>
+<tr>
+<td colspan="2">
 
-**💬 Social Interactions**
-*Week 5-6*
+## **🔗 Week 5-6: Feature Integration**
 
-</td>
-<td>
+### **📋 Integration Tasks (Both):**
+- [ ] **Cross-Feature Data Flow**: 
+  - Ensure search results include custom task count and quality indicators
+  - Make custom tasks appear in skill detail views with proper attribution
+  - Update trending algorithm to consider custom task popularity
+  - Add customization metrics to category filtering
 
-**Priority 3 (Medium)**
-- [ ] Like/unlike functionality
-- [ ] Comment system with threading
-- [ ] Rating system implementation
-- [ ] User interaction tracking
-- [ ] Real-time notification triggers
+- [ ] **Shared Social Features**: 
+  - Implement like/comment/rating system that works across both features
+  - Create unified user profiles showing both search and customization activities
+  - Add real-time notifications for votes, comments, and skill interactions
+  - Build social sharing capabilities for enhanced skills
 
-**Database Collections:**
-- `plan_interactions`
-- `plan_comments`
-- `user_notifications`
+- [ ] **Technical Integration**: 
+  - Ensure data consistency between search and customization features
+  - Implement shared authentication and authorization patterns
+  - Create unified error handling and validation across features
+  - Add performance optimization with shared caching strategies
 
-</td>
-<td>
+### **🌿 Git Commands (Both):**
 
-**Priority 3 (Medium)**
-- [ ] Social action buttons
-- [ ] Comment thread component
-- [ ] Rating stars interface
-- [ ] User interaction feedback
-- [ ] Real-time update handling
+**Before Starting Integration:**
+```bash
+# Create integration branch
+git checkout develop
+git pull origin develop
+git checkout -b feature/integration
 
-**Interactive Components:**
-- `SocialActionBar.jsx`
-- `CommentThread.jsx`
-- `RatingDisplay.jsx`
-- `InteractionFeedback.jsx`
+# Merge both feature branches
+git merge feature/search-discovery
+git merge feature/skill-customization
+```
+
+**During Integration:**
+```bash
+# Daily commits for integration work
+git add .
+git commit -m "integrate: connect search with custom tasks"
+git push origin feature/integration
+```
+
+**After Integration:**
+```bash
+# Final integration commit
+git add .
+git commit -m "integrate: complete cross-feature integration"
+git push origin feature/integration
+
+# Create integration PR
+gh pr create --title "Integration: Search + Customization Features" --body "Complete integration of search discovery and skill customization features"
+```
+
+## **🚀 Day 7: Final Launch**
+
+### **📋 Launch Tasks (Both):**
+- [ ] **End-to-End Testing**: 
+  - Test complete user journeys from skill discovery to task customization
+  - Verify cross-feature integration works seamlessly
+  - Perform load testing with realistic user data volumes
+  - Test mobile responsiveness on iOS, Android, and web platforms
+
+- [ ] **Production Preparation**: 
+  - Set up production environment with proper scaling
+  - Run database migrations and seed initial data
+  - Create comprehensive API documentation for future development
+  - Write user guides and tutorials for new features
+  - Set up monitoring and analytics for feature usage tracking
+
+- [ ] **Security & Performance**: 
+  - Conduct security testing and vulnerability assessment
+  - Optimize database queries and add proper indexing
+  - Implement rate limiting and abuse prevention
+  - Add comprehensive error logging and monitoring
+
+### **🌿 Git Commands (Both):**
+
+**Before Launch:**
+```bash
+# Final testing branch
+git checkout develop
+git pull origin develop
+git checkout -b release/social-features
+```
+
+**Launch Preparation:**
+```bash
+# Final commits with testing and documentation
+git add .
+git commit -m "release: prepare social features for production"
+git push origin release/social-features
+
+# Create release PR to main
+gh pr create --title "Release: Social Features v1.0" --body "Complete social features ready for production deployment"
+```
 
 </td>
 </tr>
@@ -724,6 +1230,180 @@ src/
 - [ ] Database queries are optimized and indexed
 - [ ] Mobile responsiveness on all screen sizes
 - [ ] Real-time features work reliably
+
+---
+
+## 🛠️ Custom Task Creation & Management
+
+### 🎯 **Task Enhancement Workflow**
+
+#### **Adding Custom Tasks**
+```mermaid
+graph TD
+    A[User Views Shared Skill] --> B[Clicks 'Add Task' for Day]
+    B --> C[Select Task Type]
+    C --> D[Fill Task Details]
+    D --> E[Add Instructions & Resources]
+    E --> F[Preview Task]
+    F --> G[Submit for Review]
+    G --> H[Community Voting]
+    H --> I{Approved?}
+    I -->|Yes| J[Task Added to Skill]
+    I -->|No| K[Feedback & Revision]
+    K --> D
+    
+    style A fill:#8B5CF6,stroke:#fff,color:#fff
+    style J fill:#14B8A6,stroke:#fff,color:#fff
+    style K fill:#EF4444,stroke:#fff,color:#fff
+```
+
+#### **Task Management Features**
+- [ ] **Task Editor**: Rich text editor for instructions and descriptions
+- [ ] **Resource Manager**: Add links, videos, documents, and images
+- [ ] **Preview Mode**: See how learners will experience the task
+- [ ] **Community Voting**: Upvote/downvote system for task quality
+- [ ] **Version History**: Track changes and improvements over time
+
+### 🔧 **Task Enhancement APIs**
+
+#### **Custom Task Creation**
+```http
+# Add custom task to specific day
+POST /api/v1/social/skills/{skill_id}/days/{day}/tasks
+Authorization: Bearer {token}
+
+{
+  "title": "Build a Personal Portfolio Website",
+  "description": "Create a responsive portfolio website to showcase your Python projects",
+  "task_type": "project",
+  "estimated_time": 240,
+  "difficulty": "intermediate",
+  "instructions": "1. Choose a web framework (Flask/Django)\n2. Design the layout\n3. Add project showcase\n4. Implement contact form\n5. Deploy to Heroku",
+  "resources": [
+    {
+      "type": "tutorial",
+      "title": "Flask Web Development",
+      "url": "https://flask.palletsprojects.com/tutorial/",
+      "description": "Official Flask tutorial"
+    },
+    {
+      "type": "video",
+      "title": "Building Portfolio with Flask",
+      "url": "https://youtube.com/watch?v=...",
+      "duration": "30 minutes"
+    }
+  ],
+  "validation_criteria": [
+    "Website is responsive on mobile and desktop",
+    "Includes at least 3 Python projects",
+    "Has working contact form",
+    "Deployed and accessible online"
+  ]
+}
+```
+
+#### **Task Voting & Feedback**
+```http
+# Vote on custom task
+POST /api/v1/social/tasks/{task_id}/vote
+Authorization: Bearer {token}
+
+{
+  "vote": "up|down",
+  "feedback": "Great task! Really helped me understand Flask better."
+}
+```
+
+#### **Task Analytics**
+```http
+# Get task performance metrics
+GET /api/v1/social/tasks/{task_id}/analytics
+Authorization: Bearer {token}
+
+Response:
+{
+  "task_id": "...",
+  "usage_count": 156,
+  "completion_rate": 78,
+  "average_rating": 4.6,
+  "votes": {
+    "up": 89,
+    "down": 12
+  },
+  "feedback_summary": {
+    "positive": 85,
+    "negative": 8,
+    "neutral": 23
+  },
+  "time_metrics": {
+    "avg_completion_time": 185,
+    "estimated_time": 240
+  }
+}
+```
+
+### 🏆 **Community Contribution System**
+
+#### **Contributor Recognition**
+```
+🥉 Contributor (Starting)
+├── 1-5 custom tasks added
+├── 4.0+ average task rating
+├── 70%+ task approval rate
+└── Basic contributor badge
+
+🥈 Skilled Contributor (Active)
+├── 6-15 custom tasks added
+├── 4.5+ average task rating
+├── 80%+ task approval rate
+├── Featured in "Top Contributors"
+└── Advanced task creation tools
+
+🥇 Expert Contributor (Master)
+├── 16+ custom tasks added
+├── 4.8+ average task rating
+├── 90%+ task approval rate
+├── Moderation privileges
+├── Featured profile
+└── Early access to new features
+```
+
+### 📱 **Frontend Task Management**
+
+#### **Task Enhancement Components**
+```jsx
+// Task editor for custom tasks
+<TaskEditor
+  taskType="project"
+  onSave={handleSave}
+  onPreview={handlePreview}
+  initialData={taskData}
+/>
+
+// Task voting interface
+<TaskVoting
+  taskId={taskId}
+  currentVote={userVote}
+  upvotes={89}
+  downvotes={12}
+  onVote={handleVote}
+/>
+
+// Custom task display
+<CustomTaskDisplay
+  task={customTask}
+  showContributor={true}
+  showVoting={true}
+  onEdit={handleEdit}
+/>
+```
+
+#### **Enhanced User Experience**
+- **Inline Editing**: Edit tasks directly in the skill view
+- **Real-time Preview**: See changes as you type
+- **Collaborative Editing**: Multiple users can suggest improvements
+- **Smart Suggestions**: AI-powered resource recommendations
+- **Progress Tracking**: See which custom tasks users complete most
 
 ---
 
@@ -1123,120 +1803,133 @@ Please help me implement the social discovery screen."
 
 ---
 
-## ✅ Master Implementation Checklist
+## ✅ **Feature-Based Master Checklist**
 
-### 🏗️ **Phase 1: Foundation (Weeks 1-2)**
+### 🔍 **Zayan's Feature: Social Discovery & Search**
 
-#### **Backend Tasks - Zayan**
-- [ ] **Database Setup**
-  - [ ] Create `shared_plans` collection schema
-  - [ ] Create `plan_interactions` collection schema  
-  - [ ] Create `plan_comments` collection schema
-  - [ ] Create `plan_groups` collection schema
-  - [ ] Add proper indexes for performance
+#### **Day 1-2: Search Foundation**
+- [ ] **Database & Backend**
+  - [ ] Create search-optimized MongoDB indexes
+  - [ ] Implement text search aggregation pipelines
+  - [ ] Build search API endpoints with filtering
+  - [ ] Add Redis caching for search results
+  - [ ] Create search analytics tracking
 
-- [ ] **API Infrastructure**
-  - [ ] Create social service module
-  - [ ] Set up social repository layer
-  - [ ] Create social API blueprint
-  - [ ] Implement JWT middleware for social endpoints
-  - [ ] Add input validation schemas
+- [ ] **Frontend & UI**
+  - [ ] Design and build BrowseSkillsScreen
+  - [ ] Create SearchBar component with debouncing
+  - [ ] Implement SearchFilters component
+  - [ ] Build search result display with pagination
+  - [ ] Add search loading states and animations
 
-- [ ] **Core Endpoints**
-  - [ ] `POST /api/v1/social/plans/share` - Share a plan
-  - [ ] `GET /api/v1/social/plans` - Get shared plans
-  - [ ] `GET /api/v1/social/plans/{id}` - Get specific shared plan
-  - [ ] `DELETE /api/v1/social/plans/{id}` - Delete shared plan
+- [ ] **API Endpoints**
+  - [ ] `GET /api/v1/search/skills` - Advanced skill search
+  - [ ] `GET /api/v1/search/suggestions` - Search autocomplete
+  - [ ] `GET /api/v1/search/history` - User search history
+  - [ ] `POST /api/v1/search/analytics` - Search behavior tracking
 
-#### **Frontend Tasks - Yifei**
-- [ ] **Navigation Setup**
-  - [ ] Add Social tab to MainTabNavigator
-  - [ ] Create social screens navigation stack
-  - [ ] Add social icons and styling
+#### **Day 3-4: Advanced Discovery**
+- [ ] **Trending & Categories**
+  - [ ] Implement trending algorithm with time windows
+  - [ ] Create category-based filtering system
+  - [ ] Build popularity scoring mechanism
+  - [ ] Add trending content caching
+  - [ ] Implement category management
 
-- [ ] **Base Components**
-  - [ ] Create `BrowsePlansScreen` scaffold
-  - [ ] Create `SharedPlanCard` component
-  - [ ] Create `SocialActionBar` component
-  - [ ] Add loading and error states
+- [ ] **Discovery UI**
+  - [ ] Create TrendingSkills carousel component
+  - [ ] Build CategorySelector interface
+  - [ ] Implement infinite scroll for results
+  - [ ] Add PopularSkills showcase
+  - [ ] Create discovery analytics dashboard
+
+- [ ] **API Endpoints**
+  - [ ] `GET /api/v1/discovery/trending` - Trending skills
+  - [ ] `GET /api/v1/discovery/categories` - Skill categories
+  - [ ] `GET /api/v1/discovery/popular` - Popular skills
+  - [ ] `GET /api/v1/discovery/analytics` - Discovery metrics
+
+### ✏️ **Yifei's Feature: Skill Customization & Community**
+
+#### **Day 1-2: Custom Task System**
+- [ ] **Database & Backend**
+  - [ ] Create custom_tasks collection schema
+  - [ ] Implement task CRUD operations
+  - [ ] Build task validation system
+  - [ ] Add task versioning and history
+  - [ ] Create task quality scoring
+
+- [ ] **Frontend & UI**
+  - [ ] Design CustomTaskEditor component
+  - [ ] Create TaskTypeSelector interface
+  - [ ] Build ResourceManager component
+  - [ ] Implement task preview functionality
+  - [ ] Add task creation workflow
+
+- [ ] **API Endpoints**
+  - [ ] `POST /api/v1/tasks/create` - Create custom task
+  - [ ] `GET /api/v1/tasks/skill/{id}` - Get skill's custom tasks
+  - [ ] `PUT /api/v1/tasks/{id}` - Update custom task
+  - [ ] `DELETE /api/v1/tasks/{id}` - Delete custom task
+  - [ ] `GET /api/v1/tasks/validate` - Validate task content
+
+#### **Day 3-4: Community Features**
+- [ ] **Voting & Recognition**
+  - [ ] Implement task voting system
+  - [ ] Create contributor tier system
+  - [ ] Build community moderation tools
+  - [ ] Add reputation scoring
+  - [ ] Implement task approval workflow
+
+- [ ] **Community UI**
+  - [ ] Create TaskVoting component
+  - [ ] Build ContributorProfile interface
+  - [ ] Implement task quality indicators
+  - [ ] Add community guidelines UI
+  - [ ] Create contributor analytics dashboard
+
+- [ ] **API Endpoints**
+  - [ ] `POST /api/v1/community/vote` - Vote on tasks
+  - [ ] `GET /api/v1/community/contributors` - Top contributors
+  - [ ] `GET /api/v1/community/reputation/{id}` - User reputation
+  - [ ] `POST /api/v1/community/report` - Report content
+  - [ ] `GET /api/v1/community/analytics` - Community metrics
+
+### 🤝 **Shared Integration (Weeks 5-7)**
+
+#### **Day 5-6: Cross-Feature Integration**
+- [ ] **Data Integration**
+  - [ ] Search includes custom task count in results
+  - [ ] Custom tasks appear in skill detail views
+  - [ ] Trending considers custom task popularity
+  - [ ] Categories include customization metrics
+
+- [ ] **Social Features (Both)**
+  - [ ] Like/comment/rating system
+  - [ ] User profiles with both activities
+  - [ ] Real-time notifications
+  - [ ] Social sharing capabilities
 
 - [ ] **API Integration**
-  - [ ] Create social API client (`src/api/social.js`)
-  - [ ] Create `useSocialPlans` hook
-  - [ ] Test API integration with backend
+  - [ ] Cross-feature data consistency
+  - [ ] Shared authentication and authorization
+  - [ ] Unified error handling
+  - [ ] Performance optimization across features
 
-### 🔍 **Phase 2: Discovery (Weeks 3-4)**
-
-#### **Backend Tasks - Zayan**
-- [ ] **Search Implementation**
-  - [ ] Create search endpoint with filters
-  - [ ] Implement trending algorithm
-  - [ ] Add category-based filtering
-  - [ ] Add pagination support
-  - [ ] Implement search result caching
-
-- [ ] **Performance Optimization**
-  - [ ] Add Redis caching layer
-  - [ ] Optimize database queries
-  - [ ] Add query result pagination
-  - [ ] Implement rate limiting
-
-#### **Frontend Tasks - Yifei**
-- [ ] **Search Interface**
-  - [ ] Create search bar component
-  - [ ] Add filter options UI
-  - [ ] Implement search debouncing
-  - [ ] Add search history
-
-- [ ] **Discovery Features**
-  - [ ] Create trending plans carousel
-  - [ ] Add category selection
-  - [ ] Implement infinite scroll
-  - [ ] Add search result animations
-
-### 💬 **Phase 3: Interactions (Weeks 5-6)**
-
-#### **Backend Tasks - Zayan**
-- [ ] **Social Features**
-  - [ ] Like/unlike functionality
-  - [ ] Comment system with threading
-  - [ ] Rating system implementation
-  - [ ] User interaction tracking
-  - [ ] Real-time notification triggers
-
-- [ ] **Advanced Features**
-  - [ ] WebSocket server setup
-  - [ ] Notification system
-  - [ ] Content moderation tools
-  - [ ] Analytics tracking
-
-#### **Frontend Tasks - Yifei**
-- [ ] **Interactive Components**
-  - [ ] Social action buttons
-  - [ ] Comment thread component
-  - [ ] Rating stars interface
-  - [ ] User interaction feedback
-
-- [ ] **Real-time Features**
-  - [ ] WebSocket client integration
-  - [ ] Real-time notifications
-  - [ ] Live updates for likes/comments
-  - [ ] Connection status indicators
-
-### 🚀 **Phase 4: Polish & Deploy (Week 7)**
-
-#### **Joint Tasks**
+#### **Day 7: Launch Preparation**
 - [ ] **Testing & Quality**
-  - [ ] End-to-end testing
-  - [ ] Performance testing
-  - [ ] Cross-platform testing
-  - [ ] Security testing
+  - [ ] End-to-end feature testing
+  - [ ] Cross-feature integration testing
+  - [ ] Performance and load testing
+  - [ ] Security and vulnerability testing
+  - [ ] Mobile responsiveness testing
 
-- [ ] **Deployment**
-  - [ ] Environment configuration
-  - [ ] Database migrations
-  - [ ] Production deployment
-  - [ ] Monitoring setup
+- [ ] **Deployment & Documentation**
+  - [ ] Production environment setup
+  - [ ] Database migrations and seeding
+  - [ ] API documentation
+  - [ ] User guides and tutorials
+  - [ ] Monitoring and analytics setup
 
 ---
 
