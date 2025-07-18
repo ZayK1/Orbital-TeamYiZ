@@ -14,13 +14,14 @@ export const createSkillPlan = async (skillName, difficulty, token) => {
   return response.data;
 };
 
-export const createHabitPlan = async (title, category, color, token, startDate, endDate, reminderTime, customDays) => {
+export const createHabitPlan = async (title, category, color, token, startDate, endDate, reminderTime, customDays, reminderMessage) => {
   const body = { title, category };
   if (color) body.color = color;
   if (startDate) body.start_date = startDate;
   if (endDate) body.end_date = endDate;
   if (reminderTime) body.reminder_time = reminderTime;
   if (customDays && customDays.length > 0) body.custom_days = customDays;
+  if (reminderMessage) body.reminder_message = reminderMessage;
   const response = await axios.post(`${API_BASE_URL}/api/v1/plans/habits`,
     body,
     { headers: { Authorization: `Bearer ${token}` } }

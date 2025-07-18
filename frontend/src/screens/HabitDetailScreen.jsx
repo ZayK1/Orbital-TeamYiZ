@@ -5,6 +5,8 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import { getHabitById, updateHabit, deleteHabit } from '../api/plans';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { scheduleHabitNotification, cancelNotification } from '../utils/notifications';
 
 const weekdays = [
   { label: 'Sun', value: 0 },
@@ -43,6 +45,7 @@ const HabitDetailScreen = () => {
   const [reminderTime, setReminderTime] = useState(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [customDays, setCustomDays] = useState([]);
+  const [reminderMessage, setReminderMessage] = useState('');
 
   const fetchHabit = async () => {
     try {
@@ -55,6 +58,7 @@ const HabitDetailScreen = () => {
       setReminderEnabled(!!data.pattern?.reminder_time);
       setReminderTime(data.pattern?.reminder_time ? new Date(`1970-01-01T${data.pattern.reminder_time}`) : null);
       setCustomDays(data.pattern?.target_days || []);
+      setReminderMessage(data.reminder_message || '');
     } catch (err) {
       console.error('Failed to fetch habit', err);
     } finally {
@@ -75,14 +79,43 @@ const HabitDetailScreen = () => {
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Cancel old notifications if any
+      const notifKey = `habit_notifications_${habit._id}`;
+      const oldNotifIdsStr = await AsyncStorage.getItem(notifKey);
+      if (oldNotifIdsStr) {
+        const oldNotifIds = JSON.parse(oldNotifIdsStr);
+        for (const id of oldNotifIds) {
+          try { await cancelNotification(id); } catch (e) { console.warn('Failed to cancel old notification', e); }
+        }
+      }
       await updateHabit(habit._id, {
         title,
         color: habitColors[selectedColor],
         start_date: startDate ? startDate.toISOString().split('T')[0] : undefined,
         end_date: endDate ? endDate.toISOString().split('T')[0] : undefined,
         reminder_time: reminderEnabled && reminderTime ? reminderTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : undefined,
-        custom_days: customDays
+        custom_days: customDays,
+        reminder_message: reminderEnabled && reminderMessage ? reminderMessage : undefined
       }, token);
+      // Schedule new notifications if enabled
+      if (reminderEnabled && reminderTime && customDays && customDays.length > 0) {
+        try {
+          const notifIds = await scheduleHabitNotification({
+            id: habit._id,
+            title,
+            message: reminderMessage || 'Time to build your habit!',
+            time: reminderTime,
+            days: customDays
+          });
+          await AsyncStorage.setItem(notifKey, JSON.stringify(notifIds));
+        } catch (notifErr) {
+          console.error('Failed to schedule notification:', notifErr);
+          Alert.alert('Notification Error', 'Could not schedule local notifications.');
+        }
+      } else {
+        // If reminders are disabled, clear stored notif IDs
+        await AsyncStorage.removeItem(notifKey);
+      }
       Alert.alert('Success', 'Habit updated successfully');
       fetchHabit();
     } catch (err) {
@@ -100,6 +133,16 @@ const HabitDetailScreen = () => {
         text: 'Delete', style: 'destructive', onPress: async () => {
           setDeleting(true);
           try {
+            // Cancel all notifications for this habit
+            const notifKey = `habit_notifications_${habit._id}`;
+            const notifIdsStr = await AsyncStorage.getItem(notifKey);
+            if (notifIdsStr) {
+              const notifIds = JSON.parse(notifIdsStr);
+              for (const id of notifIds) {
+                try { await cancelNotification(id); } catch (e) { console.warn('Failed to cancel notification', e); }
+              }
+              await AsyncStorage.removeItem(notifKey);
+            }
             await deleteHabit(habit._id, token);
             Alert.alert('Deleted', 'Habit deleted');
             navigation.goBack();
@@ -224,6 +267,17 @@ const HabitDetailScreen = () => {
             />
           )}
         </View>
+        {reminderEnabled && (
+          <View style={styles.section}>
+            <Text style={styles.fieldLabel}>Reminder Message</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter your custom reminder message"
+              value={reminderMessage}
+              onChangeText={setReminderMessage}
+            />
+          </View>
+        )}
       </ScrollView>
       <View style={styles.bottomButtons}>
         <TouchableOpacity style={styles.primaryButton} onPress={handleSave} disabled={saving}>
@@ -255,6 +309,7 @@ const styles = StyleSheet.create({
   bottomButtons: { position: 'absolute', bottom: 40, left: 16, right: 16 },
   primaryButton: { backgroundColor: '#14B8A6', paddingVertical: 14, borderRadius: 12 },
   primaryButtonText: { color: 'white', fontWeight: '600', textAlign: 'center' },
+  input: { backgroundColor: 'white', borderRadius: 8, padding: 12, fontSize: 16, borderWidth: 1, borderColor: '#E5E7EB', marginTop: 8 },
 });
 
 export default HabitDetailScreen; 

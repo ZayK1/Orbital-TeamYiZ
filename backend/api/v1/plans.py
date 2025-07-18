@@ -125,7 +125,8 @@ def create_habit():
         start_date=validated_data.get('start_date'),
         end_date=validated_data.get('end_date'),
         reminder_time=validated_data.get('reminder_time'),
-        custom_days=validated_data.get('custom_days')
+        custom_days=validated_data.get('custom_days'),
+        reminder_message=validated_data.get('reminder_message')
     )
     return jsonify({"message": "Habit created successfully", "habit": habit_plan}), 201
 

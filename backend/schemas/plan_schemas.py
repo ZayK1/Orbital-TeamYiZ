@@ -15,6 +15,7 @@ class HabitCreateSchema(Schema):
     end_date = fields.Date(required=False, allow_none=True)
     reminder_time = fields.Time(required=False, allow_none=True)
     custom_days = fields.List(fields.Int(validate=validate.Range(min=0, max=6)), required=False, allow_none=True)
+    reminder_message = fields.Str(required=False, allow_none=True)
 
 class HabitCheckinSchema(Schema):
     completion_date = fields.Date()
@@ -49,6 +50,7 @@ class HabitUpdateSchema(Schema):
     end_date = fields.Date(allow_none=True)
     reminder_time = fields.Time(allow_none=True)
     custom_days = fields.List(fields.Int(validate=validate.Range(min=0, max=6)), allow_none=True)
+    reminder_message = fields.Str(allow_none=True)
 
     class Meta:
         unknown = EXCLUDE 

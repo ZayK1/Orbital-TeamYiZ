@@ -6,6 +6,9 @@ import { useAuth } from '../context/AuthContext';
 import { createHabitPlan } from '../api/plans';
 import HabitSuccessModal from '../components/HabitSuccessModel';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { requestNotificationPermission } from '../utils/notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { scheduleHabitNotification } from '../utils/notifications';
 
 
 const suggestionList = [
@@ -38,6 +41,7 @@ export default function AddHabitScreen({ navigation }) {
   const [showEndDatePicker, setShowEndDatePicker] = useState(false);
   const [reminderTime, setReminderTime] = useState(null);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [reminderMessage, setReminderMessage] = useState("");
   const [customDays, setCustomDays] = useState([]);
 
   const weekdays = [
@@ -56,6 +60,17 @@ export default function AddHabitScreen({ navigation }) {
     );
   };
 
+  const handleReminderToggle = async (value) => {
+    if (value) {
+      const granted = await requestNotificationPermission();
+      if (!granted) {
+        Alert.alert('Permission Required', 'Please enable notifications in your device settings to receive habit reminders.');
+        return;
+      }
+    }
+    setReminderEnabled(value);
+  };
+
   const handleAddHabit = async () => {
     if (!habit.trim()) {
       Alert.alert('Validation', 'Please enter a habit title.');
@@ -63,7 +78,7 @@ export default function AddHabitScreen({ navigation }) {
     }
     try {
       setLoading(true);
-      await createHabitPlan(
+      const response = await createHabitPlan(
         habit.trim(),
         'health',
         habitColors[selectedColor],
@@ -71,8 +86,32 @@ export default function AddHabitScreen({ navigation }) {
         startDate ? startDate.toISOString().split('T')[0] : undefined,
         endDate ? endDate.toISOString().split('T')[0] : undefined,
         reminderEnabled && reminderTime ? reminderTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }) : undefined,
-        customDays
+        customDays,
+        reminderEnabled && reminderMessage ? reminderMessage : undefined
       );
+      // Schedule notifications if enabled and all fields are set
+      if (
+        reminderEnabled &&
+        reminderTime &&
+        customDays && customDays.length > 0 &&
+        response?.habit?._id
+      ) {
+        try {
+          const notificationIds = await scheduleHabitNotification({
+            id: response.habit._id,
+            title: habit.trim(),
+            message: reminderMessage || 'Time to build your habit!',
+            time: reminderTime,
+            days: customDays
+          });
+          // Store notification IDs in AsyncStorage mapped to habit ID
+          const key = `habit_notifications_${response.habit._id}`;
+          await AsyncStorage.setItem(key, JSON.stringify(notificationIds));
+        } catch (notifErr) {
+          console.error('Failed to schedule notification:', notifErr);
+          Alert.alert('Notification Error', 'Could not schedule local notifications.');
+        }
+      }
       setSuccessModalVisible(true);
     } catch (err) {
       console.error('Habit creation failed:', err);
@@ -160,7 +199,7 @@ export default function AddHabitScreen({ navigation }) {
                 <Text style={styles.reminderSubtitle}>Get a gentle nudge at your chosen time.</Text>
               </View>
             </View>
-            <Switch value={reminderEnabled} onValueChange={setReminderEnabled} trackColor={{ false: "#E5E7EB", true: "#8B5CF6" }} thumbColor={reminderEnabled ? "#FFFFFF" : "#F4F3F4"} />
+            <Switch value={reminderEnabled} onValueChange={handleReminderToggle} trackColor={{ false: "#E5E7EB", true: "#8B5CF6" }} thumbColor={reminderEnabled ? "#FFFFFF" : "#F4F3F4"} />
           </View>
 
           <View style={styles.section}>
@@ -227,6 +266,20 @@ export default function AddHabitScreen({ navigation }) {
               />
             )}
           </View>
+          {reminderEnabled && (
+            <View style={styles.section}>
+              <Text style={styles.fieldLabel}>Reminder Message</Text>
+              <TextInput
+                value={reminderMessage}
+                onChangeText={text => setReminderMessage(text.slice(0, 60))}
+                placeholder="e.g., Time to build your habit!"
+                placeholderTextColor="#9CA3AF"
+                style={[styles.textInput, { backgroundColor: 'white', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, marginBottom: 4 }]}
+                maxLength={60}
+              />
+              <Text style={{ textAlign: 'right', fontSize: 12, color: '#9CA3AF' }}>{reminderMessage.length}/60 characters</Text>
+            </View>
+          )}
         </ScrollView>
 
         <View style={styles.footer}>
