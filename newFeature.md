@@ -7,8 +7,58 @@
   [![Status](https://img.shields.io/badge/Status-Ready%20to%20Build-brightgreen)](https://github.com)
   [![Stack](https://img.shields.io/badge/Stack-React%20Native%20%2B%20Flask-blue)](https://github.com)
   [![Database](https://img.shields.io/badge/Database-MongoDB-green)](https://github.com)
+  [![Team](https://img.shields.io/badge/Team-Zayan%20%2B%20Yifei-purple)](https://github.com)
   
 </div>
+
+---
+
+## 👥 Team Collaboration Guide
+
+<table>
+<tr>
+<td width="50%">
+
+### 🔙 **Zayan - Backend Lead**
+**Primary Focus**: API Development & Database Design
+
+**Key Responsibilities**:
+- MongoDB schema design & migrations
+- Flask API endpoints & business logic
+- Authentication & security implementation
+- WebSocket server setup
+- Performance optimization & caching
+
+**Tools & Technologies**:
+- Python 3.11 + Flask
+- MongoDB with PyMongo
+- Redis for caching
+- WebSocket implementation
+- JWT authentication
+
+</td>
+<td width="50%">
+
+### 🎨 **Yifei - Frontend Lead**
+**Primary Focus**: UI/UX & Mobile Development
+
+**Key Responsibilities**:
+- React Native component development
+- Screen layouts & navigation
+- Social interaction interfaces
+- Real-time UI updates
+- Mobile-first design patterns
+
+**Tools & Technologies**:
+- React Native + Expo SDK 53
+- JavaScript (JSX)
+- React Navigation
+- WebSocket client
+- Axios for API calls
+
+</td>
+</tr>
+</table>
 
 ---
 
@@ -501,6 +551,182 @@ src/
 
 ---
 
+## 🎯 Detailed Task Distribution & Workflow
+
+### 📝 **Task Assignment Matrix**
+
+<table>
+<tr>
+<th width="30%">Feature</th>
+<th width="35%">🔙 Zayan Tasks</th>
+<th width="35%">🎨 Yifei Tasks</th>
+</tr>
+<tr>
+<td>
+
+**🏗️ Foundation Setup**
+*Week 1-2*
+
+</td>
+<td>
+
+**Priority 1 (Critical)**
+- [ ] Create MongoDB collections with proper schemas
+- [ ] Set up Flask social service module
+- [ ] Implement JWT middleware for social endpoints
+- [ ] Create basic CRUD operations for shared plans
+- [ ] Set up Redis caching infrastructure
+
+**Files to Create:**
+- `backend/services/social_service.py`
+- `backend/repositories/social_repository.py`
+- `backend/api/v1/social.py`
+- `backend/models/social_models.py`
+
+</td>
+<td>
+
+**Priority 1 (Critical)**
+- [ ] Create social navigation structure
+- [ ] Design SharedPlanCard component
+- [ ] Set up BrowsePlansScreen scaffold
+- [ ] Create social API client functions
+- [ ] Implement basic loading states
+
+**Files to Create:**
+- `frontend/src/screens/social/BrowsePlansScreen.jsx`
+- `frontend/src/components/social/SharedPlanCard.jsx`
+- `frontend/src/api/social.js`
+- `frontend/src/hooks/social/useSocialPlans.js`
+
+</td>
+</tr>
+<tr>
+<td>
+
+**🔍 Discovery System**
+*Week 3-4*
+
+</td>
+<td>
+
+**Priority 2 (High)**
+- [ ] Implement search endpoints with filters
+- [ ] Create trending algorithm
+- [ ] Add pagination for large datasets
+- [ ] Implement category-based filtering
+- [ ] Add search result caching
+
+**API Endpoints:**
+- `GET /api/v1/social/search`
+- `GET /api/v1/social/trending`
+- `GET /api/v1/social/categories`
+
+</td>
+<td>
+
+**Priority 2 (High)**
+- [ ] Build search interface with filters
+- [ ] Create trending plans carousel
+- [ ] Implement infinite scroll
+- [ ] Add category selection UI
+- [ ] Create search result animations
+
+**Key Components:**
+- `SearchFilters.jsx`
+- `TrendingPlans.jsx`
+- `CategorySelector.jsx`
+- `PlanGrid.jsx`
+
+</td>
+</tr>
+<tr>
+<td>
+
+**💬 Social Interactions**
+*Week 5-6*
+
+</td>
+<td>
+
+**Priority 3 (Medium)**
+- [ ] Like/unlike functionality
+- [ ] Comment system with threading
+- [ ] Rating system implementation
+- [ ] User interaction tracking
+- [ ] Real-time notification triggers
+
+**Database Collections:**
+- `plan_interactions`
+- `plan_comments`
+- `user_notifications`
+
+</td>
+<td>
+
+**Priority 3 (Medium)**
+- [ ] Social action buttons
+- [ ] Comment thread component
+- [ ] Rating stars interface
+- [ ] User interaction feedback
+- [ ] Real-time update handling
+
+**Interactive Components:**
+- `SocialActionBar.jsx`
+- `CommentThread.jsx`
+- `RatingDisplay.jsx`
+- `InteractionFeedback.jsx`
+
+</td>
+</tr>
+</table>
+
+### 🔄 **Daily Workflow**
+
+#### **Morning Standup (15 minutes)**
+- **Time**: 9:00 AM daily
+- **Format**: Quick sync on Slack/Discord
+- **Agenda**:
+  - Yesterday's progress
+  - Today's priorities
+  - Any blockers or questions
+  - Integration points needed
+
+#### **Integration Points**
+- **API-Frontend Integration**: Test endpoints as they're built
+- **Schema Validation**: Ensure data structures match between backend and frontend
+- **Error Handling**: Coordinate error response formats
+- **Real-time Features**: Test WebSocket connections together
+
+#### **End-of-Day Sync (10 minutes)**
+- **Time**: 6:00 PM daily
+- **Purpose**: 
+  - Demo completed features
+  - Plan next day's integration
+  - Address any blockers
+  - Update project status
+
+### 🧪 **Testing & Quality Assurance**
+
+#### **Individual Testing**
+- **Zayan**: Unit tests for all API endpoints, database operations
+- **Yifei**: Component tests, UI interaction tests, integration tests
+
+#### **Joint Testing**
+- **API Integration**: Test all endpoints with real frontend calls
+- **User Flow Testing**: Complete user journeys from discovery to interaction
+- **Performance Testing**: Load testing with realistic data volumes
+- **Cross-platform Testing**: iOS, Android, and web compatibility
+
+#### **Quality Gates**
+- [ ] All API endpoints return proper error codes
+- [ ] All UI components handle loading and error states
+- [ ] Database queries are optimized and indexed
+- [ ] Mobile responsiveness on all screen sizes
+- [ ] Real-time features work reliably
+
+---
+
 ## 🌿 Git Collaboration Strategy
 
 ### 🔀 **Branching Model**
@@ -816,10 +1042,244 @@ EXPO_PUBLIC_CDN_URL="https://cdn.yizplanner.com"
 
 ---
 
+## 🤖 Working with AI Assistants (Claude/Cursor)
+
+### 📋 **Essential Context to Provide**
+
+When working with AI assistants like Claude Code or Cursor, always provide this context:
+
+#### **Core Context Documents**
+1. **This Document**: `newFeature.md` - Social feature specifications
+2. **Developer Guide**: `Developer's Guide.md` - Existing system architecture  
+3. **Current File**: The specific file you're working on
+
+#### **Context Template for AI Conversations**
+```
+I'm working on implementing social media features for YiZ Planner. Here's the context:
+
+Current System:
+- React Native + Expo SDK 53 frontend
+- Python Flask + MongoDB backend  
+- JWT authentication already implemented
+- Existing features: skills, habits, analytics
+
+Task: [Specific task you're working on]
+Role: [Zayan - Backend / Yifei - Frontend]
+
+Please help me implement [specific feature] following the patterns in our existing codebase.
+
+Files to consider:
+- [List relevant existing files]
+- [New files to create]
+```
+
+### 🎯 **AI Assistant Best Practices**
+
+#### **For Zayan (Backend)**
+```python
+# Always mention these patterns when asking for help:
+# 1. Flask app factory pattern (backend/app.py)
+# 2. Repository pattern (backend/repositories/)
+# 3. Service layer pattern (backend/services/)
+# 4. JWT auth middleware (backend/auth/utils.py)
+# 5. MongoDB ObjectId handling
+
+# Example prompt:
+"I need to create a social plan sharing endpoint following our existing patterns. 
+We use Flask blueprints, repository pattern, and JWT authentication. 
+Please help me implement POST /api/v1/social/plans/share"
+```
+
+#### **For Yifei (Frontend)**
+```javascript
+// Always mention these patterns when asking for help:
+// 1. React Navigation structure (MainTabNavigator.jsx)
+// 2. API client pattern (src/api/)
+// 3. Custom hooks pattern (src/hooks/)
+// 4. AuthContext usage (src/context/AuthContext.js)
+// 5. Component styling patterns
+
+// Example prompt:
+"I need to create a BrowsePlansScreen following our existing patterns.
+We use React Navigation, custom hooks for API calls, and consistent styling.
+Please help me implement the social discovery screen."
+```
+
+### 🔄 **Integration Checkpoints**
+
+#### **Backend-Frontend Integration**
+- [ ] API endpoint created and tested
+- [ ] Frontend API client function created
+- [ ] Data flow tested end-to-end
+- [ ] Error handling implemented on both sides
+- [ ] Loading states handled in UI
+
+#### **Database Integration**
+- [ ] MongoDB collections created
+- [ ] Indexes added for performance
+- [ ] Sample data created for testing
+- [ ] Validation schemas implemented
+- [ ] Migration scripts written
+
+---
+
+## ✅ Master Implementation Checklist
+
+### 🏗️ **Phase 1: Foundation (Weeks 1-2)**
+
+#### **Backend Tasks - Zayan**
+- [ ] **Database Setup**
+  - [ ] Create `shared_plans` collection schema
+  - [ ] Create `plan_interactions` collection schema  
+  - [ ] Create `plan_comments` collection schema
+  - [ ] Create `plan_groups` collection schema
+  - [ ] Add proper indexes for performance
+
+- [ ] **API Infrastructure**
+  - [ ] Create social service module
+  - [ ] Set up social repository layer
+  - [ ] Create social API blueprint
+  - [ ] Implement JWT middleware for social endpoints
+  - [ ] Add input validation schemas
+
+- [ ] **Core Endpoints**
+  - [ ] `POST /api/v1/social/plans/share` - Share a plan
+  - [ ] `GET /api/v1/social/plans` - Get shared plans
+  - [ ] `GET /api/v1/social/plans/{id}` - Get specific shared plan
+  - [ ] `DELETE /api/v1/social/plans/{id}` - Delete shared plan
+
+#### **Frontend Tasks - Yifei**
+- [ ] **Navigation Setup**
+  - [ ] Add Social tab to MainTabNavigator
+  - [ ] Create social screens navigation stack
+  - [ ] Add social icons and styling
+
+- [ ] **Base Components**
+  - [ ] Create `BrowsePlansScreen` scaffold
+  - [ ] Create `SharedPlanCard` component
+  - [ ] Create `SocialActionBar` component
+  - [ ] Add loading and error states
+
+- [ ] **API Integration**
+  - [ ] Create social API client (`src/api/social.js`)
+  - [ ] Create `useSocialPlans` hook
+  - [ ] Test API integration with backend
+
+### 🔍 **Phase 2: Discovery (Weeks 3-4)**
+
+#### **Backend Tasks - Zayan**
+- [ ] **Search Implementation**
+  - [ ] Create search endpoint with filters
+  - [ ] Implement trending algorithm
+  - [ ] Add category-based filtering
+  - [ ] Add pagination support
+  - [ ] Implement search result caching
+
+- [ ] **Performance Optimization**
+  - [ ] Add Redis caching layer
+  - [ ] Optimize database queries
+  - [ ] Add query result pagination
+  - [ ] Implement rate limiting
+
+#### **Frontend Tasks - Yifei**
+- [ ] **Search Interface**
+  - [ ] Create search bar component
+  - [ ] Add filter options UI
+  - [ ] Implement search debouncing
+  - [ ] Add search history
+
+- [ ] **Discovery Features**
+  - [ ] Create trending plans carousel
+  - [ ] Add category selection
+  - [ ] Implement infinite scroll
+  - [ ] Add search result animations
+
+### 💬 **Phase 3: Interactions (Weeks 5-6)**
+
+#### **Backend Tasks - Zayan**
+- [ ] **Social Features**
+  - [ ] Like/unlike functionality
+  - [ ] Comment system with threading
+  - [ ] Rating system implementation
+  - [ ] User interaction tracking
+  - [ ] Real-time notification triggers
+
+- [ ] **Advanced Features**
+  - [ ] WebSocket server setup
+  - [ ] Notification system
+  - [ ] Content moderation tools
+  - [ ] Analytics tracking
+
+#### **Frontend Tasks - Yifei**
+- [ ] **Interactive Components**
+  - [ ] Social action buttons
+  - [ ] Comment thread component
+  - [ ] Rating stars interface
+  - [ ] User interaction feedback
+
+- [ ] **Real-time Features**
+  - [ ] WebSocket client integration
+  - [ ] Real-time notifications
+  - [ ] Live updates for likes/comments
+  - [ ] Connection status indicators
+
+### 🚀 **Phase 4: Polish & Deploy (Week 7)**
+
+#### **Joint Tasks**
+- [ ] **Testing & Quality**
+  - [ ] End-to-end testing
+  - [ ] Performance testing
+  - [ ] Cross-platform testing
+  - [ ] Security testing
+
+- [ ] **Deployment**
+  - [ ] Environment configuration
+  - [ ] Database migrations
+  - [ ] Production deployment
+  - [ ] Monitoring setup
+
+---
+
+## 🎯 Success Metrics & Completion Criteria
+
+### **Technical Metrics**
+- [ ] All API endpoints respond < 500ms
+- [ ] Database queries use proper indexes
+- [ ] Frontend components handle all states (loading, error, empty)
+- [ ] Mobile app works on iOS, Android, and web
+- [ ] Real-time features work reliably
+- [ ] Search results are relevant and fast
+
+### **User Experience Metrics**
+- [ ] Users can share plans in < 3 taps
+- [ ] Discovery features help users find relevant content
+- [ ] Social interactions feel responsive and natural
+- [ ] UI follows existing design patterns
+- [ ] Error messages are helpful and clear
+
+### **Code Quality Metrics**
+- [ ] Code follows existing patterns and conventions
+- [ ] All functions have proper error handling
+- [ ] Database operations are optimized
+- [ ] Security best practices followed
+- [ ] Documentation is comprehensive
+
+---
+
 <div align="center">
 
 ### 🎉 **Ready to Build Something Amazing!**
 
-Made with ❤️ for the YiZ Planner Team
+**Team YiZ**: Building the Future of Social Learning 🚀
+
+Made with ❤️ for collaborative learning
+
+---
+
+**Quick Start**: 
+1. Clone the repo and set up your development environment
+2. Review the existing codebase in `Developer's Guide.md`
+3. Pick your first task from the checklist above
+4. Start building and collaborate daily!
 
 </div>
