@@ -4,6 +4,7 @@ from datetime import datetime
 from bson import ObjectId
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
+from flask_socketio import SocketIO
 from pymongo import MongoClient
 from backend.auth.routes import auth_bp
 from backend.services.ai_service import AIService
@@ -27,13 +28,28 @@ def create_app():
 
     app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
     app.config['MONGO_URI'] = os.getenv('MONGO_URI', 'mongodb://localhost:27017/skillplan_db')
+    app.config['SECRET_KEY'] = os.getenv('WEBSOCKET_SECRET_KEY', 'websocket-secret-key-change-in-production')
 
-
-    CORS(app, origins=[
+    # CORS configuration for both HTTP and WebSocket
+    allowed_origins = [
         os.getenv('FRONTEND_URL', 'http://localhost:8081'),
         'http://localhost:8081',
         'exp://192.168.0.116:8081'  
-    ])
+    ]
+    
+    CORS(app, origins=allowed_origins)
+    
+    # Initialize SocketIO with CORS
+    socketio = SocketIO(app, cors_allowed_origins=allowed_origins, 
+                       logger=True, engineio_logger=True)
+    
+    # Initialize WebSocket service
+    from backend.services.websocket_service import WebSocketService
+    websocket_service = WebSocketService(socketio)
+    
+    # Make WebSocket service available globally
+    app.websocket_service = websocket_service
+    app.socketio = socketio
 
 
     @app.before_request
@@ -70,6 +86,24 @@ def create_app():
     
     from backend.api.v1.discovery import discovery_bp
     app.register_blueprint(discovery_bp, url_prefix='/api/v1/discovery')
+    
+    from backend.api.v1.websocket import websocket_bp
+    app.register_blueprint(websocket_bp, url_prefix='/api/v1/websocket')
+    
+    from backend.api.v1.notifications import notifications_bp
+    app.register_blueprint(notifications_bp, url_prefix='/api/v1/notifications')
+    
+    from backend.api.v1.follow import follow_bp
+    app.register_blueprint(follow_bp, url_prefix='/api/v1/follow')
+    
+    from backend.api.v1.users import users_bp
+    app.register_blueprint(users_bp, url_prefix='/api/v1/users')
+    
+    from backend.api.v1.analytics import analytics_bp
+    app.register_blueprint(analytics_bp, url_prefix='/api/v1/analytics')
+    
+    from backend.api.v1.moderation import moderation_bp
+    app.register_blueprint(moderation_bp, url_prefix='/api/v1/moderation')
 
 
     @app.route('/health', methods=['GET'])
@@ -105,12 +139,11 @@ def create_app():
             app.logger.error(f"Unexpected error in generate_plan: {str(e)}")
             return jsonify({"error": "Internal server error"}), 500
 
-    return app
+    return app, socketio
 
 
-app = create_app()
+app, socketio = create_app()
 
 if __name__ == '__main__':
-
     port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    socketio.run(app, host='0.0.0.0', port=port, debug=True)
