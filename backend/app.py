@@ -50,6 +50,24 @@ def create_app():
     # Make WebSocket service available globally
     app.websocket_service = websocket_service
     app.socketio = socketio
+    
+    # Initialize email service
+    from backend.services.email_service import email_service
+    app.email_service = email_service
+    
+    # Initialize and start batch processor
+    from backend.services.batch_processor import batch_processor
+    if os.getenv('ENABLE_BATCH_PROCESSING', 'true').lower() == 'true':
+        try:
+            batch_processor.start_batch_processing()
+            app.batch_processor = batch_processor
+            print("✅ Batch processing started")
+        except Exception as e:
+            print(f"⚠️ Failed to start batch processing: {e}")
+    
+    # Initialize cache warming
+    from backend.middleware.cache_middleware import warm_cache_on_startup
+    warm_cache_on_startup()
 
 
     @app.before_request
@@ -104,6 +122,15 @@ def create_app():
     
     from backend.api.v1.moderation import moderation_bp
     app.register_blueprint(moderation_bp, url_prefix='/api/v1/moderation')
+    
+    from backend.api.v1.cache import cache_bp
+    app.register_blueprint(cache_bp, url_prefix='/api/v1/cache')
+    
+    from backend.api.v1.batch import batch_bp
+    app.register_blueprint(batch_bp, url_prefix='/api/v1/batch')
+    
+    from backend.api.v1.feed import feed_bp
+    app.register_blueprint(feed_bp, url_prefix='/api/v1/feed')
 
 
     @app.route('/health', methods=['GET'])
