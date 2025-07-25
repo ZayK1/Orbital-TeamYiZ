@@ -11,6 +11,8 @@ import {
   Animated,
   Dimensions,
   StatusBar,
+  RefreshControl,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -19,7 +21,10 @@ import { getSharedSkillDetail, likeSkill, downloadSkill } from '../api/social';
 import CommentsSection from '../components/CommentsSection';
 
 const { width, height } = Dimensions.get('window');
-const HEADER_HEIGHT = 280;
+const HEADER_HEIGHT = 320;
+const HERO_HEIGHT = 280;
+const CARD_MARGIN = 16;
+const CARD_PADDING = 20;
 
 const SharedSkillDetailScreen = ({ route, navigation }) => {
   const { skillId } = route?.params || {};
@@ -29,6 +34,8 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
   const [likesCount, setLikesCount] = useState(0);
   const [downloadsCount, setDownloadsCount] = useState(0);
   const [activeTab, setActiveTab] = useState('overview'); // overview, curriculum, comments
+  const [showFullDescription, setShowFullDescription] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [isUpvoted, setIsUpvoted] = useState(false);
   const [isDownvoted, setIsDownvoted] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -38,8 +45,20 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
   
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerOpacity = scrollY.interpolate({
-    inputRange: [0, HEADER_HEIGHT / 2, HEADER_HEIGHT],
-    outputRange: [0, 0.5, 1],
+    inputRange: [0, HERO_HEIGHT - 100, HERO_HEIGHT],
+    outputRange: [0, 0.8, 1],
+    extrapolate: 'clamp',
+  });
+  
+  const heroScale = scrollY.interpolate({
+    inputRange: [0, HERO_HEIGHT],
+    outputRange: [1, 1.1],
+    extrapolate: 'clamp',
+  });
+  
+  const heroTranslateY = scrollY.interpolate({
+    inputRange: [0, HERO_HEIGHT],
+    outputRange: [0, -50],
     extrapolate: 'clamp',
   });
 
@@ -153,6 +172,20 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await fetchSkillDetail();
+    } catch (error) {
+      console.error('Error refreshing:', error);
+    }
+    setRefreshing(false);
+  };
+
+  const toggleDescription = () => {
+    setShowFullDescription(!showFullDescription);
+  };
+
   const getDifficultyColor = (difficulty) => {
     switch (difficulty?.toLowerCase()) {
       case 'beginner':
@@ -208,6 +241,33 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
           ))}
         </View>
       )}
+    </View>
+  );
+
+  const renderModernCurriculumDay = ({ item, index }) => (
+    <View style={styles.modernLessonCard}>
+      <View style={styles.lessonHeader}>
+        <View style={styles.lessonNumber}>
+          <Text style={styles.lessonNumberText}>{index + 1}</Text>
+        </View>
+        <View style={styles.lessonContent}>
+          <Text style={styles.lessonTitle}>{item.title}</Text>
+          <Text style={styles.lessonDescription} numberOfLines={2}>
+            {item.description}
+          </Text>
+        </View>
+        <View style={styles.lessonMeta}>
+          {item.estimated_time && (
+            <View style={styles.lessonDuration}>
+              <MaterialIcons name="schedule" size={14} color={colors.textTertiary} />
+              <Text style={styles.lessonDurationText}>{item.estimated_time}m</Text>
+            </View>
+          )}
+          <TouchableOpacity style={styles.lessonPlayButton}>
+            <MaterialIcons name="play-circle-outline" size={20} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 
@@ -296,149 +356,218 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
           { useNativeDriver: false }
         )}
         scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.primary}
+            progressViewOffset={100}
+          />
+        }
       >
-        {/* Hero Section with Gradient */}
-        <LinearGradient
-          colors={getGradientColors(skill?.category)}
-          style={styles.heroSection}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.heroOverlay} />
-          
-          {/* Navigation Controls */}
-          <View style={styles.heroNavigation}>
-            <TouchableOpacity 
-              style={styles.heroBackButton} 
-              onPress={() => {
-                console.log('Back button pressed');
-                navigation.goBack();
-              }}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="arrow-back" size={24} color={colors.white} />
-            </TouchableOpacity>
-            <View style={styles.heroActions}>
-              <TouchableOpacity style={styles.heroActionButton} onPress={handleSave}>
-                <MaterialIcons 
-                  name={isSaved ? "bookmark" : "bookmark-border"} 
-                  size={24} 
-                  color={isSaved ? (colors.reddit?.save || '#FFD700') : colors.white} 
-                />
+        {/* Modern Hero Section */}
+        <Animated.View style={[
+          styles.heroSection,
+          {
+            transform: [
+              { scale: heroScale },
+              { translateY: heroTranslateY }
+            ]
+          }
+        ]}>
+          <LinearGradient
+            colors={getGradientColors(skill?.category)}
+            style={styles.heroGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.heroOverlay} />
+            
+            {/* Hero Navigation */}
+            <View style={styles.heroNavigation}>
+              <TouchableOpacity 
+                style={styles.heroBackButton} 
+                onPress={() => navigation.goBack()}
+                activeOpacity={0.7}
+              >
+                <MaterialIcons name="arrow-back" size={24} color={colors.white} />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.heroActionButton}>
-                <MaterialIcons name="share" size={24} color={colors.white} />
-              </TouchableOpacity>
+              
+              <View style={styles.heroActions}>
+                <TouchableOpacity style={styles.heroActionButton} onPress={handleSave}>
+                  <MaterialIcons 
+                    name={isSaved ? "bookmark" : "bookmark-border"} 
+                    size={22} 
+                    color={colors.white} 
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.heroActionButton}>
+                  <MaterialIcons name="share" size={22} color={colors.white} />
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
 
-          {/* Hero Content */}
-          <View style={styles.heroContent}>
-            <View style={styles.skillBadges}>
-              <View style={[styles.categoryBadge, { backgroundColor: colors.glass?.background || 'rgba(255, 255, 255, 0.25)' }]}>
-                <Text style={styles.categoryText}>{skill?.category}</Text>
+            {/* Hero Content */}
+            <View style={styles.heroContent}>
+              {/* Skill Badges */}
+              <View style={styles.skillBadges}>
+                <View style={styles.categoryBadge}>
+                  <Text style={styles.categoryText}>{skill?.category}</Text>
+                </View>
+                <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(skill?.difficulty) }]}>
+                  <Text style={styles.difficultyText}>{skill?.difficulty}</Text>
+                </View>
               </View>
-              <View style={[styles.difficultyBadge, { backgroundColor: getDifficultyColor(skill?.difficulty) }]}>
-                <Text style={styles.difficultyText}>{skill?.difficulty}</Text>
+              
+              {/* Course Title */}
+              <Text style={styles.heroTitle}>{skill?.title}</Text>
+              
+              {/* Course Stats */}
+              <View style={styles.courseStats}>
+                <View style={styles.statItem}>
+                  <MaterialIcons name="schedule" size={16} color={colors.white} />
+                  <Text style={styles.statText}>{skill?.estimated_duration || 30} days</Text>
+                </View>
+                <View style={styles.statSeparator} />
+                <View style={styles.statItem}>
+                  <MaterialIcons name="people" size={16} color={colors.white} />
+                  <Text style={styles.statText}>{formatCount(downloadsCount)} enrolled</Text>
+                </View>
+                <View style={styles.statSeparator} />
+                <View style={styles.statItem}>
+                  <MaterialIcons name="star" size={16} color={colors.white} />
+                  <Text style={styles.statText}>4.8</Text>
+                </View>
               </View>
-            </View>
-            
-            <Text style={styles.heroTitle}>{skill?.title}</Text>
-            
-            {/* Author Card */}
-            <View style={styles.authorCard}>
-              <View style={styles.authorAvatar}>
-                <Text style={styles.authorAvatarText}>
-                  {skill?.author?.username?.charAt(0)?.toUpperCase() || 'U'}
-                </Text>
-              </View>
-              <View style={styles.authorInfo}>
-                <Text style={styles.authorName}>{skill?.author?.username || 'Anonymous'}</Text>
-                <View style={styles.postMeta}>
-                  <Text style={styles.postTime}>2 hours ago</Text>
-                  <Text style={styles.postSeparator}>•</Text>
-                  <Text style={styles.viewCount}>{formatCount(skill?.views_count)} views</Text>
+
+              {/* Author Info */}
+              <View style={styles.authorSection}>
+                <View style={styles.authorAvatar}>
+                  <Text style={styles.authorAvatarText}>
+                    {skill?.shared_by_username?.charAt(0)?.toUpperCase() || 'U'}
+                  </Text>
+                </View>
+                <View style={styles.authorInfo}>
+                  <Text style={styles.authorName}>
+                    {skill?.shared_by_display_name || skill?.shared_by_username || 'Anonymous'}
+                  </Text>
+                  <Text style={styles.authorTitle}>Course Creator</Text>
                 </View>
               </View>
             </View>
-          </View>
-        </LinearGradient>
+          </LinearGradient>
+        </Animated.View>
 
-        {/* Voting and Actions Bar */}
-        <View style={styles.votingBar}>
-          <View style={styles.votingSection}>
+        {/* Modern Action Bar */}
+        <View style={styles.modernActionBar}>
+          {/* Social Actions */}
+          <View style={styles.socialActions}>
             <TouchableOpacity 
-              style={[styles.voteButton, isUpvoted && styles.upvotedButton]}
+              style={[styles.socialButton, isUpvoted && styles.upvotedSocialButton]}
               onPress={handleUpvote}
+              activeOpacity={0.7}
             >
               <MaterialIcons 
-                name="keyboard-arrow-up" 
-                size={28} 
-                color={isUpvoted ? (colors.reddit?.upvote || '#FF4500') : colors.textSecondary} 
+                name="thumb-up" 
+                size={20} 
+                color={isUpvoted ? colors.white : colors.textSecondary} 
               />
+              <Text style={[
+                styles.socialButtonText, 
+                isUpvoted && styles.upvotedSocialButtonText
+              ]}>
+                {formatCount(upvotes)}
+              </Text>
             </TouchableOpacity>
-            <Text style={[styles.voteCount, isUpvoted && { color: colors.reddit?.upvote || '#FF4500' }]}>
-              {formatCount(upvotes - downvotes)}
-            </Text>
+
             <TouchableOpacity 
-              style={[styles.voteButton, isDownvoted && styles.downvotedButton]}
-              onPress={handleDownvote}
+              style={styles.socialButton}
+              onPress={() => setActiveTab('comments')}
+              activeOpacity={0.7}
+            >
+              <MaterialIcons name="chat-bubble-outline" size={20} color={colors.textSecondary} />
+              <Text style={styles.socialButtonText}>{formatCount(skill?.comments_count || 0)}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.socialButton, isSaved && styles.savedSocialButton]}
+              onPress={handleSave}
+              activeOpacity={0.7}
             >
               <MaterialIcons 
-                name="keyboard-arrow-down" 
-                size={28} 
-                color={isDownvoted ? (colors.reddit?.downvote || '#7193FF') : colors.textSecondary} 
+                name={isSaved ? "bookmark" : "bookmark-border"} 
+                size={20} 
+                color={isSaved ? colors.white : colors.textSecondary} 
               />
+              <Text style={[
+                styles.socialButtonText,
+                isSaved && styles.savedSocialButtonText
+              ]}>
+                {formatCount(saveCount)}
+              </Text>
             </TouchableOpacity>
           </View>
 
-          <View style={styles.engagementActions}>
-            <TouchableOpacity style={styles.engagementButton} onPress={handleLike}>
-              <MaterialIcons 
-                name={isLiked ? "favorite" : "favorite-border"} 
-                size={22} 
-                color={isLiked ? colors.like : colors.textSecondary} 
-              />
-              <Text style={styles.engagementText}>{formatCount(likesCount)}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.engagementButton}>
-              <MaterialIcons name="comment" size={22} color={colors.textSecondary} />
-              <Text style={styles.engagementText}>{formatCount(skill?.comments_count || 0)}</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.engagementButton} onPress={handleDownload}>
-              <MaterialIcons name="download" size={22} color={colors.textSecondary} />
-              <Text style={styles.engagementText}>{formatCount(downloadsCount)}</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Primary CTA */}
+          <TouchableOpacity 
+            style={styles.primaryCTA}
+            onPress={handleDownload}
+            activeOpacity={0.8}
+          >
+            <MaterialIcons name="download" size={20} color={colors.white} />
+            <Text style={styles.primaryCTAText}>Enroll Course</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* Content Section */}
-        <View style={styles.contentSection}>
-          {/* Skill Description */}
-          <View style={styles.contentCard}>
-            <Text style={styles.contentTitle}>About This Skill</Text>
-            <Text style={styles.skillDescription}>
+        {/* Content Cards */}
+        <View style={styles.contentContainer}>
+          {/* About Card */}
+          <View style={styles.modernCard}>
+            <View style={styles.cardHeader}>
+              <MaterialIcons name="info-outline" size={20} color={colors.primary} />
+              <Text style={styles.cardTitle}>About This Course</Text>
+            </View>
+            
+            <Text 
+              style={styles.descriptionText}
+              numberOfLines={showFullDescription ? undefined : 4}
+            >
               {skill?.skill_description || skill?.description}
             </Text>
             
-            {/* Personal Message */}
+            {(skill?.skill_description || skill?.description)?.length > 200 && (
+              <TouchableOpacity 
+                style={styles.readMoreButton}
+                onPress={toggleDescription}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.readMoreText}>
+                  {showFullDescription ? 'Read Less' : 'Read More'}
+                </Text>
+                <MaterialIcons 
+                  name={showFullDescription ? "expand-less" : "expand-more"} 
+                  size={16} 
+                  color={colors.primary} 
+                />
+              </TouchableOpacity>
+            )}
+
+            {/* Creator's Message */}
             {skill?.personal_message && (
-              <View style={styles.personalMessage}>
+              <View style={styles.creatorMessage}>
                 <View style={styles.messageHeader}>
-                  <MaterialIcons name="format-quote" size={20} color={colors.primary} />
-                  <Text style={styles.messageLabel}>Creator's Note</Text>
+                  <MaterialIcons name="format-quote" size={18} color={colors.primary} />
+                  <Text style={styles.messageLabel}>Creator's Message</Text>
                 </View>
                 <Text style={styles.messageText}>{skill?.personal_message}</Text>
               </View>
             )}
-            
+
             {/* Tags */}
             {skill?.tags && skill.tags.length > 0 && (
-              <View style={styles.tagsSection}>
+              <View style={styles.tagsContainer}>
                 {skill.tags.map((tag, index) => (
-                  <TouchableOpacity key={index} style={styles.tag}>
+                  <TouchableOpacity key={index} style={styles.modernTag}>
                     <Text style={styles.tagText}>#{tag}</Text>
                   </TouchableOpacity>
                 ))}
@@ -446,67 +575,118 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
             )}
           </View>
 
-          {/* Tab Navigation */}
-          <View style={styles.tabNavigation}>
+          {/* What You'll Learn Card */}
+          <View style={styles.modernCard}>
+            <View style={styles.cardHeader}>
+              <MaterialIcons name="check-circle-outline" size={20} color={colors.success} />
+              <Text style={styles.cardTitle}>What You'll Learn</Text>
+            </View>
+            <View style={styles.learningOutcomes}>
+              <View style={styles.outcomeItem}>
+                <MaterialIcons name="check" size={16} color={colors.success} />
+                <Text style={styles.outcomeText}>Master {skill?.category} fundamentals</Text>
+              </View>
+              <View style={styles.outcomeItem}>
+                <MaterialIcons name="check" size={16} color={colors.success} />
+                <Text style={styles.outcomeText}>Build practical projects</Text>
+              </View>
+              <View style={styles.outcomeItem}>
+                <MaterialIcons name="check" size={16} color={colors.success} />
+                <Text style={styles.outcomeText}>Industry best practices</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Modern Tab Navigation */}
+          <View style={styles.modernTabNavigation}>
             {[
-              { key: 'overview', label: 'Overview', icon: 'info' },
-              { key: 'curriculum', label: 'Curriculum', icon: 'list' },
-              { key: 'comments', label: 'Comments', icon: 'comment' }
+              { key: 'overview', label: 'Overview', icon: 'dashboard' },
+              { key: 'curriculum', label: 'Curriculum', icon: 'list-alt' },
+              { key: 'comments', label: 'Discussion', icon: 'forum' }
             ].map((tab) => (
               <TouchableOpacity
                 key={tab.key}
-                style={[styles.tabButton, activeTab === tab.key && styles.activeTabButton]}
+                style={[styles.modernTab, activeTab === tab.key && styles.activeModernTab]}
                 onPress={() => setActiveTab(tab.key)}
+                activeOpacity={0.7}
               >
                 <MaterialIcons 
                   name={tab.icon} 
-                  size={20} 
-                  color={activeTab === tab.key ? colors.primary : colors.textSecondary} 
+                  size={18} 
+                  color={activeTab === tab.key ? colors.white : colors.textSecondary} 
                 />
-                <Text style={[styles.tabLabel, activeTab === tab.key && styles.activeTabLabel]}>
+                <Text style={[
+                  styles.modernTabLabel, 
+                  activeTab === tab.key && styles.activeModernTabLabel
+                ]}>
                   {tab.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          {/* Tab Content */}
+          {/* Modern Tab Content */}
           {activeTab === 'overview' && (
-            <View style={styles.overviewSection}>
+            <View style={styles.modernCard}>
+              <View style={styles.cardHeader}>
+                <MaterialIcons name="analytics" size={20} color={colors.primary} />
+                <Text style={styles.cardTitle}>Course Statistics</Text>
+              </View>
               <View style={styles.statsGrid}>
-                <View style={styles.statCard}>
-                  <MaterialIcons name="schedule" size={24} color={colors.primary} />
+                <View style={styles.modernStatCard}>
+                  <View style={styles.statIconContainer}>
+                    <MaterialIcons name="schedule" size={22} color={colors.primary} />
+                  </View>
                   <Text style={styles.statValue}>{skill?.estimated_duration || 30}</Text>
-                  <Text style={styles.statLabel}>Days</Text>
+                  <Text style={styles.statLabel}>Days Duration</Text>
                 </View>
-                <View style={styles.statCard}>
-                  <MaterialIcons name="trending-up" size={24} color={colors.success} />
+                <View style={styles.modernStatCard}>
+                  <View style={styles.statIconContainer}>
+                    <MaterialIcons name="trending-up" size={22} color={colors.success} />
+                  </View>
                   <Text style={styles.statValue}>{skill?.difficulty || 'Beginner'}</Text>
-                  <Text style={styles.statLabel}>Level</Text>
+                  <Text style={styles.statLabel}>Difficulty</Text>
                 </View>
-                <View style={styles.statCard}>
-                  <MaterialIcons name="people" size={24} color={colors.warning} />
+                <View style={styles.modernStatCard}>
+                  <View style={styles.statIconContainer}>
+                    <MaterialIcons name="people" size={22} color={colors.warning} />
+                  </View>
                   <Text style={styles.statValue}>{formatCount(downloadsCount)}</Text>
-                  <Text style={styles.statLabel}>Learners</Text>
+                  <Text style={styles.statLabel}>Enrolled</Text>
                 </View>
               </View>
             </View>
           )}
 
           {activeTab === 'curriculum' && (
-            <View style={styles.curriculumSection}>
+            <View style={styles.modernCard}>
+              <View style={styles.cardHeader}>
+                <MaterialIcons name="list-alt" size={20} color={colors.primary} />
+                <Text style={styles.cardTitle}>Course Curriculum</Text>
+                <View style={styles.progressBadge}>
+                  <Text style={styles.progressText}>{skill?.curriculum?.length || 0} lessons</Text>
+                </View>
+              </View>
               <FlatList
                 data={skill?.curriculum || []}
-                renderItem={renderCurriculumDay}
-                keyExtractor={(item, index) => `day-${index}`}
+                renderItem={renderModernCurriculumDay}
+                keyExtractor={(item, index) => `lesson-${index}`}
                 scrollEnabled={false}
                 showsVerticalScrollIndicator={false}
+                ItemSeparatorComponent={() => <View style={styles.lessonSeparator} />}
               />
             </View>
           )}
 
           {activeTab === 'comments' && (
-            <View style={styles.commentsSection}>
+            <View style={styles.modernCard}>
+              <View style={styles.cardHeader}>
+                <MaterialIcons name="forum" size={20} color={colors.primary} />
+                <Text style={styles.cardTitle}>Course Discussion</Text>
+                <TouchableOpacity style={styles.addCommentButton}>
+                  <MaterialIcons name="add-comment" size={16} color={colors.primary} />
+                </TouchableOpacity>
+              </View>
               <CommentsSection 
                 skillId={skillId}
                 onUserPress={(user) => navigation.navigate('UserProfile', { userId: user._id })}
@@ -552,24 +732,26 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  // Base Layout
   container: {
     flex: 1,
-    backgroundColor: colors.white,
+    backgroundColor: colors.surfaceSecondary,
   },
   scrollView: {
     flex: 1,
   },
   
-  // Floating Header
+  // Modern Floating Header
   floatingHeader: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 90,
-    backgroundColor: colors.backgroundOverlay,
+    height: Platform.OS === 'ios' ? 90 : 70,
+    backgroundColor: 'rgba(0, 0, 0, 0.85)',
     zIndex: 1000,
-    paddingTop: StatusBar.currentHeight || 44,
+    paddingTop: Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0,
+    backdropFilter: 'blur(20px)',
   },
   floatingHeaderContent: {
     flex: 1,
@@ -1433,6 +1615,417 @@ const styles = StyleSheet.create({
     color: colors.white,
     fontSize: 16,
     fontWeight: '700',
+  },
+
+  // Modern Styles
+  heroGradient: {
+    height: HERO_HEIGHT,
+    justifyContent: 'flex-end',
+  },
+  
+  courseStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 20,
+  },
+  
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  
+  statSeparator: {
+    width: 1,
+    height: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
+    marginHorizontal: 12,
+  },
+  
+  statText: {
+    color: colors.white,
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  
+  authorTitle: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 12,
+    fontWeight: '400',
+  },
+
+  // Modern Action Bar
+  modernActionBar: {
+    backgroundColor: colors.white,
+    marginHorizontal: CARD_MARGIN,
+    marginTop: -30,
+    borderRadius: 16,
+    padding: CARD_PADDING,
+    shadowColor: colors.shadowDark,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 8,
+    zIndex: 10,
+  },
+
+  socialActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 16,
+  },
+
+  socialButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceSecondary,
+    minWidth: 80,
+    justifyContent: 'center',
+  },
+
+  upvotedSocialButton: {
+    backgroundColor: colors.reddit?.upvote || '#FF4500',
+  },
+
+  savedSocialButton: {
+    backgroundColor: colors.reddit?.save || '#FFD700',
+  },
+
+  socialButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginLeft: 6,
+  },
+
+  upvotedSocialButtonText: {
+    color: colors.white,
+  },
+
+  savedSocialButtonText: {
+    color: colors.white,
+  },
+
+  primaryCTA: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+
+  primaryCTAText: {
+    color: colors.white,
+    fontSize: 16,
+    fontWeight: '700',
+    marginLeft: 8,
+  },
+
+  // Content Container
+  contentContainer: {
+    padding: CARD_MARGIN,
+  },
+
+  // Modern Cards
+  modernCard: {
+    backgroundColor: colors.white,
+    borderRadius: 16,
+    padding: CARD_PADDING,
+    marginBottom: CARD_MARGIN,
+    shadowColor: colors.shadowDark,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+
+  cardTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginLeft: 8,
+    flex: 1,
+  },
+
+  // Description Section
+  descriptionText: {
+    fontSize: 16,
+    lineHeight: 24,
+    color: colors.text,
+    marginBottom: 12,
+  },
+
+  readMoreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingVertical: 8,
+  },
+
+  readMoreText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    marginRight: 4,
+  },
+
+  // Creator Message
+  creatorMessage: {
+    backgroundColor: colors.primaryUltraLight,
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: colors.primary,
+  },
+
+  messageHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+
+  messageLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.primary,
+    marginLeft: 6,
+  },
+
+  messageText: {
+    fontSize: 15,
+    lineHeight: 22,
+    color: colors.text,
+    fontStyle: 'italic',
+  },
+
+  // Tags
+  tagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 16,
+  },
+
+  modernTag: {
+    backgroundColor: colors.surfaceTertiary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+
+  tagText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+  },
+
+  // Learning Outcomes
+  learningOutcomes: {
+    gap: 12,
+  },
+
+  outcomeItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  outcomeText: {
+    fontSize: 15,
+    color: colors.text,
+    marginLeft: 12,
+    flex: 1,
+  },
+
+  // Modern Tab Navigation
+  modernTabNavigation: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: CARD_MARGIN,
+  },
+
+  modernTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+
+  activeModernTab: {
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  modernTabLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+
+  activeModernTabLabel: {
+    color: colors.white,
+    fontWeight: '700',
+  },
+
+  // Stats Grid
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+
+  modernStatCard: {
+    flex: 1,
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+
+  statIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.white,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+    shadowColor: colors.shadowLight,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+
+  statValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 4,
+  },
+
+  statLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+
+  // Progress Badge
+  progressBadge: {
+    backgroundColor: colors.primaryUltraLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+
+  progressText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+  },
+
+  // Modern Lesson Cards
+  modernLessonCard: {
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: 12,
+    padding: 16,
+  },
+
+  lessonHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
+  lessonNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+
+  lessonNumberText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  lessonContent: {
+    flex: 1,
+  },
+
+  lessonTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: colors.text,
+    marginBottom: 4,
+  },
+
+  lessonDescription: {
+    fontSize: 13,
+    color: colors.textSecondary,
+    lineHeight: 18,
+  },
+
+  lessonMeta: {
+    alignItems: 'flex-end',
+  },
+
+  lessonDuration: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+
+  lessonDurationText: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginLeft: 4,
+  },
+
+  lessonPlayButton: {
+    padding: 4,
+  },
+
+  lessonSeparator: {
+    height: 12,
+  },
+
+  // Add Comment Button
+  addCommentButton: {
+    padding: 8,
+    borderRadius: 20,
+    backgroundColor: colors.primaryUltraLight,
   },
 });
 
