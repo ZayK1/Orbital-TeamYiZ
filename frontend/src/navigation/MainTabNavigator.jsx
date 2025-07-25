@@ -33,8 +33,10 @@ import MyHabitsScreen from '../screens/MyHabitsScreen';
 // Enhanced Social Features
 import SocialFeedScreen from '../screens/SocialFeedScreen';
 import EnhancedProfileScreen from '../screens/EnhancedProfileScreen';
+import UnifiedProfileScreen from '../screens/UnifiedProfileScreen';
 import CreateSharedSkillScreen from '../screens/CreateSharedSkillScreen';
 import ShareSkillScreen from '../screens/ShareSkillScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -211,7 +213,7 @@ function ExploreStackNavigator() {
       <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="CreateSharedSkill" component={CreateSharedSkillScreen} />
       <Stack.Screen name="ShareSkill" component={ShareSkillScreen} />
-      <Stack.Screen name="UserProfile" component={EnhancedProfileScreen} />
+      <Stack.Screen name="UserProfile" component={UnifiedProfileScreen} />
     </Stack.Navigator>
   );
 }
@@ -219,9 +221,11 @@ function ExploreStackNavigator() {
 function ProfileStackNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="UnifiedProfile" component={UnifiedProfileScreen} />
       <Stack.Screen name="EnhancedProfile" component={EnhancedProfileScreen} />
-      <Stack.Screen name="UserProfile" component={EnhancedProfileScreen} />
+      <Stack.Screen name="UserProfile" component={UnifiedProfileScreen} />
       <Stack.Screen name="CreateSharedSkill" component={CreateSharedSkillScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
   );
 }
