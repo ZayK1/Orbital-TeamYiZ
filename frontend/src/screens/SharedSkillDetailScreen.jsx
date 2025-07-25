@@ -664,17 +664,25 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
                 <MaterialIcons name="list-alt" size={20} color={colors.primary} />
                 <Text style={styles.cardTitle}>Plan Curriculum</Text>
                 <View style={styles.progressBadge}>
-                  <Text style={styles.progressText}>{skill?.curriculum?.length || 0} lessons</Text>
+                  <Text style={styles.progressText}>{skill?.curriculum?.length || 0} days</Text>
                 </View>
               </View>
-              <FlatList
-                data={skill?.curriculum || []}
-                renderItem={renderModernCurriculumDay}
-                keyExtractor={(item, index) => `lesson-${index}`}
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-                ItemSeparatorComponent={() => <View style={styles.lessonSeparator} />}
-              />
+              {skill?.curriculum && skill.curriculum.length > 0 ? (
+                <FlatList
+                  data={skill.curriculum}
+                  renderItem={renderCurriculumDay}
+                  keyExtractor={(item, index) => `day-${index}`}
+                  scrollEnabled={false}
+                  showsVerticalScrollIndicator={false}
+                  ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
+                />
+              ) : (
+                <View style={styles.emptyCurriculum}>
+                  <MaterialIcons name="school" size={48} color={colors.textTertiary} />
+                  <Text style={styles.emptyCurriculumText}>No curriculum available</Text>
+                  <Text style={styles.emptyCurriculumSubtext}>This plan doesn't have a detailed curriculum yet.</Text>
+                </View>
+              )}
             </View>
           )}
 
@@ -1528,8 +1536,8 @@ const styles = StyleSheet.create({
   modernActionBar: {
     backgroundColor: colors.white,
     marginHorizontal: CARD_MARGIN,
-    marginTop: -40,
-    marginBottom: 20, // Increased margin to prevent overlap
+    marginTop: -30, // Reduced negative margin to prevent covering back button
+    marginBottom: 20,
     borderRadius: 16,
     padding: CARD_PADDING,
     shadowColor: colors.shadowDark,
@@ -1537,7 +1545,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 8,
-    zIndex: 10,
+    zIndex: 5, // Reduced z-index so it doesn't cover navigation
   },
 
   socialActions: {
@@ -1897,6 +1905,27 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
     backgroundColor: colors.primaryUltraLight,
+  },
+
+  // Empty Curriculum State
+  emptyCurriculum: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 20,
+  },
+  emptyCurriculumText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: colors.text,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyCurriculumSubtext: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginTop: 8,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 
