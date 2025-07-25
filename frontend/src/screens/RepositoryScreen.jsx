@@ -56,11 +56,35 @@ const CircularProgress = ({
 
 const getHabitIcon = (title = '') => {
   const lower = title.toLowerCase();
-  if (lower.includes('water')) return 'water-drop';
-  if (lower.includes('read')) return 'menu-book';
-  if (lower.includes('exercise') || lower.includes('workout')) return 'fitness-center';
-  if (lower.includes('medit')) return 'self-improvement';
-  if (lower.includes('gratitude')) return 'sentiment-satisfied';
+  
+  // Health & Fitness
+  if (lower.includes('water') || lower.includes('hydrate')) return 'water-drop';
+  if (lower.includes('exercise') || lower.includes('workout') || lower.includes('gym') || lower.includes('run')) return 'fitness-center';
+  if (lower.includes('walk') || lower.includes('steps')) return 'directions-walk';
+  if (lower.includes('sleep') || lower.includes('bedtime')) return 'bedtime';
+  if (lower.includes('stretch') || lower.includes('yoga')) return 'accessibility-new';
+  
+  // Mental & Learning
+  if (lower.includes('read') || lower.includes('book')) return 'menu-book';
+  if (lower.includes('medit') || lower.includes('mindful')) return 'self-improvement';
+  if (lower.includes('gratitude') || lower.includes('grateful')) return 'sentiment-satisfied';
+  if (lower.includes('journal') || lower.includes('write')) return 'edit-note';
+  if (lower.includes('learn') || lower.includes('study')) return 'school';
+  
+  // Productivity & Work
+  if (lower.includes('work') || lower.includes('task')) return 'work';
+  if (lower.includes('email') || lower.includes('inbox')) return 'email';
+  if (lower.includes('organize') || lower.includes('clean')) return 'cleaning-services';
+  if (lower.includes('plan') || lower.includes('schedule')) return 'event';
+  
+  // Social & Personal
+  if (lower.includes('call') || lower.includes('phone')) return 'phone';
+  if (lower.includes('family') || lower.includes('friend')) return 'people';
+  if (lower.includes('cook') || lower.includes('meal')) return 'restaurant';
+  if (lower.includes('music') || lower.includes('listen')) return 'music-note';
+  if (lower.includes('create') || lower.includes('art')) return 'palette';
+  
+  // Default
   return 'check-circle';
 };
 
@@ -98,7 +122,7 @@ export default function RepositoryScreen() {
   }, [token, isFocused]);
 
   const firstSkill = skills.length > 0 ? skills[0] : null;
-  const todaysHabits = habits.slice(0, 4);
+  const todaysHabits = habits;
 
   const getTodaysFocusData = () => {
     const today = new Date();
@@ -325,45 +349,76 @@ export default function RepositoryScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Today's Habits</Text>
-          {habits.length > 4 && (
+          {habits.length > 0 && (
             <TouchableOpacity style={styles.viewAll} onPress={() => navigation.navigate('MyHabits')}>
-              <Text style={styles.viewAllText}>See All</Text>
+              <Text style={styles.viewAllText}>View All</Text>
               <MaterialIcons name="chevron-right" size={18} color="#14B8A6" />
             </TouchableOpacity>
           )}
         </View>
 
         {todaysHabits.length > 0 ? (
-          <View style={styles.habitCard}>
+          <View style={styles.habitsContainer}>
             {todaysHabits.map((habit, index) => (
-              <View key={habit._id || index}>
-                <View style={styles.habitItem}>
-                  <View style={[styles.habitLine, { backgroundColor: habit.color || '#14B8A6' }]} />
-                  <MaterialIcons name={getHabitIcon(habit.title)} size={20} color={habit.color || '#14B8A6'} style={{ marginRight: 8 }} />
-                  <View>
-                    <Text style={styles.habitTitle}>{habit.title}</Text>
-                    <Text style={styles.habitTime}>{habit.pattern?.frequency || 'Daily'}</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.habitCheck,
-                      completedHabits.has(habit._id)
-                        ? { backgroundColor: '#22C55E' }
-                        : { backgroundColor: '#E5E7EB' },
-                    ]}
-                    onPress={() => handleHabitCheck(habit._id)}
-                  >
-                    <MaterialIcons
-                      name="check"
-                      size={16}
-                      color={completedHabits.has(habit._id) ? 'white' : '#6B7280'}
+              <TouchableOpacity 
+                key={habit._id || index} 
+                style={[
+                  styles.modernHabitCard,
+                  completedHabits.has(habit._id) && styles.completedHabitCard
+                ]}
+                onPress={() => handleHabitCheck(habit._id)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.habitCardContent}>
+                  <View style={[
+                    styles.habitIconContainer, 
+                    { backgroundColor: (habit.color || '#14B8A6') + '15' }
+                  ]}>
+                    <MaterialIcons 
+                      name={getHabitIcon(habit.title)} 
+                      size={24} 
+                      color={habit.color || '#14B8A6'} 
                     />
-                  </TouchableOpacity>
+                  </View>
+                  
+                  <View style={styles.habitInfo}>
+                    <Text style={[
+                      styles.habitTitle,
+                      completedHabits.has(habit._id) && styles.completedHabitTitle
+                    ]}>
+                      {habit.title}
+                    </Text>
+                    <Text style={styles.habitFrequency}>
+                      {habit.pattern?.frequency || 'Daily'}
+                    </Text>
+                    {habit.streaks?.current_streak > 0 && (
+                      <View style={styles.streakContainer}>
+                        <MaterialIcons name="local-fire-department" size={12} color="#F97316" />
+                        <Text style={styles.streakText}>
+                          {habit.streaks.current_streak} day streak
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  
+                  <View style={[
+                    styles.habitCheckbox,
+                    completedHabits.has(habit._id) 
+                      ? { backgroundColor: '#22C55E', borderColor: '#22C55E' }
+                      : { backgroundColor: 'transparent', borderColor: '#D1D5DB' }
+                  ]}>
+                    {completedHabits.has(habit._id) && (
+                      <MaterialIcons name="check" size={18} color="white" />
+                    )}
+                  </View>
                 </View>
-                {index !== todaysHabits.length - 1 && (
-                  <View style={styles.habitDivider} />
+                
+                {completedHabits.has(habit._id) && (
+                  <View style={styles.completedOverlay}>
+                    <MaterialIcons name="check-circle" size={20} color="#22C55E" />
+                  </View>
                 )}
-              </View>
+              </TouchableOpacity>
             ))}
           </View>
         ) : (
@@ -620,31 +675,82 @@ const styles = StyleSheet.create({
   },
   skillButtonText: { color: '#111827', fontWeight: '500', fontSize: 14 },
 
-  habitCard: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 2,
-    borderColor: '#A78BFA',
+  habitsContainer: {
+    gap: 12,
   },
-  habitItem: { flexDirection: 'row', alignItems: 'center' },
-  habitLine: { width: 4, height: 40, borderRadius: 2, marginRight: 12 },
-  habitTitle: { fontWeight: '500', color: '#111827' },
-  habitTime: { fontSize: 12, color: '#6B7280' },
-  habitCheck: {
-    marginLeft: 'auto',
-    borderRadius: 999,
-    width: 28,
-    height: 28,
+  modernHabitCard: {
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  completedHabitCard: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
+  },
+  habitCardContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  habitIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#E5E7EB',
+    marginRight: 16,
   },
-  habitDivider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 },
+  habitInfo: {
+    flex: 1,
+  },
+  habitTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1F2937',
+    marginBottom: 4,
+  },
+  completedHabitTitle: {
+    color: '#059669',
+    textDecorationLine: 'line-through',
+    opacity: 0.8,
+  },
+  habitFrequency: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  streakContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  streakText: {
+    fontSize: 12,
+    color: '#F97316',
+    fontWeight: '600',
+  },
+  habitCheckbox: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  completedOverlay: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+  },
 
   placeholderCard: {
     backgroundColor: 'white',
