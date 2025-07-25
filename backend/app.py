@@ -59,7 +59,7 @@ def create_app():
     from backend.services.batch_processor import batch_processor
     if os.getenv('ENABLE_BATCH_PROCESSING', 'true').lower() == 'true':
         try:
-            batch_processor.start_batch_processing()
+            batch_processor.start_batch_processing(app)
             app.batch_processor = batch_processor
             print("✅ Batch processing started")
         except Exception as e:
@@ -131,6 +131,18 @@ def create_app():
     
     from backend.api.v1.feed import feed_bp
     app.register_blueprint(feed_bp, url_prefix='/api/v1/feed')
+    
+    from backend.api.v1.skill_sharing import skill_sharing_bp
+    app.register_blueprint(skill_sharing_bp, url_prefix='/api/v1/social')
+    
+    from backend.api.v1.skill_enhancement import skill_enhancement_bp
+    app.register_blueprint(skill_enhancement_bp, url_prefix='/api/v1/enhancement')
+    
+    from backend.api.v1.collaboration import collaboration_bp
+    app.register_blueprint(collaboration_bp, url_prefix='/api/v1/collaboration')
+    
+    from backend.api.v1.content_moderation import content_moderation_bp
+    app.register_blueprint(content_moderation_bp, url_prefix='/api/v1/moderation')
 
 
     @app.route('/health', methods=['GET'])

@@ -15,7 +15,7 @@ class TrackEventSchema(Schema):
     skill_id = fields.Str(validate=validate.Length(min=24, max=24))
     target_user_id = fields.Str(validate=validate.Length(min=24, max=24))
     task_id = fields.Str(validate=validate.Length(min=24, max=24))
-    metadata = fields.Dict(missing={})
+    metadata = fields.Dict(load_default=lambda: {})
 
 class AnalyticsPeriodSchema(Schema):
     days = fields.Int(load_default=30, validate=validate.Range(min=1, max=365))

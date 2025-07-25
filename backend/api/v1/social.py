@@ -210,10 +210,23 @@ def delete_custom_task(task_id: str):
         "message": result["message"]
     }), 200
 
+@social_bp.route('/skills/<skill_id>/like', methods=['POST'])
+@require_auth
+def toggle_like_skill(skill_id: str):
+    """Toggle like on a shared skill"""
+    user_id = str(g.current_user['_id'])
+    
+    result = InteractionService.toggle_like(user_id, skill_id)
+    
+    return jsonify({
+        "message": result["message"],
+        "like": result
+    }), 200
+
 @social_bp.route('/plans/<plan_id>/like', methods=['POST'])
 @require_auth
 def toggle_like_plan(plan_id: str):
-    """Toggle like on a shared skill"""
+    """Toggle like on a shared skill (legacy endpoint)"""
     user_id = str(g.current_user['_id'])
     
     result = InteractionService.toggle_like(user_id, plan_id)
@@ -223,10 +236,33 @@ def toggle_like_plan(plan_id: str):
         "like": result
     }), 200
 
+@social_bp.route('/skills/<skill_id>/rate', methods=['POST'])
+@require_auth
+def rate_skill(skill_id: str):
+    """Rate a shared skill"""
+    json_data = request.get_json()
+    if not json_data:
+        return jsonify({"error": "Invalid JSON"}), 400
+    
+    validated_data = cast(dict, RateSkillSchema().load(json_data))
+    user_id = str(g.current_user['_id'])
+    
+    result = InteractionService.rate_plan(
+        user_id, 
+        skill_id, 
+        validated_data['rating'], 
+        validated_data.get('review')
+    )
+    
+    return jsonify({
+        "message": result["message"],
+        "rating": result
+    }), 200
+
 @social_bp.route('/plans/<plan_id>/rate', methods=['POST'])
 @require_auth
 def rate_plan(plan_id: str):
-    """Rate a shared skill"""
+    """Rate a shared skill (legacy endpoint)"""
     json_data = request.get_json()
     if not json_data:
         return jsonify({"error": "Invalid JSON"}), 400
@@ -246,10 +282,45 @@ def rate_plan(plan_id: str):
         "rating": result
     }), 200
 
+@social_bp.route('/skills/<skill_id>/comments', methods=['POST'])
+@require_auth
+def add_skill_comment(skill_id: str):
+    """Add a comment to a shared skill"""
+    json_data = request.get_json()
+    if not json_data:
+        return jsonify({"error": "Invalid JSON"}), 400
+    
+    validated_data = cast(dict, CommentSchema().load(json_data))
+    user_id = str(g.current_user['_id'])
+    
+    result = InteractionService.add_comment(
+        user_id, 
+        skill_id, 
+        validated_data['content'],
+        validated_data.get('parent_id')
+    )
+    
+    return jsonify({
+        "message": result["message"],
+        "comment": result
+    }), 201
+
+@social_bp.route('/skills/<skill_id>/comments', methods=['GET'])
+def get_skill_comments(skill_id: str):
+    """Get comments for a shared skill"""
+    limit = min(request.args.get('limit', 100, type=int), 200)  # Cap at 200
+    
+    result = InteractionService.get_comments(skill_id, limit)
+    
+    return jsonify({
+        "message": "Comments retrieved successfully",
+        **result
+    }), 200
+
 @social_bp.route('/plans/<plan_id>/comments', methods=['POST'])
 @require_auth
 def add_comment(plan_id: str):
-    """Add a comment to a shared skill"""
+    """Add a comment to a shared skill (legacy endpoint)"""
     json_data = request.get_json()
     if not json_data:
         return jsonify({"error": "Invalid JSON"}), 400
@@ -271,7 +342,7 @@ def add_comment(plan_id: str):
 
 @social_bp.route('/plans/<plan_id>/comments', methods=['GET'])
 def get_comments(plan_id: str):
-    """Get comments for a shared skill"""
+    """Get comments for a shared skill (legacy endpoint)"""
     limit = min(request.args.get('limit', 100, type=int), 200)  # Cap at 200
     
     result = InteractionService.get_comments(plan_id, limit)

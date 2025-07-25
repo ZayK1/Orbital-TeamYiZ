@@ -17,13 +17,15 @@ class BatchProcessor:
         self.running = False
         self.batch_threads = {}
         self.last_processed = {}
+        self.app = None
 
-    def start_batch_processing(self):
+    def start_batch_processing(self, app=None):
         """Start all batch processing tasks"""
         if self.running:
             logging.warning("Batch processing already running")
             return
 
+        self.app = app
         self.running = True
         logging.info("Starting batch processing services")
 
@@ -123,9 +125,10 @@ class BatchProcessor:
     def _process_engagement_batch(self):
         """Process engagement metrics in batches"""
         try:
-            from flask import current_app
-            
-            with current_app.app_context():
+            if not self.app:
+                return
+                
+            with self.app.app_context():
                 # Process skill engagement updates
                 self._update_skill_engagement_scores()
                 
@@ -308,31 +311,35 @@ class BatchProcessor:
     def _update_trending_content(self):
         """Update trending content based on engagement patterns"""
         try:
-            from backend.services.analytics_service import AnalyticsService
-            
-            # Get trending skills
-            trending_skills = AnalyticsService.get_trending_content("skill", days=1, limit=50)
-            
-            # Cache trending skills
-            CacheService.cache_trending_skills(trending_skills.get("trending_items", []))
-            
-            # Update trending scores in database
-            for item in trending_skills.get("trending_items", []):
-                skill_id = item.get("skill_id")
-                trending_score = item.get("trending_score", 0)
+            if not self.app:
+                return
                 
-                if skill_id:
-                    g.db.shared_skills.update_one(
-                        {"_id": ObjectId(skill_id)},
-                        {
-                            "$set": {
-                                "trending_score": trending_score,
-                                "trending_updated_at": datetime.utcnow()
+            with self.app.app_context():
+                from backend.services.analytics_service import AnalyticsService
+                
+                # Get trending skills
+                trending_skills = AnalyticsService.get_trending_content("skill", days=1, limit=50)
+                
+                # Cache trending skills
+                CacheService.cache_trending_skills(trending_skills.get("trending_items", []))
+                
+                # Update trending scores in database
+                for item in trending_skills.get("trending_items", []):
+                    skill_id = item.get("skill_id")
+                    trending_score = item.get("trending_score", 0)
+                    
+                    if skill_id:
+                        g.db.shared_skills.update_one(
+                            {"_id": ObjectId(skill_id)},
+                            {
+                                "$set": {
+                                    "trending_score": trending_score,
+                                    "trending_updated_at": datetime.utcnow()
+                                }
                             }
-                        }
-                    )
-            
-            logging.info(f"Updated trending content - {len(trending_skills.get('trending_items', []))} items")
+                        )
+                
+                logging.info(f"Updated trending content - {len(trending_skills.get('trending_items', []))} items")
 
         except Exception as e:
             logging.error(f"Error updating trending content: {e}")
@@ -340,56 +347,60 @@ class BatchProcessor:
     def _process_notification_digest(self):
         """Process notification digests for users"""
         try:
-            # Find users eligible for digest notifications
-            digest_cutoff = datetime.utcnow() - timedelta(hours=24)
-            
-            # Get users who have unread notifications
-            pipeline = [
-                {"$match": {
-                    "read": False,
-                    "created_at": {"$gte": digest_cutoff},
-                    "notification_type": {"$in": [
-                        "like_received", "comment_received", "follower_added"
-                    ]}
-                }},
-                {"$group": {
-                    "_id": "$user_id",
-                    "unread_count": {"$sum": 1},
-                    "notification_types": {"$addToSet": "$notification_type"},
-                    "latest_notification": {"$max": "$created_at"}
-                }},
-                {"$match": {"unread_count": {"$gte": 5}}}  # At least 5 unread notifications
-            ]
-            
-            digest_candidates = list(g.db.notifications.aggregate(pipeline))
-            
-            for candidate in digest_candidates:
-                user_id = str(candidate["_id"])
-                unread_count = candidate["unread_count"]
+            if not self.app:
+                return
                 
-                # Check if user hasn't been sent a digest recently
-                last_digest_key = f"digest_sent:{user_id}"
-                if not CacheService.exists(last_digest_key):
+            with self.app.app_context():
+                # Find users eligible for digest notifications
+                digest_cutoff = datetime.utcnow() - timedelta(hours=24)
+                
+                # Get users who have unread notifications
+                pipeline = [
+                    {"$match": {
+                        "read": False,
+                        "created_at": {"$gte": digest_cutoff},
+                        "notification_type": {"$in": [
+                            "like_received", "comment_received", "follower_added"
+                        ]}
+                    }},
+                    {"$group": {
+                        "_id": "$user_id",
+                        "unread_count": {"$sum": 1},
+                        "notification_types": {"$addToSet": "$notification_type"},
+                        "latest_notification": {"$max": "$created_at"}
+                    }},
+                    {"$match": {"unread_count": {"$gte": 5}}}  # At least 5 unread notifications
+                ]
+                
+                digest_candidates = list(g.db.notifications.aggregate(pipeline))
+                
+                for candidate in digest_candidates:
+                    user_id = str(candidate["_id"])
+                    unread_count = candidate["unread_count"]
                     
-                    # Create digest notification
-                    digest_message = f"You have {unread_count} unread notifications"
-                    
-                    NotificationService.create_notification(
-                        user_id=user_id,
-                        notification_type="daily_digest",
-                        reference_type="system",
-                        reference_id=user_id,
-                        data={
-                            "message": digest_message,
-                            "unread_count": unread_count,
-                            "digest_date": datetime.utcnow().isoformat()
-                        }
-                    )
-                    
-                    # Mark digest as sent (prevent duplicate for 24 hours)
-                    CacheService.set(last_digest_key, True, 86400)
-            
-            logging.info(f"Processed notification digests for {len(digest_candidates)} users")
+                    # Check if user hasn't been sent a digest recently
+                    last_digest_key = f"digest_sent:{user_id}"
+                    if not CacheService.exists(last_digest_key):
+                        
+                        # Create digest notification
+                        digest_message = f"You have {unread_count} unread notifications"
+                        
+                        NotificationService.create_notification(
+                            user_id=user_id,
+                            notification_type="daily_digest",
+                            reference_type="system",
+                            reference_id=user_id,
+                            data={
+                                "message": digest_message,
+                                "unread_count": unread_count,
+                                "digest_date": datetime.utcnow().isoformat()
+                            }
+                        )
+                        
+                        # Mark digest as sent (prevent duplicate for 24 hours)
+                        CacheService.set(last_digest_key, True, 86400)
+                
+                logging.info(f"Processed notification digests for {len(digest_candidates)} users")
 
         except Exception as e:
             logging.error(f"Error processing notification digest: {e}")
@@ -419,42 +430,46 @@ class BatchProcessor:
     def _aggregate_analytics_data(self):
         """Aggregate analytics data for reporting"""
         try:
-            # Aggregate daily analytics
-            today = datetime.utcnow().date()
-            daily_key = f"daily_analytics:{today.isoformat()}"
-            
-            # Check if already processed today
-            if CacheService.exists(daily_key):
+            if not self.app:
                 return
-            
-            analytics_repo = AnalyticsRepository(g.db.analytics_events)
-            
-            # Get platform overview for today
-            start_of_day = datetime.combine(today, datetime.min.time())
-            end_of_day = datetime.combine(today, datetime.max.time())
-            
-            pipeline = [
-                {"$match": {
-                    "timestamp": {"$gte": start_of_day, "$lte": end_of_day}
-                }},
-                {"$group": {
-                    "_id": "$event_type",
-                    "count": {"$sum": 1},
-                    "unique_users": {"$addToSet": "$user_id"}
-                }},
-                {"$project": {
-                    "event_type": "$_id",
-                    "count": 1,
-                    "unique_users": {"$size": "$unique_users"}
-                }}
-            ]
-            
-            daily_aggregation = list(analytics_repo.collection.aggregate(pipeline))
-            
-            # Cache daily aggregation
-            CacheService.set(daily_key, daily_aggregation, CacheService.LONG_TTL)
-            
-            logging.info(f"Aggregated analytics data for {today}")
+                
+            with self.app.app_context():
+                # Aggregate daily analytics
+                today = datetime.utcnow().date()
+                daily_key = f"daily_analytics:{today.isoformat()}"
+                
+                # Check if already processed today
+                if CacheService.exists(daily_key):
+                    return
+                
+                analytics_repo = AnalyticsRepository(g.db.analytics_events)
+                
+                # Get platform overview for today
+                start_of_day = datetime.combine(today, datetime.min.time())
+                end_of_day = datetime.combine(today, datetime.max.time())
+                
+                pipeline = [
+                    {"$match": {
+                        "timestamp": {"$gte": start_of_day, "$lte": end_of_day}
+                    }},
+                    {"$group": {
+                        "_id": "$event_type",
+                        "count": {"$sum": 1},
+                        "unique_users": {"$addToSet": "$user_id"}
+                    }},
+                    {"$project": {
+                        "event_type": "$_id",
+                        "count": 1,
+                        "unique_users": {"$size": "$unique_users"}
+                    }}
+                ]
+                
+                daily_aggregation = list(analytics_repo.collection.aggregate(pipeline))
+                
+                # Cache daily aggregation
+                CacheService.set(daily_key, daily_aggregation, CacheService.LONG_TTL)
+                
+                logging.info(f"Aggregated analytics data for {today}")
 
         except Exception as e:
             logging.error(f"Error aggregating analytics data: {e}")
