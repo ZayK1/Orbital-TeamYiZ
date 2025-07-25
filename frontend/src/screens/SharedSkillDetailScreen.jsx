@@ -332,7 +332,7 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
       <Animated.View style={[styles.floatingHeader, { opacity: headerOpacity }]}>
         <View style={styles.floatingHeaderContent}>
           <TouchableOpacity 
-            style={styles.backButton} 
+            style={styles.floatingBackButton} 
             onPress={() => {
               console.log('Floating back button pressed');
               navigation.goBack();
@@ -342,7 +342,7 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
             <MaterialIcons name="arrow-back" size={24} color={colors.white} />
           </TouchableOpacity>
           <Text style={styles.floatingTitle} numberOfLines={1}>{skill?.title}</Text>
-          <TouchableOpacity style={styles.shareButton}>
+          <TouchableOpacity style={styles.floatingShareButton}>
             <MaterialIcons name="share" size={24} color={colors.white} />
           </TouchableOpacity>
         </View>
@@ -419,11 +419,11 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
                 </View>
               </View>
               
-              {/* Course Title */}
+              {/* Plan Title */}
               <Text style={styles.heroTitle}>{skill?.title}</Text>
               
-              {/* Course Stats */}
-              <View style={styles.courseStats}>
+              {/* Plan Stats */}
+              <View style={styles.planStats}>
                 <View style={styles.statItem}>
                   <MaterialIcons name="schedule" size={16} color={colors.white} />
                   <Text style={styles.statText}>{skill?.estimated_duration || 30} days</Text>
@@ -451,7 +451,7 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
                   <Text style={styles.authorName}>
                     {skill?.shared_by_display_name || skill?.shared_by_username || 'Anonymous'}
                   </Text>
-                  <Text style={styles.authorTitle}>Course Creator</Text>
+                  <Text style={styles.authorTitle}>Plan Creator</Text>
                 </View>
               </View>
             </View>
@@ -515,7 +515,7 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
             activeOpacity={0.8}
           >
             <MaterialIcons name="download" size={20} color={colors.white} />
-            <Text style={styles.primaryCTAText}>Enroll Course</Text>
+            <Text style={styles.primaryCTAText}>Enroll Plan</Text>
           </TouchableOpacity>
         </View>
 
@@ -525,7 +525,7 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
           <View style={styles.modernCard}>
             <View style={styles.cardHeader}>
               <MaterialIcons name="info-outline" size={20} color={colors.primary} />
-              <Text style={styles.cardTitle}>About This Course</Text>
+              <Text style={styles.cardTitle}>About This Plan</Text>
             </View>
             
             <Text 
@@ -630,7 +630,7 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
             <View style={styles.modernCard}>
               <View style={styles.cardHeader}>
                 <MaterialIcons name="analytics" size={20} color={colors.primary} />
-                <Text style={styles.cardTitle}>Course Statistics</Text>
+                <Text style={styles.cardTitle}>Plan Statistics</Text>
               </View>
               <View style={styles.statsGrid}>
                 <View style={styles.modernStatCard}>
@@ -662,7 +662,7 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
             <View style={styles.modernCard}>
               <View style={styles.cardHeader}>
                 <MaterialIcons name="list-alt" size={20} color={colors.primary} />
-                <Text style={styles.cardTitle}>Course Curriculum</Text>
+                <Text style={styles.cardTitle}>Plan Curriculum</Text>
                 <View style={styles.progressBadge}>
                   <Text style={styles.progressText}>{skill?.curriculum?.length || 0} lessons</Text>
                 </View>
@@ -682,7 +682,7 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
             <View style={styles.modernCard}>
               <View style={styles.cardHeader}>
                 <MaterialIcons name="forum" size={20} color={colors.primary} />
-                <Text style={styles.cardTitle}>Course Discussion</Text>
+                <Text style={styles.cardTitle}>Plan Discussion</Text>
                 <TouchableOpacity style={styles.addCommentButton}>
                   <MaterialIcons name="add-comment" size={16} color={colors.primary} />
                 </TouchableOpacity>
@@ -695,38 +695,6 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
           )}
         </View>
       </Animated.ScrollView>
-
-      {/* Sticky Action Bar */}
-      <View style={styles.stickyActionBar}>
-        <TouchableOpacity 
-          style={[styles.actionBarButton, styles.saveActionButton]}
-          onPress={handleSave}
-        >
-          <MaterialIcons 
-            name={isSaved ? "bookmark" : "bookmark-border"} 
-            size={20} 
-            color={isSaved ? (colors.reddit?.save || '#FFD700') : colors.white} 
-          />
-          <Text style={styles.actionBarText}>
-            {isSaved ? 'Saved' : 'Save'}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.actionBarButton, styles.downloadActionButton]}
-          onPress={handleDownload}
-        >
-          <MaterialIcons name="download" size={20} color={colors.white} />
-          <Text style={styles.actionBarText}>Add to Repository</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.actionBarButton, styles.commentActionButton]}
-          onPress={() => setActiveTab('comments')}
-        >
-          <MaterialIcons name="comment" size={20} color={colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
     </View>
   );
 };
@@ -744,14 +712,13 @@ const styles = StyleSheet.create({
   // Modern Floating Header
   floatingHeader: {
     position: 'absolute',
-    top: 0,
+    top: Platform.OS === 'ios' ? -44 : -(StatusBar.currentHeight || 0),
     left: 0,
     right: 0,
-    height: Platform.OS === 'ios' ? 90 : 70,
+    height: Platform.OS === 'ios' ? 90 : 80,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
     zIndex: 1000,
-    paddingTop: Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0,
-    backdropFilter: 'blur(20px)',
+    paddingTop: Platform.OS === 'ios' ? 44 : (StatusBar.currentHeight || 0),
   },
   floatingHeaderContent: {
     flex: 1,
@@ -768,12 +735,29 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginHorizontal: 16,
   },
+  floatingBackButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  floatingShareButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   
   // Hero Section
   heroSection: {
     height: HEADER_HEIGHT,
     justifyContent: 'flex-end',
     position: 'relative',
+    marginTop: Platform.OS === 'ios' ? -44 : -(StatusBar.currentHeight || 0),
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -781,7 +765,7 @@ const styles = StyleSheet.create({
   },
   heroNavigation: {
     position: 'absolute',
-    top: StatusBar.currentHeight || 44,
+    top: Platform.OS === 'ios' ? 44 : (StatusBar.currentHeight || 0),
     left: 0,
     right: 0,
     flexDirection: 'row',
@@ -1110,53 +1094,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   
-  // Sticky Action Bar
-  stickyActionBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    backgroundColor: colors.white,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 20,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  actionBarButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 24,
-    marginHorizontal: 4,
-  },
-  saveActionButton: {
-    backgroundColor: colors.reddit?.save || '#FFD700',
-    flex: 1,
-  },
-  downloadActionButton: {
-    backgroundColor: colors.primary,
-    flex: 2,
-  },
-  commentActionButton: {
-    backgroundColor: colors.surfaceSecondary,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  actionBarText: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.white,
-    marginLeft: 8,
-  },
+  // Removed unused stickyActionBar style
+  // Removed unused action bar button styles
   
   // Loading and Error States
   loadingContainer: {
@@ -1264,39 +1203,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
-  authorSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  authorAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-    shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  authorAvatarText: {
-    color: colors.white,
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  authorInfo: {
-    flex: 1,
-  },
-  authorName: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 2,
-  },
+  // Removed duplicate authorSection, authorAvatar, authorAvatarText, authorInfo, authorName - these are defined later in the styles
   authorLabel: {
     fontSize: 13,
     color: colors.textTertiary,
@@ -1325,56 +1232,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  difficultyBadge: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    marginRight: 16,
-    shadowColor: colors.shadowLight,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  difficultyText: {
-    fontSize: 13,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  categoryBadge: {
-    backgroundColor: colors.primaryUltraLight,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-  },
-  categoryText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.primary,
-  },
+  // Removed duplicate difficultyBadge, difficultyText, categoryBadge, categoryText - these are defined earlier in the styles
   tagsSection: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: 12,
   },
-  tag: {
-    backgroundColor: colors.surfaceTertiary,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 14,
-    marginRight: 10,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  tagText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: colors.textSecondary,
-  },
+  // Removed duplicate tag and tagText - these are defined elsewhere in the styles
   actionButtons: {
     flexDirection: 'row',
     paddingHorizontal: 20,
@@ -1623,7 +1487,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   
-  courseStats: {
+  planStats: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 12,
@@ -1654,12 +1518,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '400',
   },
+  authorSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
 
   // Modern Action Bar
   modernActionBar: {
     backgroundColor: colors.white,
     marginHorizontal: CARD_MARGIN,
-    marginTop: -30,
+    marginTop: -40,
+    marginBottom: 20, // Increased margin to prevent overlap
     borderRadius: 16,
     padding: CARD_PADDING,
     shadowColor: colors.shadowDark,
@@ -1734,6 +1604,7 @@ const styles = StyleSheet.create({
   // Content Container
   contentContainer: {
     padding: CARD_MARGIN,
+    paddingBottom: 120, // Extra bottom padding to prevent overlap with any bottom elements
   },
 
   // Modern Cards
@@ -1741,7 +1612,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     borderRadius: 16,
     padding: CARD_PADDING,
-    marginBottom: CARD_MARGIN,
+    marginBottom: 20, // Increased margin between cards
     shadowColor: colors.shadowDark,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
