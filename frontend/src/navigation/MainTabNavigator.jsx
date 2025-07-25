@@ -122,8 +122,6 @@ const MyTabBar = ({ state, descriptors, navigation, setTabBarVisible }) => {
             const iconName =
               route.name === 'RepositoryStack'
                 ? 'home'
-                : route.name === 'MyHabits'
-                ? 'track-changes'
                 : route.name === 'Explore'
                 ? 'explore'
                 : route.name === 'Stats'
@@ -134,7 +132,7 @@ const MyTabBar = ({ state, descriptors, navigation, setTabBarVisible }) => {
 
             const tabColor = isFocused ? colors.primary : colors.gray400;
 
-            // Skip the add button placeholder (we'll put it between Habits and Discover)
+            // Skip the add button placeholder (we'll put it between Home and SkillShare)
             if (route.name === 'AddPlaceholder') {
               return <View key={route.key} style={styles.tabSpacer} />;
             }
@@ -160,7 +158,7 @@ const MyTabBar = ({ state, descriptors, navigation, setTabBarVisible }) => {
         </BlurView>
         <TouchableOpacity style={styles.addButton} onPress={toggleMenu} activeOpacity={0.8}>
           <View style={styles.addButtonInner}>
-            <MaterialIcons name={addMenuVisible ? "close" : "add"} size={28} color="white" />
+            <MaterialIcons name={addMenuVisible ? "close" : "add"} size={24} color="white" />
           </View>
         </TouchableOpacity>
       </View>
@@ -249,9 +247,8 @@ export default function MainTabNavigator() {
           }}
         >
           <Tab.Screen name="RepositoryStack" component={RepositoryStackNavigator} options={{ title: 'Home' }} />
-          <Tab.Screen name="MyHabits" component={MyHabitsScreen} options={{ title: 'Habits' }} />
           <Tab.Screen name="AddPlaceholder" component={View} options={{ title: '' }} />
-          <Tab.Screen name="Explore" component={ExploreStackNavigator} options={{ title: 'Discover' }} />
+          <Tab.Screen name="Explore" component={ExploreStackNavigator} options={{ title: 'SkillShare' }} />
           <Tab.Screen name="Stats" component={StatsScreen} options={{ title: 'Stats' }} />
           <Tab.Screen name="Profile" component={ProfileStackNavigator} options={{ title: 'Profile' }} />
         </Tab.Navigator>
@@ -273,8 +270,8 @@ const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 34 : 20,
-    left: 20,
-    right: 20,
+    left: 16, // Reduced margins for better alignment
+    right: 16,
     height: 80,
     elevation: 0,
     alignItems: 'center',
@@ -300,9 +297,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
+    maxWidth: 80, // Ensure consistent width
   },
   tabSpacer: {
-    width: 60,
+    width: 56, // Match the reduced add button width
     height: '100%',
   },
   tabIconContainer: {
@@ -323,25 +321,25 @@ const styles = StyleSheet.create({
   },
   addButton: {
     position: 'absolute',
-    top: -16,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    top: -12, // Reduced elevation
+    width: 56, // Smaller size
+    height: 56,
+    borderRadius: 28,
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 16,
-    borderWidth: 4,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 12,
+    borderWidth: 3,
     borderColor: colors.white,
   },
   addButtonInner: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 40, // Reduced inner size
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
