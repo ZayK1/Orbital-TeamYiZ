@@ -93,21 +93,51 @@ const MyHabitsScreen = () => {
   };
 
   const handleHabitCheck = async (habitId) => {
-    if (completedHabits.has(habitId)) return;
+    if (completedHabits.has(habitId)) return; // Already completed
+    
+    // Optimistic update
+    const newSet = new Set(completedHabits);
+    newSet.add(habitId);
+    setCompletedHabits(newSet);
+    
+    // Update the habit in the list optimistically
+    setHabits(prev => prev.map(h => 
+      h._id === habitId ? { ...h, checked_today: true } : h
+    ));
+    
     try {
       const todayIso = new Date().toISOString().split('T')[0];
-      await recordHabitCheckin(habitId, todayIso, token);
-      const newSet = new Set(completedHabits);
-      newSet.add(habitId);
-      setCompletedHabits(newSet);
+      const response = await recordHabitCheckin(habitId, todayIso, token);
       
-      // Update the habit in the list
-      setHabits(prev => prev.map(h => 
-        h._id === habitId ? { ...h, checked_today: true } : h
-      ));
+      console.log('Habit check-in response:', response); // Debug log
+      
+      // Update with the actual habit data from backend (includes updated streaks)
+      if (response.habit) {
+        setHabits(prev => prev.map(h => 
+          h._id === habitId ? response.habit : h
+        ));
+        
+        // Ensure the updated habit's checked_today status is reflected in completedHabits
+        if (response.habit.checked_today) {
+          const updatedSet = new Set(completedHabits);
+          updatedSet.add(habitId);
+          setCompletedHabits(updatedSet);
+        }
+      }
     } catch (err) {
       console.error('Failed to record checkin', err);
+      console.error('Error details:', err.response?.data);
+      console.error('Error status:', err.response?.status);
       setError('Failed to check habit');
+      
+      // Rollback optimistic update on error
+      const rollbackSet = new Set(completedHabits);
+      rollbackSet.delete(habitId);
+      setCompletedHabits(rollbackSet);
+      
+      setHabits(prev => prev.map(h => 
+        h._id === habitId ? { ...h, checked_today: false } : h
+      ));
     }
   };
 
@@ -194,7 +224,8 @@ const MyHabitsScreen = () => {
       <TouchableOpacity 
         style={[
           styles.habitCard,
-          isCompleted && styles.completedHabitCard
+          isCompleted && styles.completedHabitCard,
+          { borderColor: habitColor }
         ]}
         onPress={() => handleHabitCheck(item._id)}
         activeOpacity={0.8}
@@ -567,13 +598,14 @@ const styles = StyleSheet.create({
   // Content Styles
   content: {
     flex: 1,
-    paddingTop: 20,
+    paddingTop: 0,
   },
   
   // Search Styles
   searchContainer: {
     paddingHorizontal: 20,
-    marginBottom: 20,
+    paddingTop: 20,
+    marginBottom: 16,
   },
   searchInputContainer: {
     flexDirection: 'row',
@@ -599,7 +631,7 @@ const styles = StyleSheet.create({
   filterContainer: {
     flexDirection: 'row',
     paddingHorizontal: 20,
-    marginBottom: 24,
+    marginBottom: 20,
     gap: 12,
   },
   filterTab: {
@@ -658,13 +690,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: 16,
     elevation: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
+    borderWidth: 2,
     position: 'relative',
   },
   completedHabitCard: {
     backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
   },
   habitCardContent: {
     flexDirection: 'row',

@@ -189,15 +189,53 @@ export default function RepositoryScreen() {
   const showAddHabit = () => navigation.navigate('AddHabit');
 
   const handleHabitCheck = async (habitId) => {
-    if (completedHabits.has(habitId)) return; 
+    const isCurrentlyCompleted = completedHabits.has(habitId);
+    
+    if (isCurrentlyCompleted) return; // Already completed, don't allow unchecking
+    
+    // Optimistic update
+    const newSet = new Set(completedHabits);
+    newSet.add(habitId);
+    setCompletedHabits(newSet);
+    
+    // Update the habits array optimistically
+    setHabits(prev => prev.map(h => 
+      h._id === habitId ? { ...h, checked_today: true } : h
+    ));
+    
     try {
       const todayIso = new Date().toISOString().split('T')[0];
-      await recordHabitCheckin(habitId, todayIso, token);
-      const newSet = new Set(completedHabits);
-      newSet.add(habitId);
-      setCompletedHabits(newSet);
+      console.log('Sending habit check-in request:', { habitId, date: todayIso }); // Debug log
+      const response = await recordHabitCheckin(habitId, todayIso, token);
+      
+      console.log('Habit check-in response:', response); // Debug log
+      
+      // Update with the actual habit data from backend (includes updated streaks)
+      if (response.habit) {
+        setHabits(prev => prev.map(h => 
+          h._id === habitId ? response.habit : h
+        ));
+        
+        // Ensure the updated habit's checked_today status is reflected in completedHabits
+        if (response.habit.checked_today) {
+          const updatedSet = new Set(completedHabits);
+          updatedSet.add(habitId);
+          setCompletedHabits(updatedSet);
+        }
+      }
     } catch (err) {
       console.error('Failed to record checkin', err);
+      console.error('Error details:', err.response?.data);
+      console.error('Error status:', err.response?.status);
+      
+      // Rollback optimistic update on error
+      const rollbackSet = new Set(completedHabits);
+      rollbackSet.delete(habitId);
+      setCompletedHabits(rollbackSet);
+      
+      setHabits(prev => prev.map(h => 
+        h._id === habitId ? { ...h, checked_today: false } : h
+      ));
     }
   };
 
@@ -358,20 +396,21 @@ export default function RepositoryScreen() {
         </View>
 
         {todaysHabits.length > 0 ? (
-          <View style={styles.habitsContainer}>
+          <View style={styles.habitsGridContainer}>
             {todaysHabits.map((habit, index) => (
               <TouchableOpacity 
                 key={habit._id || index} 
                 style={[
-                  styles.modernHabitCard,
-                  completedHabits.has(habit._id) && styles.completedHabitCard
+                  styles.gridHabitCard,
+                  completedHabits.has(habit._id) && styles.completedGridHabitCard,
+                  { borderColor: habit.color || '#14B8A6' }
                 ]}
                 onPress={() => handleHabitCheck(habit._id)}
                 activeOpacity={0.8}
               >
-                <View style={styles.habitCardContent}>
+                <View style={styles.gridHabitContent}>
                   <View style={[
-                    styles.habitIconContainer, 
+                    styles.gridHabitIconContainer, 
                     { backgroundColor: (habit.color || '#14B8A6') + '15' }
                   ]}>
                     <MaterialIcons 
@@ -381,41 +420,41 @@ export default function RepositoryScreen() {
                     />
                   </View>
                   
-                  <View style={styles.habitInfo}>
-                    <Text style={[
-                      styles.habitTitle,
-                      completedHabits.has(habit._id) && styles.completedHabitTitle
-                    ]}>
-                      {habit.title}
-                    </Text>
-                    <Text style={styles.habitFrequency}>
-                      {habit.pattern?.frequency || 'Daily'}
-                    </Text>
-                    {habit.streaks?.current_streak > 0 && (
-                      <View style={styles.streakContainer}>
-                        <MaterialIcons name="local-fire-department" size={12} color="#F97316" />
-                        <Text style={styles.streakText}>
-                          {habit.streaks.current_streak} day streak
-                        </Text>
-                      </View>
-                    )}
-                  </View>
+                  <Text style={[
+                    styles.gridHabitTitle,
+                    completedHabits.has(habit._id) && styles.completedGridHabitTitle
+                  ]} numberOfLines={2}>
+                    {habit.title}
+                  </Text>
+                  
+                  <Text style={styles.gridHabitFrequency}>
+                    {habit.pattern?.frequency || 'Daily'}
+                  </Text>
+                  
+                  {habit.streaks?.current_streak > 0 && (
+                    <View style={styles.gridStreakContainer}>
+                      <MaterialIcons name="local-fire-department" size={12} color="#F97316" />
+                      <Text style={styles.gridStreakText}>
+                        {habit.streaks.current_streak}d
+                      </Text>
+                    </View>
+                  )}
                   
                   <View style={[
-                    styles.habitCheckbox,
+                    styles.gridHabitCheckbox,
                     completedHabits.has(habit._id) 
                       ? { backgroundColor: '#22C55E', borderColor: '#22C55E' }
-                      : { backgroundColor: 'transparent', borderColor: '#D1D5DB' }
+                      : { backgroundColor: 'transparent', borderColor: habit.color || '#14B8A6' }
                   ]}>
                     {completedHabits.has(habit._id) && (
-                      <MaterialIcons name="check" size={18} color="white" />
+                      <MaterialIcons name="check" size={14} color="white" />
                     )}
                   </View>
                 </View>
                 
                 {completedHabits.has(habit._id) && (
-                  <View style={styles.completedOverlay}>
-                    <MaterialIcons name="check-circle" size={20} color="#22C55E" />
+                  <View style={styles.gridCompletedOverlay}>
+                    <MaterialIcons name="check-circle" size={16} color="#22C55E" />
                   </View>
                 )}
               </TouchableOpacity>
@@ -675,81 +714,86 @@ const styles = StyleSheet.create({
   },
   skillButtonText: { color: '#111827', fontWeight: '500', fontSize: 14 },
 
-  habitsContainer: {
+  habitsGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
+    justifyContent: 'space-between',
   },
-  modernHabitCard: {
+  gridHabitCard: {
     backgroundColor: 'white',
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 12,
+    padding: 12,
+    width: '48%',
+    minHeight: 110,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
+    borderWidth: 2,
     position: 'relative',
     overflow: 'hidden',
   },
-  completedHabitCard: {
+  completedGridHabitCard: {
     backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
   },
-  habitCardContent: {
-    flexDirection: 'row',
+  gridHabitContent: {
     alignItems: 'center',
-  },
-  habitIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  habitInfo: {
     flex: 1,
   },
-  habitTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1F2937',
-    marginBottom: 4,
+  gridHabitIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
   },
-  completedHabitTitle: {
+  gridHabitTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1F2937',
+    textAlign: 'center',
+    marginBottom: 4,
+    lineHeight: 16,
+  },
+  completedGridHabitTitle: {
     color: '#059669',
     textDecorationLine: 'line-through',
     opacity: 0.8,
   },
-  habitFrequency: {
-    fontSize: 14,
+  gridHabitFrequency: {
+    fontSize: 11,
     color: '#6B7280',
     fontWeight: '500',
-    marginBottom: 4,
+    marginBottom: 6,
+    textAlign: 'center',
   },
-  streakContainer: {
+  gridStreakContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
+    marginBottom: 6,
   },
-  streakText: {
-    fontSize: 12,
+  gridStreakText: {
+    fontSize: 10,
     color: '#F97316',
     fontWeight: '600',
   },
-  habitCheckbox: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  gridHabitCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 'auto',
   },
-  completedOverlay: {
+  gridCompletedOverlay: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: 8,
+    right: 8,
   },
 
   placeholderCard: {

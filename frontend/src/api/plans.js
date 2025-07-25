@@ -58,10 +58,26 @@ export const deleteHabit = async (habitId, token) => {
 };
 
 export const recordHabitCheckin = async (habitId, dateIso, token) => {
+  // Ensure date is in YYYY-MM-DD format (no time component)
+  const dateOnly = dateIso.split('T')[0];
+  const payload = { 
+    date: dateOnly, 
+    completed: true 
+  };
+  
+  console.log('API call payload:', payload);
+  console.log('API call URL:', `${API_BASE_URL}/api/v1/plans/habits/${habitId}/checkin`);
+  console.log('Headers:', { Authorization: `Bearer ${token ? token.substring(0, 20) + '...' : 'missing'}` });
+  
   const response = await axios.post(
     `${API_BASE_URL}/api/v1/plans/habits/${habitId}/checkin`,
-    { date: dateIso, completed: true },
-    { headers: { Authorization: `Bearer ${token}` } }
+    payload,
+    { 
+      headers: { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      } 
+    }
   );
   return response.data;
 };
