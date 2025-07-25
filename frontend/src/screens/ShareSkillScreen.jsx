@@ -23,7 +23,9 @@ const ShareSkillScreen = ({ navigation }) => {
   const [sharingSkill, setSharingSkill] = useState(null);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState(null);
-  const [editedDescription, setEditedDescription] = useState('');
+  const [skillDescription, setSkillDescription] = useState('');
+  const [personalMessage, setPersonalMessage] = useState('');
+  const [activeTab, setActiveTab] = useState('skill'); // 'skill' or 'message'
 
   useEffect(() => {
     loadSkillsForSharing();
@@ -44,26 +46,45 @@ const ShareSkillScreen = ({ navigation }) => {
 
   const handleShareSkill = (skill) => {
     setSelectedSkill(skill);
-    setEditedDescription(skill.description || `Learn ${skill.title}`);
+    setSkillDescription(skill.description || `Learn ${skill.title} - comprehensive 30-day learning plan covering all essential concepts and practical applications.`);
+    setPersonalMessage('');
+    setActiveTab('skill');
     setEditModalVisible(true);
+  };
+
+  const getDifficultyColor = (difficulty) => {
+    switch (difficulty?.toLowerCase()) {
+      case 'beginner': return colors.success;
+      case 'intermediate': return colors.warning;
+      case 'advanced': return colors.error;
+      default: return colors.primary;
+    }
   };
 
   const confirmShareSkill = async () => {
     if (!selectedSkill || sharingSkill === selectedSkill._id) return;
+    if (!skillDescription.trim()) {
+      Alert.alert('Missing Content', 'Please add a skill description before sharing.');
+      return;
+    }
 
     try {
       setSharingSkill(selectedSkill._id);
       
-      // Create updated skill with edited description
+      // Create updated skill with dual content
       const updatedSkill = {
         ...selectedSkill,
-        description: editedDescription.trim() || selectedSkill.description
+        skill_description: skillDescription.trim(),
+        personal_message: personalMessage.trim(),
+        description: skillDescription.trim(), // Fallback for existing code
       };
       
       const result = await shareSkillToSocial(updatedSkill);
       
       if (result.success) {
         setEditModalVisible(false);
+        setSkillDescription('');
+        setPersonalMessage('');
         Alert.alert('Success', 'Skill shared to social feed!', [
           {
             text: 'OK',
@@ -125,15 +146,6 @@ const ShareSkillScreen = ({ navigation }) => {
       </TouchableOpacity>
     </View>
   );
-
-  const getDifficultyColor = (difficulty) => {
-    switch (difficulty?.toLowerCase()) {
-      case 'beginner': return colors.success;
-      case 'intermediate': return colors.warning;
-      case 'advanced': return colors.error;
-      default: return colors.primary;
-    }
-  };
 
   const renderEmptyState = () => (
     <View style={styles.emptyState}>
@@ -223,32 +235,114 @@ const ShareSkillScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.modalContent}>
+            {/* Skill Preview Card */}
             <View style={styles.skillPreview}>
-              <Text style={styles.skillPreviewTitle}>{selectedSkill?.title}</Text>
-              <View style={styles.skillPreviewMeta}>
-                <Text style={styles.skillPreviewCategory}>{selectedSkill?.category}</Text>
-                <Text style={styles.skillPreviewDifficulty}>{selectedSkill?.difficulty}</Text>
+              <View style={styles.skillPreviewHeader}>
+                <Text style={styles.skillPreviewTitle}>{selectedSkill?.title}</Text>
+                <View style={styles.skillPreviewMeta}>
+                  <View style={styles.categoryPill}>
+                    <Text style={styles.categoryText}>{selectedSkill?.category}</Text>
+                  </View>
+                  <View style={[styles.difficultyPill, { backgroundColor: getDifficultyColor(selectedSkill?.difficulty) }]}>
+                    <Text style={styles.difficultyText}>{selectedSkill?.difficulty}</Text>
+                  </View>
+                </View>
+              </View>
+              <View style={styles.skillStats}>
+                <MaterialIcons name="schedule" size={16} color={colors.textTertiary} />
+                <Text style={styles.durationText}>{selectedSkill?.estimated_duration || 30} days</Text>
               </View>
             </View>
 
-            <View style={styles.descriptionSection}>
-              <Text style={styles.descriptionLabel}>Description</Text>
-              <Text style={styles.descriptionHint}>
-                Tell the community what makes this skill special and what they'll learn
-              </Text>
-              <TextInput
-                style={styles.descriptionInput}
-                value={editedDescription}
-                onChangeText={setEditedDescription}
-                placeholder="Describe what this skill teaches..."
-                multiline
-                numberOfLines={4}
-                maxLength={500}
-                textAlignVertical="top"
-              />
-              <Text style={styles.characterCount}>
-                {editedDescription.length}/500
-              </Text>
+            {/* Content Type Tabs */}
+            <View style={styles.tabContainer}>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'skill' && styles.activeTab]}
+                onPress={() => setActiveTab('skill')}
+              >
+                <MaterialIcons 
+                  name="school" 
+                  size={18} 
+                  color={activeTab === 'skill' ? colors.white : colors.textSecondary} 
+                />
+                <Text style={[styles.tabText, activeTab === 'skill' && styles.activeTabText]}>
+                  Skill Description
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.tab, activeTab === 'message' && styles.activeTab]}
+                onPress={() => setActiveTab('message')}
+              >
+                <MaterialIcons 
+                  name="message" 
+                  size={18} 
+                  color={activeTab === 'message' ? colors.white : colors.textSecondary} 
+                />
+                <Text style={[styles.tabText, activeTab === 'message' && styles.activeTabText]}>
+                  Your Message
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Content Areas */}
+            {activeTab === 'skill' ? (
+              <View style={styles.contentSection}>
+                <Text style={styles.contentLabel}>Skill Description</Text>
+                <Text style={styles.contentHint}>
+                  Describe what this skill teaches and what learners will achieve
+                </Text>
+                <TextInput
+                  style={styles.contentInput}
+                  value={skillDescription}
+                  onChangeText={setSkillDescription}
+                  placeholder="e.g., Master React Native fundamentals including components, navigation, state management, and build complete mobile apps..."
+                  multiline
+                  numberOfLines={4}
+                  maxLength={500}
+                  textAlignVertical="top"
+                />
+                <Text style={styles.characterCount}>
+                  {skillDescription.length}/500
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.contentSection}>
+                <Text style={styles.contentLabel}>Your Personal Message</Text>
+                <Text style={styles.contentHint}>
+                  Share your thoughts, tips, or experience with this skill (optional)
+                </Text>
+                <TextInput
+                  style={styles.contentInput}
+                  value={personalMessage}
+                  onChangeText={setPersonalMessage}
+                  placeholder="e.g., I found this skill incredibly valuable for my career. The curriculum is well-structured and the projects are practical. Here's what I learned..."
+                  multiline
+                  numberOfLines={5}
+                  maxLength={1000}
+                  textAlignVertical="top"
+                />
+                <Text style={styles.characterCount}>
+                  {personalMessage.length}/1000
+                </Text>
+              </View>
+            )}
+
+            {/* Preview Section */}
+            <View style={styles.previewSection}>
+              <Text style={styles.previewLabel}>Preview</Text>
+              <View style={styles.previewCard}>
+                <Text style={styles.previewTitle}>{selectedSkill?.title}</Text>
+                {skillDescription.trim() && (
+                  <Text style={styles.previewDescription} numberOfLines={2}>
+                    {skillDescription}
+                  </Text>
+                )}
+                {personalMessage.trim() && (
+                  <Text style={styles.previewMessage} numberOfLines={2}>
+                    💬 {personalMessage}
+                  </Text>
+                )}
+              </View>
             </View>
           </View>
         </KeyboardAvoidingView>
@@ -437,9 +531,17 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 50 : 20,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
+    backgroundColor: colors.white,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   modalCloseButton: {
     padding: 8,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceSecondary,
   },
   modalTitle: {
     fontSize: 18,
@@ -447,75 +549,144 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   modalShareButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     backgroundColor: colors.primary,
-    borderRadius: 20,
-    minWidth: 70,
+    borderRadius: 24,
+    minWidth: 80,
     alignItems: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   modalShareButtonText: {
     color: colors.white,
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: 15,
+    fontWeight: '700',
   },
   modalContent: {
     flex: 1,
     padding: 20,
   },
   skillPreview: {
-    backgroundColor: colors.primaryUltraLight,
-    padding: 16,
-    borderRadius: 12,
+    backgroundColor: colors.white,
+    padding: 20,
+    borderRadius: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: colors.primaryLight,
+    borderColor: colors.border,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 3,
+  },
+  skillPreviewHeader: {
+    marginBottom: 12,
   },
   skillPreviewTitle: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 20,
+    fontWeight: '800',
     color: colors.text,
-    marginBottom: 8,
+    marginBottom: 12,
+    lineHeight: 26,
   },
   skillPreviewMeta: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
+    marginBottom: 8,
   },
-  skillPreviewCategory: {
+  categoryPill: {
+    backgroundColor: colors.primaryUltraLight,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+  },
+  categoryText: {
     fontSize: 12,
     fontWeight: '600',
     color: colors.primary,
-    backgroundColor: colors.white,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
   },
-  skillPreviewDifficulty: {
+  difficultyPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+  },
+  difficultyText: {
     fontSize: 12,
     fontWeight: '600',
     color: colors.white,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
     textTransform: 'capitalize',
   },
-  descriptionSection: {
-    flex: 1,
+  skillStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.surfaceSecondary,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
   },
-  descriptionLabel: {
+  durationText: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: colors.textTertiary,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  activeTab: {
+    backgroundColor: colors.primary,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  activeTabText: {
+    color: colors.white,
+    fontWeight: '700',
+  },
+  contentSection: {
+    marginBottom: 20,
+  },
+  contentLabel: {
     fontSize: 16,
     fontWeight: '700',
     color: colors.text,
     marginBottom: 8,
   },
-  descriptionHint: {
+  contentHint: {
     fontSize: 14,
     color: colors.textSecondary,
     marginBottom: 16,
     lineHeight: 20,
   },
-  descriptionInput: {
+  contentInput: {
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
@@ -525,12 +696,53 @@ const styles = StyleSheet.create({
     color: colors.text,
     minHeight: 120,
     textAlignVertical: 'top',
+    lineHeight: 22,
   },
   characterCount: {
     fontSize: 12,
     color: colors.textTertiary,
     textAlign: 'right',
     marginTop: 8,
+    fontWeight: '500',
+  },
+  previewSection: {
+    marginTop: 10,
+  },
+  previewLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  previewCard: {
+    backgroundColor: colors.surfaceSecondary,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  previewTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  previewDescription: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    lineHeight: 20,
+    marginBottom: 8,
+  },
+  previewMessage: {
+    fontSize: 14,
+    color: colors.text,
+    lineHeight: 20,
+    fontStyle: 'italic',
+    backgroundColor: colors.primaryUltraLight,
+    padding: 12,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
   },
 });
 

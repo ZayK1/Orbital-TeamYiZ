@@ -107,4 +107,37 @@ export const colors = {
   backgroundTertiary: '#E1E8ED',
   backgroundDark: '#15202B',
   backgroundOverlay: 'rgba(0, 0, 0, 0.4)',
+  
+  // Reddit-inspired colors
+  reddit: {
+    upvote: '#FF4500',      // Reddit orange
+    downvote: '#7193FF',    // Reddit blue
+    save: '#FFD700',        // Gold for saved
+    award: '#FFD700',       // Award gold
+    hot: '#FF4500',         // Hot posts
+    new: '#7193FF',         // New posts
+    top: '#46A818',         // Top posts
+  },
+  
+  // Category-based gradients
+  gradients: {
+    programming: ['#667eea', '#764ba2'],
+    design: ['#f093fb', '#f5576c'],
+    business: ['#4facfe', '#00f2fe'],
+    health: ['#43e97b', '#38f9d7'],
+    languages: ['#fa709a', '#fee140'],
+    music: ['#a8edea', '#fed6e3'],
+    art: ['#ff9a9e', '#fecfef'],
+    writing: ['#667eea', '#764ba2'],
+    general: ['#89f7fe', '#66a6ff'],
+    default: ['#667eea', '#764ba2'],
+  },
+  
+  // Glassmorphism colors
+  glass: {
+    background: 'rgba(255, 255, 255, 0.25)',
+    border: 'rgba(255, 255, 255, 0.18)',
+    shadow: 'rgba(31, 38, 135, 0.37)',
+    backdrop: 'rgba(255, 255, 255, 0.1)',
+  },
 }; 

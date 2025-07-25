@@ -22,12 +22,20 @@ export const shareSkillToSocial = async (skillData) => {
       _id: generateId(),
       original_skill_id: skillData._id,
       title: skillData.title,
-      description: skillData.description,
+      description: skillData.description, // Fallback for existing code
       category: skillData.category,
       difficulty: skillData.difficulty,
       tags: skillData.tags || [],
       curriculum: skillData.curriculum || [],
       estimated_duration: skillData.estimated_duration || 30,
+      
+      // New dual-content structure
+      skill_description: skillData.skill_description || skillData.description,
+      personal_message: skillData.personal_message || '',
+      post_type: 'skill_share',
+      is_pinned: false,
+      is_edited: false,
+      edited_at: null,
       
       // Social metadata
       shared_by: currentUser._id,
@@ -35,11 +43,15 @@ export const shareSkillToSocial = async (skillData) => {
       shared_by_display_name: currentUser.display_name || currentUser.username,
       author: currentUser,
       
-      // Engagement metrics
+      // Enhanced engagement metrics
       likes_count: 0,
       downloads_count: 0,
       comments_count: 0,
       views_count: 0,
+      upvotes: 0,
+      downvotes: 0,
+      save_count: 0,
+      award_count: 0,
       
       // Timestamps
       created_at: new Date().toISOString(),
@@ -48,6 +60,9 @@ export const shareSkillToSocial = async (skillData) => {
       // User interaction flags
       user_has_liked: false,
       user_has_downloaded: false,
+      user_has_upvoted: false,
+      user_has_downvoted: false,
+      user_has_saved: false,
       
       visibility: 'public'
     };
@@ -696,12 +711,18 @@ export const generateSampleTrendingSkills = (count = 10) => {
       _id: 'trending_1',
       title: 'React Native Mobile Development',
       description: 'Build amazing mobile apps with React Native. Learn components, navigation, state management, and deployment.',
+      skill_description: 'Build amazing mobile apps with React Native. Learn components, navigation, state management, and deployment. Master the fundamentals of mobile development including UI components, navigation patterns, state management with Redux, API integration, and app store deployment.',
+      personal_message: 'This skill completely transformed my career! I went from web development to building mobile apps that are now on the App Store. The structured curriculum makes complex concepts easy to understand. Perfect for developers wanting to expand into mobile development.',
       category: 'Programming',
       difficulty: 'intermediate',
       tags: ['react', 'mobile', 'javascript'],
+      post_type: 'skill_share',
       likes_count: 245,
       downloads_count: 189,
       views_count: 1420,
+      upvotes: 198,
+      downvotes: 12,
+      save_count: 156,
       shared_by_username: 'dev_master',
       shared_by_display_name: 'Dev Master',
       curriculum: Array.from({length: 30}, (_, i) => ({
@@ -714,12 +735,18 @@ export const generateSampleTrendingSkills = (count = 10) => {
       _id: 'trending_2', 
       title: 'Digital Art Fundamentals',
       description: 'Master digital art techniques from basics to advanced. Learn color theory, composition, and digital painting.',
+      skill_description: 'Master digital art techniques from basics to advanced. Learn color theory, composition, and digital painting. Covers essential tools, techniques, and creative processes for creating stunning digital artwork.',
+      personal_message: 'As someone who started with zero art experience, this curriculum was a game-changer! The daily exercises build skills progressively. Now I create digital art professionally. Highly recommend for anyone wanting to explore their creative side.',
       category: 'Art',
       difficulty: 'beginner',
       tags: ['art', 'digital', 'painting'],
+      post_type: 'skill_share',
       likes_count: 198,
       downloads_count: 156,
       views_count: 987,
+      upvotes: 167,
+      downvotes: 8,
+      save_count: 142,
       shared_by_username: 'art_guru',
       shared_by_display_name: 'Art Guru',
       curriculum: Array.from({length: 30}, (_, i) => ({

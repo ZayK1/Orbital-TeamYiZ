@@ -17,6 +17,7 @@ import { colors } from '../constants/colors';
 import RepositoryScreen from '../screens/RepositoryScreen';
 import BrowseSkillsScreen from '../screens/BrowseSkillsScreen';
 import SharedSkillDetailScreen from '../screens/SharedSkillDetailScreen';
+import SearchScreen from '../screens/SearchScreen';
 import StatsScreen from '../screens/StatsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AddSkillScreen from '../screens/AddSkillScreen';
@@ -209,6 +210,7 @@ function ExploreStackNavigator() {
       <Stack.Screen name="SocialFeed" component={SocialFeedScreen} />
       <Stack.Screen name="BrowseSkills" component={BrowseSkillsScreen} />
       <Stack.Screen name="SharedSkillDetail" component={SharedSkillDetailScreen} />
+      <Stack.Screen name="Search" component={SearchScreen} />
       <Stack.Screen name="CreateSharedSkill" component={CreateSharedSkillScreen} />
       <Stack.Screen name="ShareSkill" component={ShareSkillScreen} />
       <Stack.Screen name="UserProfile" component={EnhancedProfileScreen} />

@@ -12,6 +12,7 @@ import {
   Animated,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../constants/colors';
@@ -188,7 +189,13 @@ const SocialFeedScreen = ({ navigation }) => {
   };
 
   const handleSkillPress = (skill) => {
-    navigation.navigate('SharedSkillDetail', { skillId: skill._id || skill.skill_id });
+    const skillId = skill?._id || skill?.skill_id || skill?.id;
+    if (skillId) {
+      navigation.navigate('SharedSkillDetail', { skillId });
+    } else {
+      console.error('No valid skill ID found:', skill);
+      Alert.alert('Error', 'Unable to open skill details. Invalid skill data.');
+    }
   };
 
   const handleUserPress = (user) => {
@@ -196,10 +203,16 @@ const SocialFeedScreen = ({ navigation }) => {
   };
 
   const handleCommentPress = (skill) => {
-    navigation.navigate('SharedSkillDetail', { 
-      skillId: skill._id || skill.skill_id,
-      focusComments: true 
-    });
+    const skillId = skill?._id || skill?.skill_id || skill?.id;
+    if (skillId) {
+      navigation.navigate('SharedSkillDetail', { 
+        skillId,
+        focusComments: true 
+      });
+    } else {
+      console.error('No valid skill ID found for comments:', skill);
+      Alert.alert('Error', 'Unable to open skill comments. Invalid skill data.');
+    }
   };
 
   const handleSharePress = (skill) => {
@@ -212,8 +225,7 @@ const SocialFeedScreen = ({ navigation }) => {
   };
 
   const handleSearchPress = () => {
-    // Navigate to search screen
-    console.log('Search pressed');
+    navigation.navigate('Search');
   };
 
   const handleNotificationsPress = () => {
