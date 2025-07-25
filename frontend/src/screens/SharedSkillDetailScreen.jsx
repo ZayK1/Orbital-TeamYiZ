@@ -220,7 +220,9 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
         {item.estimated_time && (
           <View style={styles.timeEstimate}>
             <MaterialIcons name="schedule" size={14} color={colors.gray600} />
-            <Text style={styles.timeText}>{item.estimated_time} min</Text>
+            <Text style={styles.timeText}>
+              {typeof item.estimated_time === 'string' ? item.estimated_time : `${item.estimated_time} min`}
+            </Text>
           </View>
         )}
       </View>
@@ -228,17 +230,45 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
       <Text style={styles.dayItemTitle}>{item.title}</Text>
       <Text style={styles.dayDescription}>{item.description}</Text>
       
+      {/* Show Tasks instead of Resources */}
+      {item.tasks && item.tasks.length > 0 && (
+        <View style={styles.tasksSection}>
+          <Text style={styles.tasksTitle}>Daily Tasks:</Text>
+          {item.tasks.map((task, idx) => (
+            <View key={idx} style={styles.taskItem}>
+              <MaterialIcons 
+                name={task.completed ? "check-circle" : "radio-button-unchecked"} 
+                size={18} 
+                color={task.completed ? colors.success : colors.textTertiary} 
+              />
+              <Text style={[
+                styles.taskText,
+                task.completed && styles.completedTaskText
+              ]}>
+                {task.description || task.title || task}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Show Resources as secondary information if available */}
       {item.resources && item.resources.length > 0 && (
         <View style={styles.resourcesSection}>
           <Text style={styles.resourcesTitle}>Resources:</Text>
-          {item.resources.map((resource, idx) => (
+          {item.resources.slice(0, 2).map((resource, idx) => (
             <TouchableOpacity key={idx} style={styles.resourceItem}>
-              <MaterialIcons name="link" size={16} color={colors.primary} />
+              <MaterialIcons name="link" size={14} color={colors.primary} />
               <Text style={styles.resourceText} numberOfLines={1}>
                 {resource.title || resource.url || resource}
               </Text>
             </TouchableOpacity>
           ))}
+          {item.resources.length > 2 && (
+            <Text style={styles.moreResourcesText}>
+              +{item.resources.length - 2} more resources
+            </Text>
+          )}
         </View>
       )}
     </View>
@@ -335,9 +365,16 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
             style={styles.floatingBackButton} 
             onPress={() => {
               console.log('Floating back button pressed');
-              navigation.goBack();
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('SocialFeed');
+              }
             }}
             activeOpacity={0.7}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityLabel="Go back"
+            accessibilityRole="button"
           >
             <MaterialIcons name="arrow-back" size={24} color={colors.white} />
           </TouchableOpacity>
@@ -387,8 +424,18 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
             <View style={styles.heroNavigation}>
               <TouchableOpacity 
                 style={styles.heroBackButton} 
-                onPress={() => navigation.goBack()}
+                onPress={() => {
+                  console.log('Hero back button pressed');
+                  if (navigation.canGoBack()) {
+                    navigation.goBack();
+                  } else {
+                    navigation.navigate('SocialFeed');
+                  }
+                }}
                 activeOpacity={0.7}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
               >
                 <MaterialIcons name="arrow-back" size={24} color={colors.white} />
               </TouchableOpacity>
@@ -664,25 +711,57 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
                 <MaterialIcons name="list-alt" size={20} color={colors.primary} />
                 <Text style={styles.cardTitle}>Plan Curriculum</Text>
                 <View style={styles.progressBadge}>
-                  <Text style={styles.progressText}>{skill?.curriculum?.length || 0} days</Text>
+                  <Text style={styles.progressText}>
+                    {(() => {
+                      // Handle both data structures
+                      const curriculumData = skill?.curriculum?.daily_tasks || skill?.curriculum || [];
+                      return curriculumData.length || 0;
+                    })()} days
+                  </Text>
                 </View>
               </View>
-              {skill?.curriculum && skill.curriculum.length > 0 ? (
-                <FlatList
-                  data={skill.curriculum}
-                  renderItem={renderCurriculumDay}
-                  keyExtractor={(item, index) => `day-${index}`}
-                  scrollEnabled={false}
-                  showsVerticalScrollIndicator={false}
-                  ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
-                />
-              ) : (
-                <View style={styles.emptyCurriculum}>
-                  <MaterialIcons name="school" size={48} color={colors.textTertiary} />
-                  <Text style={styles.emptyCurriculumText}>No curriculum available</Text>
-                  <Text style={styles.emptyCurriculumSubtext}>This plan doesn't have a detailed curriculum yet.</Text>
-                </View>
-              )}
+              {(() => {
+                // Debug logging
+                console.log('Skill data for curriculum:', {
+                  hasSkill: !!skill,
+                  hasCurriculum: !!skill?.curriculum,
+                  curriculumType: typeof skill?.curriculum,
+                  curriculumLength: skill?.curriculum?.length,
+                  hasDailyTasks: !!skill?.curriculum?.daily_tasks,
+                  dailyTasksLength: skill?.curriculum?.daily_tasks?.length,
+                  curriculumKeys: skill?.curriculum ? Object.keys(skill.curriculum) : 'N/A'
+                });
+                
+                // Handle both data structures: direct array or nested daily_tasks
+                const curriculumData = skill?.curriculum?.daily_tasks || skill?.curriculum || [];
+                
+                if (curriculumData && curriculumData.length > 0) {
+                  return (
+                    <FlatList
+                      data={curriculumData}
+                      renderItem={renderCurriculumDay}
+                      keyExtractor={(item, index) => `day-${index}`}
+                      scrollEnabled={false}
+                      showsVerticalScrollIndicator={false}
+                      ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
+                    />
+                  );
+                } else {
+                  return (
+                    <View style={styles.emptyCurriculum}>
+                      <MaterialIcons name="school" size={48} color={colors.textTertiary} />
+                      <Text style={styles.emptyCurriculumText}>No curriculum available</Text>
+                      <Text style={styles.emptyCurriculumSubtext}>
+                        This plan doesn't have a detailed curriculum yet.
+                        {skill?.curriculum && typeof skill.curriculum === 'object' 
+                          ? ` (Found: ${Object.keys(skill.curriculum).join(', ')})` 
+                          : ''
+                        }
+                      </Text>
+                    </View>
+                  );
+                }
+              })()}
             </View>
           )}
 
@@ -744,12 +823,15 @@ const styles = StyleSheet.create({
     marginHorizontal: 16,
   },
   floatingBackButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44, // Increased touch target
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.18)',
+    zIndex: 1001, // Ensure it's above other elements
   },
   floatingShareButton: {
     width: 40,
@@ -791,6 +873,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: colors.glass?.border || 'rgba(255, 255, 255, 0.18)',
+    zIndex: 100, // Ensure it's above other elements
   },
   heroActions: {
     flexDirection: 'row',
@@ -1424,11 +1507,49 @@ const styles = StyleSheet.create({
     borderColor: colors.primaryLight,
   },
   resourceText: {
-    fontSize: 14,
+    fontSize: 12,
     color: colors.primary,
     marginLeft: 8,
     flex: 1,
-    fontWeight: '600',
+    fontWeight: '500',
+  },
+
+  // Tasks Section Styles
+  tasksSection: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  tasksTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 12,
+  },
+  taskItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+    paddingHorizontal: 4,
+  },
+  taskText: {
+    fontSize: 14,
+    color: colors.text,
+    marginLeft: 12,
+    flex: 1,
+    lineHeight: 20,
+  },
+  completedTaskText: {
+    textDecorationLine: 'line-through',
+    color: colors.textSecondary,
+  },
+  moreResourcesText: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    fontStyle: 'italic',
+    marginTop: 8,
+    textAlign: 'center',
   },
   comingSoonText: {
     fontSize: 16,
