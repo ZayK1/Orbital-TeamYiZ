@@ -777,6 +777,7 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
               <CommentsSection 
                 skillId={skillId}
                 onUserPress={(user) => navigation.navigate('UserProfile', { userId: user._id })}
+                scrollEnabled={false}
               />
             </View>
           )}
@@ -799,13 +800,14 @@ const styles = StyleSheet.create({
   // Modern Floating Header
   floatingHeader: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? -44 : -(StatusBar.currentHeight || 0),
+    top: 0,
     left: 0,
     right: 0,
     height: Platform.OS === 'ios' ? 90 : 80,
     backgroundColor: 'rgba(0, 0, 0, 0.85)',
     zIndex: 1000,
     paddingTop: Platform.OS === 'ios' ? 44 : (StatusBar.currentHeight || 0),
+    pointerEvents: 'box-none', // Allow touches to pass through to children
   },
   floatingHeaderContent: {
     flex: 1,
@@ -831,7 +833,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.18)',
-    zIndex: 1001, // Ensure it's above other elements
+    zIndex: 1002, // Higher z-index than header
   },
   floatingShareButton: {
     width: 40,

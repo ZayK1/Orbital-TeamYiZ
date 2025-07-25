@@ -198,7 +198,7 @@ const CommentItem = ({
   );
 };
 
-const CommentsSection = ({ skillId, onUserPress }) => {
+const CommentsSection = ({ skillId, onUserPress, scrollEnabled = true }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [commenting, setCommenting] = useState(false);
@@ -372,6 +372,7 @@ const CommentsSection = ({ skillId, onUserPress }) => {
         onEndReached={handleLoadMore}
         onEndReachedThreshold={0.3}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={scrollEnabled}
         contentContainerStyle={[
           styles.commentsList,
           comments.length === 0 && styles.emptyList
