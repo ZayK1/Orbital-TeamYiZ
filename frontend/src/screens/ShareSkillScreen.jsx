@@ -9,6 +9,9 @@ import {
   Alert,
   Platform,
   StatusBar,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../constants/colors';
@@ -18,6 +21,9 @@ const ShareSkillScreen = ({ navigation }) => {
   const [skills, setSkills] = useState([]);
   const [loading, setLoading] = useState(true);
   const [sharingSkill, setSharingSkill] = useState(null);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedSkill, setSelectedSkill] = useState(null);
+  const [editedDescription, setEditedDescription] = useState('');
 
   useEffect(() => {
     loadSkillsForSharing();
@@ -36,14 +42,28 @@ const ShareSkillScreen = ({ navigation }) => {
     }
   };
 
-  const handleShareSkill = async (skill) => {
-    if (sharingSkill === skill._id) return;
+  const handleShareSkill = (skill) => {
+    setSelectedSkill(skill);
+    setEditedDescription(skill.description || `Learn ${skill.title}`);
+    setEditModalVisible(true);
+  };
+
+  const confirmShareSkill = async () => {
+    if (!selectedSkill || sharingSkill === selectedSkill._id) return;
 
     try {
-      setSharingSkill(skill._id);
-      const result = await shareSkillToSocial(skill);
+      setSharingSkill(selectedSkill._id);
+      
+      // Create updated skill with edited description
+      const updatedSkill = {
+        ...selectedSkill,
+        description: editedDescription.trim() || selectedSkill.description
+      };
+      
+      const result = await shareSkillToSocial(updatedSkill);
       
       if (result.success) {
+        setEditModalVisible(false);
         Alert.alert('Success', 'Skill shared to social feed!', [
           {
             text: 'OK',
@@ -169,6 +189,70 @@ const ShareSkillScreen = ({ navigation }) => {
         ListEmptyComponent={renderEmptyState}
         showsVerticalScrollIndicator={false}
       />
+
+      {/* Edit Description Modal */}
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <KeyboardAvoidingView 
+          style={styles.modalContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <View style={styles.modalHeader}>
+            <TouchableOpacity 
+              style={styles.modalCloseButton}
+              onPress={() => setEditModalVisible(false)}
+            >
+              <MaterialIcons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Customize Your Post</Text>
+            <TouchableOpacity 
+              style={styles.modalShareButton}
+              onPress={confirmShareSkill}
+              disabled={sharingSkill === selectedSkill?._id}
+            >
+              {sharingSkill === selectedSkill?._id ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Text style={styles.modalShareButtonText}>Share</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalContent}>
+            <View style={styles.skillPreview}>
+              <Text style={styles.skillPreviewTitle}>{selectedSkill?.title}</Text>
+              <View style={styles.skillPreviewMeta}>
+                <Text style={styles.skillPreviewCategory}>{selectedSkill?.category}</Text>
+                <Text style={styles.skillPreviewDifficulty}>{selectedSkill?.difficulty}</Text>
+              </View>
+            </View>
+
+            <View style={styles.descriptionSection}>
+              <Text style={styles.descriptionLabel}>Description</Text>
+              <Text style={styles.descriptionHint}>
+                Tell the community what makes this skill special and what they'll learn
+              </Text>
+              <TextInput
+                style={styles.descriptionInput}
+                value={editedDescription}
+                onChangeText={setEditedDescription}
+                placeholder="Describe what this skill teaches..."
+                multiline
+                numberOfLines={4}
+                maxLength={500}
+                textAlignVertical="top"
+              />
+              <Text style={styles.characterCount}>
+                {editedDescription.length}/500
+              </Text>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -339,6 +423,114 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     marginLeft: 6,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    paddingTop: Platform.OS === 'ios' ? 50 : 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  modalCloseButton: {
+    padding: 8,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  modalShareButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: colors.primary,
+    borderRadius: 20,
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  modalShareButtonText: {
+    color: colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalContent: {
+    flex: 1,
+    padding: 20,
+  },
+  skillPreview: {
+    backgroundColor: colors.primaryUltraLight,
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+  },
+  skillPreviewTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  skillPreviewMeta: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  skillPreviewCategory: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.primary,
+    backgroundColor: colors.white,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  skillPreviewDifficulty: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.white,
+    backgroundColor: colors.primary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    textTransform: 'capitalize',
+  },
+  descriptionSection: {
+    flex: 1,
+  },
+  descriptionLabel: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 8,
+  },
+  descriptionHint: {
+    fontSize: 14,
+    color: colors.textSecondary,
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  descriptionInput: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 16,
+    fontSize: 16,
+    color: colors.text,
+    minHeight: 120,
+    textAlignVertical: 'top',
+  },
+  characterCount: {
+    fontSize: 12,
+    color: colors.textTertiary,
+    textAlign: 'right',
+    marginTop: 8,
   },
 });
 
