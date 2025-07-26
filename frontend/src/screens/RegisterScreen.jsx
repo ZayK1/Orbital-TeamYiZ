@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Animated, KeyboardAvoidingView, Platform, Image } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { colors } from '../constants/colors';
@@ -8,6 +8,7 @@ import { authAPI } from "../api/auth";
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useAuth } from '../context/AuthContext';
+import RegistrationSuccessModal from '../components/RegistrationSuccessModal';
 
 // Check if we're in Expo Go (modules won't be available)
 const isExpoGo = () => {
@@ -47,6 +48,7 @@ export default function RegisterScreen({ navigation }) {
   const [error, setError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const { login: contextLogin } = useAuth();
 
   const fadeAnim = React.useRef(new Animated.Value(0)).current;
@@ -90,9 +92,7 @@ export default function RegisterScreen({ navigation }) {
         setIsLoading(false);
         return;
       }
-      Alert.alert("Success", "Registration complete! Please log in.", [
-        { text: "OK", onPress: () => navigation.replace("Login") },
-      ]);
+      setShowSuccessModal(true);
     } catch (err) {
       console.error(err);
       const msg = err.response?.data?.error || "Registration failed. Please try again.";
@@ -265,6 +265,15 @@ export default function RegisterScreen({ navigation }) {
           </View>
         </Animated.View>
       </KeyboardAvoidingView>
+      
+      <RegistrationSuccessModal
+        visible={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        onContinue={() => {
+          setShowSuccessModal(false);
+          navigation.replace("Login");
+        }}
+      />
     </LinearGradient>
   );
 }

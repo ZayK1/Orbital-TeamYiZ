@@ -6,13 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
   Platform,
   StatusBar,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../constants/colors';
 import { useAuth } from '../context/AuthContext';
+import LogoutModal from '../components/LogoutModal';
 
 const SettingsScreen = ({ navigation }) => {
   const { logout } = useAuth();
@@ -20,6 +20,7 @@ const SettingsScreen = ({ navigation }) => {
   const [darkMode, setDarkMode] = useState(false);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const settingsSections = [
     {
@@ -108,24 +109,16 @@ const SettingsScreen = ({ navigation }) => {
   ];
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
-          style: 'destructive', 
-          onPress: () => {
-            logout();
-            navigation.reset({
-              index: 0,
-              routes: [{ name: 'Auth' }],
-            });
-          }
-        },
-      ]
-    );
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false);
+    logout();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Auth' }],
+    });
   };
 
   const renderSettingItem = (item) => (
@@ -199,6 +192,12 @@ const SettingsScreen = ({ navigation }) => {
           <Text style={styles.copyrightText}>© 2024 SkillShare</Text>
         </View>
       </ScrollView>
+      
+      <LogoutModal
+        visible={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={confirmLogout}
+      />
     </View>
   );
 };

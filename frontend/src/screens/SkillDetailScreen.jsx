@@ -716,7 +716,7 @@ const SkillDetailScreen = () => {
         totalDays={skill?.curriculum?.daily_tasks?.length || 30}
         onViewProgress={() => {
           setShowCompletionModal(false);
-          setShowProgressModal(true);
+          navigation.navigate('Stats');
         }}
       />
 
