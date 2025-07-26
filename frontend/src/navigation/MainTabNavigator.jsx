@@ -61,7 +61,7 @@ const MyTabBar = ({ state, descriptors, navigation, setTabBarVisible }) => {
       {
         translateX: animation.interpolate({
           inputRange: [0, 1],
-          outputRange: [0, -60],
+          outputRange: [0, -70],
         }),
       },
     ],
@@ -74,7 +74,7 @@ const MyTabBar = ({ state, descriptors, navigation, setTabBarVisible }) => {
       {
         translateX: animation.interpolate({
           inputRange: [0, 1],
-          outputRange: [0, 60],
+          outputRange: [0, 70],
         }),
       },
     ],
@@ -251,8 +251,8 @@ export default function MainTabNavigator() {
           }}
         >
           <Tab.Screen name="RepositoryStack" component={RepositoryStackNavigator} options={{ title: 'Home' }} />
-          <Tab.Screen name="AddPlaceholder" component={View} options={{ title: '' }} />
           <Tab.Screen name="Explore" component={ExploreStackNavigator} options={{ title: 'SkillShare' }} />
+          <Tab.Screen name="AddPlaceholder" component={View} options={{ title: '' }} />
           <Tab.Screen name="Stats" component={StatsScreen} options={{ title: 'Stats' }} />
           <Tab.Screen name="Profile" component={ProfileStackNavigator} options={{ title: 'Profile' }} />
         </Tab.Navigator>
@@ -274,8 +274,8 @@ const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 34 : 20,
-    left: 16, // Reduced margins for better alignment
-    right: 16,
+    left: 20,
+    right: 20,
     height: 80,
     elevation: 0,
     alignItems: 'center',
@@ -301,10 +301,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
-    maxWidth: 80, // Ensure consistent width
+    paddingHorizontal: 4,
   },
   tabSpacer: {
-    width: 56, // Match the reduced add button width
+    width: 64,
     height: '100%',
   },
   tabIconContainer: {
@@ -319,31 +319,34 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryUltraLight,
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
+    marginTop: 2,
   },
   addButton: {
     position: 'absolute',
-    top: -12, // Reduced elevation
-    width: 56, // Smaller size
-    height: 56,
-    borderRadius: 28,
+    top: -16,
+    left: '50%',
+    marginLeft: -32,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
     elevation: 12,
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: colors.white,
   },
   addButtonInner: {
-    width: 40, // Reduced inner size
-    height: 40,
-    borderRadius: 20,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
@@ -351,10 +354,10 @@ const styles = StyleSheet.create({
   catalogButton: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 54 : 40,
-    right: 28,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    right: 32,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
@@ -370,8 +373,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: Platform.OS === 'ios' ? 180 : 160,
+    bottom: Platform.OS === 'ios' ? 170 : 150,
     alignItems: 'center',
+    pointerEvents: 'box-none',
   },
   actionButton: {
     position: 'absolute',
