@@ -38,6 +38,32 @@ const authAPI = {
       return false;
     }
   },
+
+  googleLogin: async (googleToken) => {
+    try {
+      const response = await axios.post(`${AUTH_BASE_URL}/google`, { 
+        token: googleToken 
+      });
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || "Google login failed",
+      };
+    }
+  },
+
+  appleLogin: async (appleData) => {
+    try {
+      const response = await axios.post(`${AUTH_BASE_URL}/apple`, appleData);
+      return { success: true, data: response.data };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.response?.data?.error || "Apple login failed",
+      };
+    }
+  },
 };
 
 export { authAPI };
