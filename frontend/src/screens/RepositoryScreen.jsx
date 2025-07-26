@@ -9,6 +9,7 @@ import {
   ImageBackground,
   ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -96,6 +97,53 @@ export default function RepositoryScreen() {
   const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [completedHabits, setCompletedHabits] = useState(new Set());
+  const [loginStreak, setLoginStreak] = useState(0);
+
+  const calculateLoginStreak = async () => {
+    try {
+      const today = new Date().toDateString();
+      const lastLoginDate = await AsyncStorage.getItem('lastLoginDate');
+      const currentStreak = await AsyncStorage.getItem('loginStreak');
+      
+      if (!lastLoginDate) {
+        // First time login
+        await AsyncStorage.setItem('lastLoginDate', today);
+        await AsyncStorage.setItem('loginStreak', '1');
+        setLoginStreak(1);
+        return;
+      }
+      
+      const lastLogin = new Date(lastLoginDate);
+      const todayDate = new Date(today);
+      const timeDiff = todayDate.getTime() - lastLogin.getTime();
+      const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+      
+      if (daysDiff === 0) {
+        // Same day login
+        setLoginStreak(parseInt(currentStreak || '1'));
+      } else if (daysDiff === 1) {
+        // Consecutive day login
+        const newStreak = parseInt(currentStreak || '0') + 1;
+        await AsyncStorage.setItem('lastLoginDate', today);
+        await AsyncStorage.setItem('loginStreak', newStreak.toString());
+        setLoginStreak(newStreak);
+      } else {
+        // Streak broken, reset to 1
+        await AsyncStorage.setItem('lastLoginDate', today);
+        await AsyncStorage.setItem('loginStreak', '1');
+        setLoginStreak(1);
+      }
+    } catch (error) {
+      console.error('Error calculating login streak:', error);
+      setLoginStreak(1);
+    }
+  };
+
+  useEffect(() => {
+    if (token && isFocused) {
+      calculateLoginStreak();
+    }
+  }, [token, isFocused]);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -274,7 +322,7 @@ export default function RepositoryScreen() {
             color="#14B8A6"
             style={{ marginRight: 4 }}
           />
-          <Text style={styles.streakText}>0 days</Text>
+          <Text style={styles.streakText}>{loginStreak} days</Text>
         </TouchableOpacity>
       </View>
 
