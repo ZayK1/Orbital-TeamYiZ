@@ -340,7 +340,9 @@ frontend/
 
 │ │ ├── 📄 RegisterScreen.jsx # Registration interface
 
-│ │ ├── 📄 RepositoryScreen.jsx # Main dashboard screen
+│ │ ├── 📄 RepositoryScreen.jsx # Main dashboard with compact grid habit cards
+
+│ │ ├── 📄 MyHabitsScreen.jsx # Full habits view with 2-column grid layout
 
 │ │ ├── 📄 ProfileScreen.jsx # Revamped user profile
 
@@ -2927,6 +2929,47 @@ const response = await refreshSkillImage(skillId, token);
 console.log('Refresh response:', response);
 ```
 
+#### ✅ Habit Check-in State Issues
+
+**Problem**: Habit check marks disappear when returning to the page, causing confusion about completion status
+
+**Solution**: Fixed backend collection name inconsistency and improved frontend state management:
+
+```javascript
+// ✅ FIXED: Backend now consistently uses g.db.habit_checkins
+// backend/api/v1/plans.py:227
+checkin_repo = CheckinRepository(g.db.habit_checkins)  // was g.db.checkins
+
+// ✅ FIXED: Frontend now uses backend checked_today field
+const completedSet = new Set();
+(data.habits || []).forEach(h => {
+  if (h.checked_today) {  // Uses backend field instead of local state
+    completedSet.add(h._id);
+  }
+});
+setCompletedHabits(completedSet);
+```
+
+#### 📱 Double Check Mark Issue
+
+**Problem**: Completed habits show both checkbox check mark and overlay check mark icon
+
+**Solution**: Removed redundant overlay check mark in both screens:
+
+```javascript
+// ❌ REMOVED: Duplicate overlay check mark
+{completedHabits.has(habit._id) && (
+  <View style={styles.gridCompletedOverlay}>
+    <MaterialIcons name="check-circle" size={16} color="#22C55E" />
+  </View>
+)}
+
+// ✅ KEPT: Only the checkbox check mark
+{completedHabits.has(habit._id) && (
+  <MaterialIcons name="check" size={12} color="white" />
+)}
+```
+
 #### 🎨 UI Layout Issues
 
 **Problem**: Empty white space or misaligned elements in SkillDetailScreen
@@ -3075,7 +3118,9 @@ windowSize={5}
 | **⚡ Async/Sync Pattern Fix** | • Removed incorrect async decorators from all repository classes<br>• Fixed `require_auth` decorator to work with synchronous functions<br>• Updated all API endpoints to use synchronous patterns | **CRITICAL**: Fixed all 500 errors from async/sync mismatches |
 | **🎯 Enhanced API Endpoints** | • Updated `/api/v1/plans/skills` to work with new service architecture<br>• Enhanced habit creation with additional parameters (color, dates, reminder_time)<br>• Added proper error handling across all endpoints | **MEDIUM**: More robust API with better error responses |
 | **🔍 Improved Error Handling** | • Added comprehensive logging for plan generation<br>• Implemented graceful fallback mechanisms<br>• Enhanced debugging capabilities with detailed error messages | **MEDIUM**: Better debugging and user experience |
-| **🎨 UI/UX Enhancements** | • **Image Refresh System**: Added three-dot menu with image refresh functionality<br>• **Smart Categorization**: Enhanced UnsplashService with 10+ skill categories<br>• **SkillDetailScreen Redesign**: Modern gradient cards with improved layout<br>• **Progressive Completion**: Sequential day completion with validation<br>• **Today's Focus Enhancement**: Sleek gradient design with task indicators<br>• **Layout Optimization**: Fixed empty white space and alignment issues | **HIGH**: Professional UI with better user experience |
+| **🎨 UI/UX Enhancements** | • **Image Refresh System**: Added three-dot menu with image refresh functionality<br>• **Smart Categorization**: Enhanced UnsplashService with 10+ skill categories<br>• **SkillDetailScreen Redesign**: Modern gradient cards with improved layout<br>• **Progressive Completion**: Sequential day completion with validation<br>• **Today's Focus Enhancement**: Sleek gradient design with task indicators<br>• **Layout Optimization**: Fixed empty white space and improved alignment<br>• **Habit Check-in Fix**: Resolved state persistence and double check mark issues | **HIGH**: Professional UI with better user experience |
+| **🔄 Habit System Overhaul** | • **Backend Collection Fix**: Fixed inconsistent `g.db.checkins` vs `g.db.habit_checkins` naming<br>• **State Persistence**: Habits now stay checked on page reload using backend `checked_today` field<br>• **Real-time Sync**: Both RepositoryScreen and MyHabitsScreen properly sync with backend data<br>• **Stats Integration**: Fixed stats endpoint to reflect actual habit completions | **CRITICAL**: Habit functionality now works reliably across all screens |
+| **📱 UI Redesign (Latest)** | • **Compact Habit Cards**: Made RepositoryScreen habit cards smaller and more efficient<br>• **Grid Layout**: Converted MyHabitsScreen to 2-column grid layout for better space utilization<br>• **Single Check Mark**: Fixed double check mark issue by removing overlay indicator<br>• **Consistent Design**: Both screens now use similar compact grid layouts | **MEDIUM**: Improved visual consistency and space efficiency |
 
 ## 📊 Development Summary
 
@@ -3084,6 +3129,9 @@ windowSize={5}
 - **New API Endpoint**: `PATCH /api/v1/plans/skills/{id}/refresh-image`
 - **Enhanced Skill Service**: Added `refresh_skill_image()` method
 - **Day Completion APIs**: Progressive completion with validation logic
+- **Critical Database Fix**: Fixed collection naming inconsistency in `plans.py:227` (`g.db.habit_checkins`)
+- **Habit Service Enhancement**: Improved `get_user_habits()` to properly set `checked_today` field
+- **Stats Service Fix**: Corrected repository initialization for accurate habit statistics
 
 ### 🎨 Frontend Improvements
 - **SkillDetailScreen**: Complete redesign with modern aesthetics
@@ -3091,12 +3139,42 @@ windowSize={5}
 - **Progressive UI**: Sequential day completion with proper validation
 - **Today's Focus**: Gradient cards with enhanced task management
 - **Layout Fixes**: Eliminated white space and improved alignment
+- **Habit State Management**: Fixed state persistence using backend `checked_today` field
+- **Grid Layout Implementation**: Converted MyHabitsScreen to 2-column responsive grid
+- **Compact Design**: Reduced RepositoryScreen habit card sizes for better space utilization
+- **Visual Consistency**: Unified design patterns across both habit screens
 
 ### 🖼️ Image Management
 - **Smart Categorization**: 10+ categories (languages, cooking, programming, etc.)
 - **Cache-Busting**: Automatic refresh parameters for image updates
 - **Fallback System**: Local images when Unsplash API unavailable
 - **Skill-Relevant**: Images matched to skill type for better UX
+
+### ✅ Habit System Architecture (Latest Implementation)
+
+#### Backend Data Flow
+```
+HabitService.get_user_habits() → CheckinRepository.find_by_habit_and_date() → habit.checked_today = boolean
+```
+
+#### Frontend State Management
+```
+Page Load → getAllPlans() → Backend returns habits with checked_today → setCompletedHabits(Set)
+Check-in → recordHabitCheckin() → Backend updates & returns habit → Sync local state
+```
+
+#### Key Implementation Details
+- **Collection Consistency**: All endpoints now use `g.db.habit_checkins` (fixed inconsistency)
+- **Real-time Sync**: Frontend state synchronizes with backend `checked_today` field on every screen focus
+- **Optimistic Updates**: UI updates immediately, with rollback on API failure
+- **Cross-Screen Persistence**: Habits stay checked when navigating between Repository/MyHabits screens
+- **Stats Integration**: StatsScreen auto-refreshes with `useFocusEffect` to show updated completion rates
+
+#### UI/UX Improvements
+- **Grid Layout**: MyHabitsScreen now uses 2-column responsive grid (`48%` width cards)
+- **Compact Cards**: RepositoryScreen cards reduced in size (90px min-height, 10px padding)
+- **Single Check Mark**: Removed duplicate check mark overlays for cleaner visual design
+- **Consistent Styling**: Both screens use unified compact grid card patterns
 
 ---
 
