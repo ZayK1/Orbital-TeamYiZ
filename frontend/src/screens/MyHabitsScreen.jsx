@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
-  FlatList, 
   StyleSheet, 
   ActivityIndicator, 
   TouchableOpacity, 
@@ -336,48 +335,49 @@ const MyHabitsScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} translucent={false} />
       
-      {/* Header with Gradient */}
-      <LinearGradient
-        colors={[colors.primary, colors.primaryDark]}
-        style={styles.headerGradient}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => navigation.goBack()}
-          >
-            <MaterialIcons name="arrow-back" size={24} color={colors.white} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>My Habits</Text>
-          <TouchableOpacity 
-            style={styles.addButton}
-            onPress={() => navigation.navigate('AddHabit')}
-          >
-            <MaterialIcons name="add" size={24} color={colors.white} />
-          </TouchableOpacity>
-        </View>
+      <ScrollView style={styles.mainScrollView} showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+        {/* Header with Gradient */}
+        <LinearGradient
+          colors={[colors.primary, colors.primaryDark]}
+          style={styles.headerGradient}
+        >
+          <View style={styles.headerContent}>
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={() => navigation.goBack()}
+            >
+              <MaterialIcons name="arrow-back" size={24} color={colors.white} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>My Habits</Text>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => navigation.navigate('AddHabit')}
+            >
+              <MaterialIcons name="add" size={24} color={colors.white} />
+            </TouchableOpacity>
+          </View>
+          
+          {/* Stats Cards */}
+          <View style={styles.statsContainer}>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{stats.completed}</Text>
+              <Text style={styles.statLabel}>Completed Today</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{stats.completionRate}%</Text>
+              <Text style={styles.statLabel}>Completion Rate</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{stats.totalStreak}</Text>
+              <Text style={styles.statLabel}>Total Streak Days</Text>
+            </View>
+          </View>
+        </LinearGradient>
         
-        {/* Stats Cards */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.completed}</Text>
-            <Text style={styles.statLabel}>Completed Today</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.completionRate}%</Text>
-            <Text style={styles.statLabel}>Completion Rate</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>{stats.totalStreak}</Text>
-            <Text style={styles.statLabel}>Total Streak Days</Text>
-          </View>
-        </View>
-      </LinearGradient>
-      
-      {/* Content */}
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Content */}
+        <View style={styles.contentContainer}>
         {/* Search and Filter */}
         <View style={styles.searchContainer}>
           <View style={styles.searchInputContainer}>
@@ -450,6 +450,7 @@ const MyHabitsScreen = () => {
             )}
           </View>
         )}
+        </View>
       </ScrollView>
       
       {/* Edit Modal */}
@@ -508,7 +509,13 @@ const MyHabitsScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: colors.primary,
+  },
+  mainScrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
   },
   
   // Loading Styles
@@ -530,8 +537,8 @@ const styles = StyleSheet.create({
   
   // Header Styles
   headerGradient: {
-    paddingTop: Platform.OS === 'ios' ? 44 : StatusBar.currentHeight || 0,
-    paddingBottom: 24,
+    paddingTop: Platform.OS === 'ios' ? 20 : 15,
+    paddingBottom: 20,
   },
   headerContent: {
     flexDirection: 'row',
@@ -594,9 +601,13 @@ const styles = StyleSheet.create({
   },
   
   // Content Styles
-  content: {
-    flex: 1,
-    paddingTop: 0,
+  contentContainer: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    marginTop: -10,
+    paddingTop: 5,
+    minHeight: '100%',
   },
   
   // Search Styles
