@@ -146,37 +146,6 @@ const CompletionCelebrationModal = ({
               </Animated.View>
             </Animated.View>
 
-            {/* Progress Ring */}
-            <View style={styles.progressRingContainer}>
-              <Animated.View
-                style={[
-                  styles.progressRing,
-                  {
-                    borderColor: 'rgba(255,255,255,0.3)',
-                  },
-                ]}
-              >
-                <Animated.View
-                  style={[
-                    styles.progressArc,
-                    {
-                      transform: [
-                        {
-                          rotate: progressAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: ['0deg', '360deg'],
-                          }),
-                        },
-                      ],
-                    },
-                  ]}
-                />
-                <View style={styles.progressText}>
-                  <Text style={styles.progressNumber}>{progressPercentage}%</Text>
-                  <Text style={styles.progressLabel}>Complete</Text>
-                </View>
-              </Animated.View>
-            </View>
           </LinearGradient>
 
           {/* Content */}
@@ -217,7 +186,7 @@ const CompletionCelebrationModal = ({
                 activeOpacity={0.8}
               >
                 <Text style={styles.secondaryButtonText}>
-                  {isCompleted ? 'Celebrate!' : 'Continue Later'}
+                  {isCompleted ? 'Celebrate!' : 'Continue'}
                 </Text>
               </TouchableOpacity>
               
@@ -262,6 +231,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
+    paddingVertical: 50,
   },
   modalContent: {
     backgroundColor: 'white',
@@ -316,47 +286,10 @@ const styles = StyleSheet.create({
     top: 10,
     left: -20,
   },
-  progressRingContainer: {
-    position: 'absolute',
-    bottom: -30,
-    alignSelf: 'center',
-  },
-  progressRing: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-  },
-  progressArc: {
-    position: 'absolute',
-    width: 66,
-    height: 66,
-    borderRadius: 33,
-    borderWidth: 3,
-    borderColor: 'transparent',
-    borderTopColor: '#22C55E',
-    top: -3,
-    left: -3,
-  },
-  progressText: {
-    alignItems: 'center',
-  },
-  progressNumber: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  progressLabel: {
-    fontSize: 8,
-    fontWeight: '500',
-    color: colors.textSecondary,
-  },
   contentContainer: {
     padding: 32,
-    paddingTop: 48,
+    paddingTop: 32,
+    paddingBottom: 40,
   },
   title: {
     fontSize: 28,
@@ -368,13 +301,14 @@ const styles = StyleSheet.create({
   },
   messageContainer: {
     marginBottom: 24,
-    paddingHorizontal: 4,
+    paddingHorizontal: 12,
   },
   message: {
-    fontSize: 16,
+    fontSize: 15,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 24,
+    lineHeight: 22,
+    flexWrap: 'wrap',
   },
   statsContainer: {
     flexDirection: 'row',
@@ -408,30 +342,31 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryButton: {
-    flex: 1,
+    flex: 1.5,
     borderRadius: 16,
     overflow: 'hidden',
   },
   primaryButtonGradient: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 20,
     justifyContent: 'center',
     alignItems: 'center',
   },
   primaryButtonText: {
     color: 'white',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
+    textAlign: 'center',
   },
   secondaryButton: {
-    flex: 1,
+    flex: 0.8,
     backgroundColor: colors.surfaceSecondary,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 24,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },

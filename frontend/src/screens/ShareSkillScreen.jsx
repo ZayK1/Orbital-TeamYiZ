@@ -14,8 +14,10 @@ import {
   KeyboardAvoidingView,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../constants/colors';
 import { getSkillsForSharing, shareSkillToSocial } from '../api/social';
+import SkillSharedSuccessModal from '../components/SkillSharedSuccessModal';
 
 const ShareSkillScreen = ({ navigation }) => {
   const [skills, setSkills] = useState([]);
@@ -26,6 +28,7 @@ const ShareSkillScreen = ({ navigation }) => {
   const [skillDescription, setSkillDescription] = useState('');
   const [personalMessage, setPersonalMessage] = useState('');
   const [activeTab, setActiveTab] = useState('skill'); // 'skill' or 'message'
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     loadSkillsForSharing();
@@ -85,14 +88,7 @@ const ShareSkillScreen = ({ navigation }) => {
         setEditModalVisible(false);
         setSkillDescription('');
         setPersonalMessage('');
-        Alert.alert('Success', 'Skill shared to social feed!', [
-          {
-            text: 'OK',
-            onPress: () => {
-              navigation.goBack();
-            }
-          }
-        ]);
+        setShowSuccessModal(true);
       }
     } catch (error) {
       console.error('Error sharing skill:', error);
@@ -237,6 +233,12 @@ const ShareSkillScreen = ({ navigation }) => {
           <View style={styles.modalContent}>
             {/* Skill Preview Card */}
             <View style={styles.skillPreview}>
+              <LinearGradient
+                colors={['rgba(139, 92, 246, 0.05)', 'rgba(139, 92, 246, 0.02)']}
+                style={styles.skillPreviewGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              />
               <View style={styles.skillPreviewHeader}>
                 <Text style={styles.skillPreviewTitle}>{selectedSkill?.title}</Text>
                 <View style={styles.skillPreviewMeta}>
@@ -347,6 +349,15 @@ const ShareSkillScreen = ({ navigation }) => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <SkillSharedSuccessModal
+        visible={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        onContinue={() => {
+          setShowSuccessModal(false);
+          navigation.goBack();
+        }}
+      />
     </View>
   );
 };
@@ -579,26 +590,39 @@ const styles = StyleSheet.create({
   },
   skillPreview: {
     backgroundColor: colors.white,
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 24,
+    padding: 24,
+    borderRadius: 20,
+    marginBottom: 28,
     borderWidth: 1,
-    borderColor: colors.border,
-    shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 3,
+    borderColor: colors.primaryLight,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    elevation: 8,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  skillPreviewGradient: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 20,
   },
   skillPreviewHeader: {
     marginBottom: 12,
+    position: 'relative',
+    zIndex: 1,
   },
   skillPreviewTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: colors.text,
     marginBottom: 12,
-    lineHeight: 26,
+    lineHeight: 28,
+    letterSpacing: -0.5,
   },
   skillPreviewMeta: {
     flexDirection: 'row',
@@ -638,6 +662,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     alignSelf: 'flex-start',
+    position: 'relative',
+    zIndex: 1,
   },
   durationText: {
     fontSize: 12,
@@ -647,27 +673,32 @@ const styles = StyleSheet.create({
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: colors.surfaceSecondary,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 20,
+    borderRadius: 16,
+    padding: 6,
+    marginBottom: 24,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderRadius: 12,
     gap: 8,
   },
   activeTab: {
     backgroundColor: colors.primary,
     shadowColor: colors.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 4,
   },
   tabText: {
     fontSize: 14,
@@ -695,15 +726,20 @@ const styles = StyleSheet.create({
   },
   contentInput: {
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     fontSize: 16,
     color: colors.text,
     minHeight: 120,
     textAlignVertical: 'top',
-    lineHeight: 22,
+    lineHeight: 24,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 1,
   },
   characterCount: {
     fontSize: 12,
@@ -723,10 +759,15 @@ const styles = StyleSheet.create({
   },
   previewCard: {
     backgroundColor: colors.surfaceSecondary,
-    padding: 16,
-    borderRadius: 12,
+    padding: 20,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: colors.border,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 2,
   },
   previewTitle: {
     fontSize: 16,
