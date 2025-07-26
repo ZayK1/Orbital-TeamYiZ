@@ -419,7 +419,7 @@ export default function RepositoryScreen() {
                   ]}>
                     <MaterialIcons 
                       name={getHabitIcon(habit.title)} 
-                      size={24} 
+                      size={20} 
                       color={habit.color || '#14B8A6'} 
                     />
                   </View>
@@ -451,16 +451,11 @@ export default function RepositoryScreen() {
                       : { backgroundColor: 'transparent', borderColor: habit.color || '#14B8A6' }
                   ]}>
                     {completedHabits.has(habit._id) && (
-                      <MaterialIcons name="check" size={14} color="white" />
+                      <MaterialIcons name="check" size={12} color="white" />
                     )}
                   </View>
                 </View>
                 
-                {completedHabits.has(habit._id) && (
-                  <View style={styles.gridCompletedOverlay}>
-                    <MaterialIcons name="check-circle" size={16} color="#22C55E" />
-                  </View>
-                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -727,9 +722,9 @@ const styles = StyleSheet.create({
   gridHabitCard: {
     backgroundColor: 'white',
     borderRadius: 12,
-    padding: 12,
+    padding: 10,
     width: '48%',
-    minHeight: 110,
+    minHeight: 90,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
@@ -747,20 +742,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   gridHabitIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   gridHabitTitle: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     color: '#1F2937',
     textAlign: 'center',
-    marginBottom: 4,
-    lineHeight: 16,
+    marginBottom: 3,
+    lineHeight: 14,
   },
   completedGridHabitTitle: {
     color: '#059669',
@@ -768,17 +763,17 @@ const styles = StyleSheet.create({
     opacity: 0.8,
   },
   gridHabitFrequency: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#6B7280',
     fontWeight: '500',
-    marginBottom: 6,
+    marginBottom: 4,
     textAlign: 'center',
   },
   gridStreakContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   gridStreakText: {
     fontSize: 10,
@@ -786,9 +781,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   gridHabitCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',

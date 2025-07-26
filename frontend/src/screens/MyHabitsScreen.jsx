@@ -226,69 +226,70 @@ const MyHabitsScreen = () => {
     return (
       <TouchableOpacity 
         style={[
-          styles.habitCard,
-          isCompleted && styles.completedHabitCard,
+          styles.gridHabitCard,
+          isCompleted && styles.completedGridHabitCard,
           { borderColor: habitColor }
         ]}
         onPress={() => handleHabitCheck(item._id)}
         activeOpacity={0.8}
       >
-        <View style={styles.habitCardContent}>
-          <View style={[styles.habitIconContainer, { backgroundColor: habitColor + '15' }]}>
+        <View style={styles.gridHabitContent}>
+          <View style={[
+            styles.gridHabitIconContainer, 
+            { backgroundColor: habitColor + '15' }
+          ]}>
             <MaterialIcons 
               name={getHabitIcon(item.title)} 
-              size={28} 
+              size={24} 
               color={habitColor} 
             />
           </View>
           
-          <View style={styles.habitInfo}>
-            <Text style={[
-              styles.habitTitle,
-              isCompleted && styles.completedHabitTitle
-            ]}>
-              {item.title}
-            </Text>
-            <Text style={styles.habitFrequency}>
-              {item.pattern?.frequency || 'Daily'}
-            </Text>
-            {item.streaks?.current_streak > 0 && (
-              <View style={styles.streakContainer}>
-                <MaterialIcons name="local-fire-department" size={14} color="#F97316" />
-                <Text style={styles.streakText}>
-                  {item.streaks.current_streak} day streak
-                </Text>
-              </View>
-            )}
-          </View>
+          <Text style={[
+            styles.gridHabitTitle,
+            isCompleted && styles.completedGridHabitTitle
+          ]} numberOfLines={2}>
+            {item.title}
+          </Text>
           
-          <View style={styles.habitActions}>
-            <View style={[
-              styles.habitCheckbox,
-              isCompleted 
-                ? { backgroundColor: colors.success, borderColor: colors.success }
-                : { backgroundColor: 'transparent', borderColor: colors.border }
-            ]}>
-              {isCompleted && (
-                <MaterialIcons name="check" size={20} color="white" />
-              )}
+          <Text style={styles.gridHabitFrequency}>
+            {item.pattern?.frequency || 'Daily'}
+          </Text>
+          
+          {item.streaks?.current_streak > 0 && (
+            <View style={styles.gridStreakContainer}>
+              <MaterialIcons name="local-fire-department" size={12} color="#F97316" />
+              <Text style={styles.gridStreakText}>
+                {item.streaks.current_streak}d
+              </Text>
             </View>
+          )}
+          
+          <View style={[
+            styles.gridHabitCheckbox,
+            isCompleted 
+              ? { backgroundColor: colors.success, borderColor: colors.success }
+              : { backgroundColor: 'transparent', borderColor: habitColor }
+          ]}>
+            {isCompleted && (
+              <MaterialIcons name="check" size={16} color="white" />
+            )}
           </View>
         </View>
         
-        <View style={styles.habitCardActions}>
+        <View style={styles.gridHabitCardActions}>
           <TouchableOpacity
-            style={styles.actionButton}
+            style={styles.gridActionButton}
             onPress={(e) => {
               e.stopPropagation();
               handleEdit(item);
             }}
           >
-            <MaterialIcons name="edit" size={20} color={colors.primary} />
+            <MaterialIcons name="edit" size={16} color={colors.primary} />
           </TouchableOpacity>
           
           <TouchableOpacity
-            style={styles.actionButton}
+            style={styles.gridActionButton}
             onPress={(e) => {
               e.stopPropagation();
               confirmDelete(item._id, item.title);
@@ -298,16 +299,10 @@ const MyHabitsScreen = () => {
             {deletingId === item._id ? (
               <ActivityIndicator size="small" color={colors.error} />
             ) : (
-              <MaterialIcons name="delete" size={20} color={colors.error} />
+              <MaterialIcons name="delete" size={16} color={colors.error} />
             )}
           </TouchableOpacity>
         </View>
-        
-        {isCompleted && (
-          <View style={styles.completedOverlay}>
-            <MaterialIcons name="check-circle" size={24} color={colors.success} />
-          </View>
-        )}
       </TouchableOpacity>
     );
   };
@@ -425,11 +420,11 @@ const MyHabitsScreen = () => {
           </View>
         )}
         
-        {/* Habits List */}
+        {/* Habits Grid */}
         {filteredHabits.length > 0 ? (
-          <View style={styles.habitsContainer}>
+          <View style={styles.habitsGridContainer}>
             {filteredHabits.map((habit) => (
-              <View key={habit._id}>
+              <View key={habit._id} style={styles.habitGridItem}>
                 {renderHabitCard({ item: habit })}
               </View>
             ))}
@@ -677,105 +672,106 @@ const styles = StyleSheet.create({
   },
   
   // Habits Container
-  habitsContainer: {
+  habitsGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     paddingHorizontal: 20,
-    gap: 16,
+    gap: 12,
     paddingBottom: 100,
+    justifyContent: 'space-between',
+  },
+  habitGridItem: {
+    width: '48%',
   },
   
-  // Habit Card Styles
-  habitCard: {
+  // Grid Habit Card Styles
+  gridHabitCard: {
     backgroundColor: colors.white,
-    borderRadius: 20,
-    padding: 20,
+    borderRadius: 12,
+    padding: 12,
     shadowColor: colors.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
     borderWidth: 2,
     position: 'relative',
+    overflow: 'hidden',
+    minHeight: 140,
   },
-  completedHabitCard: {
+  completedGridHabitCard: {
     backgroundColor: '#F0FDF4',
   },
-  habitCardContent: {
-    flexDirection: 'row',
+  gridHabitContent: {
     alignItems: 'center',
-    marginBottom: 16,
-  },
-  habitIconContainer: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  habitInfo: {
     flex: 1,
   },
-  habitTitle: {
-    fontSize: 18,
+  gridHabitIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  gridHabitTitle: {
+    fontSize: 13,
     fontWeight: '700',
     color: colors.text,
+    textAlign: 'center',
     marginBottom: 4,
+    lineHeight: 16,
   },
-  completedHabitTitle: {
+  completedGridHabitTitle: {
     color: colors.success,
     textDecorationLine: 'line-through',
     opacity: 0.8,
   },
-  habitFrequency: {
-    fontSize: 14,
+  gridHabitFrequency: {
+    fontSize: 11,
     color: colors.textSecondary,
     fontWeight: '500',
     marginBottom: 6,
+    textAlign: 'center',
   },
-  streakContainer: {
+  gridStreakContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 2,
+    marginBottom: 6,
   },
-  streakText: {
-    fontSize: 12,
+  gridStreakText: {
+    fontSize: 10,
     color: '#F97316',
     fontWeight: '600',
   },
-  habitActions: {
-    alignItems: 'center',
-  },
-  habitCheckbox: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  gridHabitCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 'auto',
   },
   
-  // Card Actions
-  habitCardActions: {
+  // Grid Card Actions
+  gridHabitCardActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    paddingTop: 16,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: colors.border,
-    gap: 20,
+    gap: 8,
   },
-  actionButton: {
+  gridActionButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
     backgroundColor: colors.backgroundSecondary,
-  },
-  completedOverlay: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
   },
   
   // Empty State
