@@ -100,12 +100,19 @@ export default function RepositoryScreen() {
   useEffect(() => {
     const fetchPlans = async () => {
       try {
+        console.log('🔄 Fetching plans from backend...');
         const data = await getAllPlans(token);
+        console.log('📊 Backend response:', data);
+        
         setSkills(data.skills || []);
         setHabits(data.habits || []);
+        
+        // Update completed habits based on backend data (checked_today field)
         const completedSet = new Set();
         (data.habits || []).forEach(h => {
-          if (h.checked_today) completedSet.add(h._id);
+          if (h.checked_today) {
+            completedSet.add(h._id);
+          }
         });
         setCompletedHabits(completedSet);
       } catch (err) {
@@ -205,28 +212,25 @@ export default function RepositoryScreen() {
     
     try {
       const todayIso = new Date().toISOString().split('T')[0];
-      console.log('Sending habit check-in request:', { habitId, date: todayIso }); // Debug log
       const response = await recordHabitCheckin(habitId, todayIso, token);
       
-      console.log('Habit check-in response:', response); // Debug log
-      
-      // Update with the actual habit data from backend (includes updated streaks)
+      // Update with the actual habit data from backend (includes updated streaks and checked_today)
       if (response.habit) {
         setHabits(prev => prev.map(h => 
           h._id === habitId ? response.habit : h
         ));
         
-        // Ensure the updated habit's checked_today status is reflected in completedHabits
+        // Update completedHabits based on the backend response
+        const updatedSet = new Set(completedHabits);
         if (response.habit.checked_today) {
-          const updatedSet = new Set(completedHabits);
           updatedSet.add(habitId);
-          setCompletedHabits(updatedSet);
+        } else {
+          updatedSet.delete(habitId);
         }
+        setCompletedHabits(updatedSet);
       }
     } catch (err) {
-      console.error('Failed to record checkin', err);
-      console.error('Error details:', err.response?.data);
-      console.error('Error status:', err.response?.status);
+      console.error('Failed to record checkin:', err);
       
       // Rollback optimistic update on error
       const rollbackSet = new Set(completedHabits);

@@ -147,8 +147,27 @@ def record_habit_checkin(habit_id: str):
     if result and result.get('checkin') and '_id' in result['checkin']:
         result['checkin']['_id'] = str(result['checkin']['_id'])
 
+    # Get the updated habit with checked_today status
+    from backend.repositories.checkin_repository import CheckinRepository
+    from backend.repositories.habit_repository import HabitRepository
+    from datetime import date
+    
+    habit_repo = HabitRepository(g.db.habits)
+    checkin_repo = CheckinRepository(g.db.habit_checkins)
+    
+    updated_habit = habit_repo.find_by_id(habit_id, user_id)
+    if updated_habit:
+        updated_habit['_id'] = str(updated_habit['_id'])
+        # Add checked_today status
+        today = date.today()
+        todays_checkin = checkin_repo.find_by_habit_and_date(habit_id, user_id, today)
+        updated_habit['checked_today'] = todays_checkin is not None
+        # Update streaks from the result
+        updated_habit['streaks'] = result.get('updated_streaks', updated_habit.get('streaks', {}))
+
     return jsonify({
-        "message": "Check-in recorded successfully", 
+        "message": "Check-in recorded successfully",
+        "habit": updated_habit,
         **result
     }), 201
 
@@ -205,7 +224,7 @@ def get_user_stats():
     # Create repository instances using Flask g.db
     skill_repo = SkillRepository(g.db.skills)
     habit_repo = HabitRepository(g.db.habits)
-    checkin_repo = CheckinRepository(g.db.checkins)
+    checkin_repo = CheckinRepository(g.db.habit_checkins)
     completion_repo = SkillCompletionRepository(g.db.skill_completions)
     
     try:
