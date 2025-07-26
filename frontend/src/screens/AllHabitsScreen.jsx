@@ -5,6 +5,9 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { getAllPlans, deleteHabit } from '../api/plans';
+import ConfirmationModal from '../components/ConfirmationModal';
+import SuccessModal from '../components/SuccessModal';
+import CustomModal from '../components/CustomModal';
 
 const { width } = Dimensions.get('window');
 
@@ -14,6 +17,14 @@ const AllHabitsScreen = () => {
   const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  // Modal states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [habitToDelete, setHabitToDelete] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const fetchHabits = async () => {
     try {
@@ -47,41 +58,40 @@ const AllHabitsScreen = () => {
     }, [token])
   );
 
-  const handleDeleteHabit = async (habit) => {
-    Alert.alert(
-      'Delete Habit',
-      `Are you sure you want to delete "${habit.title}"? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await deleteHabit(habit._id, token);
-              await fetchHabits(); 
-              Alert.alert('Success', 'Habit deleted successfully');
-            } catch (err) {
-              console.error('Failed to delete habit', err);
-              if (err.response?.status === 401) {
-                Alert.alert('Authentication Error', 'Please log in again to continue.');
-              } else if (err.response?.status === 403) {
-                Alert.alert('Permission Error', 'You do not have permission to delete this habit.');
-              } else if (err.response?.status === 404) {
-                Alert.alert('Not Found', 'This habit no longer exists.');
-              } else if (err.response?.status >= 500) {
-                Alert.alert('Server Error', 'There was a server error. Please try again later.');
-              } else {
-                Alert.alert('Error', 'Failed to delete habit. Please check your connection and try again.');
-              }
-            } finally {
-              setLoading(false);
-            }
-          }
-        }
-      ]
-    );
+  const handleDeleteHabit = (habit) => {
+    setHabitToDelete(habit);
+    setShowDeleteConfirm(true);
+  };
+
+  const confirmDeleteHabit = async () => {
+    if (!habitToDelete) return;
+    
+    try {
+      setDeleting(true);
+      await deleteHabit(habitToDelete._id, token);
+      await fetchHabits();
+      setShowDeleteConfirm(false);
+      setHabitToDelete(null);
+      setShowSuccessModal(true);
+    } catch (err) {
+      console.error('Failed to delete habit', err);
+      setShowDeleteConfirm(false);
+      
+      if (err.response?.status === 401) {
+        setErrorMessage('Please log in again to continue.');
+      } else if (err.response?.status === 403) {
+        setErrorMessage('You do not have permission to delete this habit.');
+      } else if (err.response?.status === 404) {
+        setErrorMessage('This habit no longer exists.');
+      } else if (err.response?.status >= 500) {
+        setErrorMessage('There was a server error. Please try again later.');
+      } else {
+        setErrorMessage('Failed to delete habit. Please check your connection and try again.');
+      }
+      setShowErrorModal(true);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -242,6 +252,44 @@ const AllHabitsScreen = () => {
             </TouchableOpacity>
           </View>
         )}
+      />
+
+      {/* Beautiful Modal Components */}
+      <ConfirmationModal
+        visible={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setHabitToDelete(null);
+        }}
+        onConfirm={confirmDeleteHabit}
+        title="Delete Habit"
+        message={`Are you sure you want to delete "${habitToDelete?.title}"? This action cannot be undone and all progress will be lost.`}
+        confirmText={deleting ? "Deleting..." : "Delete"}
+        cancelText="Cancel"
+        destructive
+        icon="delete"
+      />
+
+      <SuccessModal
+        visible={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Habit Deleted!"
+        message={`"${habitToDelete?.title}" has been successfully removed from your habits.`}
+        buttonText="Got it"
+        icon="check-circle"
+      />
+
+      <CustomModal
+        visible={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Delete Failed"
+        message={errorMessage}
+        type="error"
+        icon="error-outline"
+        primaryButton={{
+          text: 'Try Again',
+          onPress: () => setShowErrorModal(false),
+        }}
       />
     </View>
   );

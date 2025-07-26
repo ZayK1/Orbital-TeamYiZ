@@ -5,6 +5,9 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { getAllPlans, deleteSkill, refreshSkillImage } from '../api/plans';
+import ConfirmationModal from '../components/ConfirmationModal';
+import SuccessModal from '../components/SuccessModal';
+import CustomModal from '../components/CustomModal';
 
 const { width } = Dimensions.get('window');
 
@@ -17,6 +20,14 @@ const AllSkillsScreen = () => {
   const [selectedSkill, setSelectedSkill] = useState(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [refreshingImage, setRefreshingImage] = useState(false);
+  
+  // Modal states
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [skillToDelete, setSkillToDelete] = useState(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   const fetchSkills = async () => {
     try {
@@ -92,46 +103,44 @@ const AllSkillsScreen = () => {
     }
   };
 
-  const handleDeleteSkill = async () => {
+  const handleDeleteSkill = () => {
     if (!selectedSkill) return;
     
+    setSkillToDelete(selectedSkill);
+    setShowDeleteConfirm(true);
     setMenuVisible(false);
+  };
+
+  const confirmDeleteSkill = async () => {
+    if (!skillToDelete) return;
     
-    Alert.alert(
-      'Delete Skill',
-      `Are you sure you want to delete "${selectedSkill.title}"? This action cannot be undone.`,
-      [
-        { text: 'Cancel', style: 'cancel', onPress: () => setSelectedSkill(null) },
-        { 
-          text: 'Delete', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await deleteSkill(selectedSkill._id, token);
-              await fetchSkills(); 
-              Alert.alert('Success', 'Skill deleted successfully');
-            } catch (err) {
-              console.error('Failed to delete skill', err);
-              if (err.response?.status === 401) {
-                Alert.alert('Authentication Error', 'Please log in again to continue.');
-              } else if (err.response?.status === 403) {
-                Alert.alert('Permission Error', 'You do not have permission to delete this skill.');
-              } else if (err.response?.status === 404) {
-                Alert.alert('Not Found', 'This skill no longer exists.');
-              } else if (err.response?.status >= 500) {
-                Alert.alert('Server Error', 'There was a server error. Please try again later.');
-              } else {
-                Alert.alert('Error', 'Failed to delete skill. Please check your connection and try again.');
-              }
-            } finally {
-              setLoading(false);
-              setSelectedSkill(null);
-            }
-          }
-        }
-      ]
-    );
+    try {
+      setDeleting(true);
+      await deleteSkill(skillToDelete._id, token);
+      await fetchSkills();
+      setShowDeleteConfirm(false);
+      setSkillToDelete(null);
+      setSelectedSkill(null);
+      setShowSuccessModal(true);
+    } catch (err) {
+      console.error('Failed to delete skill', err);
+      setShowDeleteConfirm(false);
+      
+      if (err.response?.status === 401) {
+        setErrorMessage('Please log in again to continue.');
+      } else if (err.response?.status === 403) {
+        setErrorMessage('You do not have permission to delete this skill.');
+      } else if (err.response?.status === 404) {
+        setErrorMessage('This skill no longer exists.');
+      } else if (err.response?.status >= 500) {
+        setErrorMessage('There was a server error. Please try again later.');
+      } else {
+        setErrorMessage('Failed to delete skill. Please check your connection and try again.');
+      }
+      setShowErrorModal(true);
+    } finally {
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -338,6 +347,45 @@ const AllSkillsScreen = () => {
           </View>
         </View>
       </Modal>
+
+      {/* Beautiful Modal Components */}
+      <ConfirmationModal
+        visible={showDeleteConfirm}
+        onClose={() => {
+          setShowDeleteConfirm(false);
+          setSkillToDelete(null);
+          setSelectedSkill(null);
+        }}
+        onConfirm={confirmDeleteSkill}
+        title="Delete Skill"
+        message={`Are you sure you want to delete "${skillToDelete?.title}"? This action cannot be undone and all progress will be lost.`}
+        confirmText={deleting ? "Deleting..." : "Delete"}
+        cancelText="Cancel"
+        destructive
+        icon="delete"
+      />
+
+      <SuccessModal
+        visible={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Skill Deleted!"
+        message={`"${skillToDelete?.title}" has been successfully removed from your skills.`}
+        buttonText="Got it"
+        icon="check-circle"
+      />
+
+      <CustomModal
+        visible={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Delete Failed"
+        message={errorMessage}
+        type="error"
+        icon="error-outline"
+        primaryButton={{
+          text: 'Try Again',
+          onPress: () => setShowErrorModal(false),
+        }}
+      />
     </View>
   );
 };

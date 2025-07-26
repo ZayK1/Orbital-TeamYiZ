@@ -19,6 +19,8 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { colors } from '../constants/colors';
 import { getSharedSkillDetail, likeSkill, downloadSkill } from '../api/social';
 import CommentsSection from '../components/CommentsSection';
+import SuccessModal from '../components/SuccessModal';
+import CustomModal from '../components/CustomModal';
 
 const { width, height } = Dimensions.get('window');
 const HEADER_HEIGHT = 320;
@@ -42,6 +44,12 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
   const [upvotes, setUpvotes] = useState(0);
   const [downvotes, setDownvotes] = useState(0);
   const [saveCount, setSaveCount] = useState(0);
+  
+  // Modal states
+  const [showDownloadSuccess, setShowDownloadSuccess] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
+  const [downloadedSkillTitle, setDownloadedSkillTitle] = useState('');
   
   const scrollY = useRef(new Animated.Value(0)).current;
   const headerOpacity = scrollY.interpolate({
@@ -110,7 +118,8 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
       // Revert optimistic update
       setIsLiked(!isLiked);
       setLikesCount(prev => isLiked ? prev + 1 : prev - 1);
-      Alert.alert('Error', 'Failed to update like status');
+      setErrorMessage('Failed to update like status. Please try again.');
+      setShowErrorModal(true);
     }
   };
 
@@ -118,9 +127,11 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
     try {
       await downloadSkill(skillId);
       setDownloadsCount(prev => prev + 1);
-      Alert.alert('Success', 'Skill added to your repository!');
+      setDownloadedSkillTitle(skill?.title || 'Skill');
+      setShowDownloadSuccess(true);
     } catch (error) {
-      Alert.alert('Error', 'Failed to download skill');
+      setErrorMessage('Failed to download skill. Please try again.');
+      setShowErrorModal(true);
     }
   };
 
@@ -783,6 +794,30 @@ const SharedSkillDetailScreen = ({ route, navigation }) => {
           )}
         </View>
       </Animated.ScrollView>
+
+      {/* Beautiful Modal Components */}
+      <SuccessModal
+        visible={showDownloadSuccess}
+        onClose={() => setShowDownloadSuccess(false)}
+        title="Skill Downloaded! 🎉"
+        message={`"${downloadedSkillTitle}" has been successfully added to your personal skill repository. You can now start learning!`}
+        buttonText="Start Learning"
+        icon="download-done"
+        autoClose={false}
+      />
+
+      <CustomModal
+        visible={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Oops!"
+        message={errorMessage}
+        type="error"
+        icon="error-outline"
+        primaryButton={{
+          text: 'Try Again',
+          onPress: () => setShowErrorModal(false),
+        }}
+      />
     </View>
   );
 };

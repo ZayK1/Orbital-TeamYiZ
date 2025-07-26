@@ -5,6 +5,10 @@ import { useRoute, useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../context/AuthContext';
 import { getSkillById, markSkillDayComplete, undoSkillDayComplete, updateSkill, refreshSkillImage } from '../api/plans';
+import CompletionCelebrationModal from '../components/CompletionCelebrationModal';
+import ConfirmationModal from '../components/ConfirmationModal';
+import SuccessModal from '../components/SuccessModal';
+import CustomModal from '../components/CustomModal';
 
 const { width, height } = Dimensions.get('window');
 
@@ -22,6 +26,16 @@ const SkillDetailScreen = () => {
   const [showResourcesModal, setShowResourcesModal] = useState(false);
   const [showMenuModal, setShowMenuModal] = useState(false);
   const [imageRefreshLoading, setImageRefreshLoading] = useState(false);
+  
+  // New modal states
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completedDay, setCompletedDay] = useState(null);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+  const [showUndoConfirmModal, setShowUndoConfirmModal] = useState(false);
+  const [undoDay, setUndoDay] = useState(null);
+  const [showImageSuccessModal, setShowImageSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const fetchSkill = async () => {
     try {
@@ -62,10 +76,11 @@ const SkillDetailScreen = () => {
     try {
       const updatedSkill = await refreshSkillImage(skill._id, token);
       setSkill(updatedSkill);
-      Alert.alert('Success', 'Background image refreshed successfully!');
+      setShowImageSuccessModal(true);
     } catch (error) {
       console.error('Error refreshing image:', error);
-      Alert.alert('Error', 'Failed to refresh background image. Please try again.');
+      setErrorMessage('Failed to refresh background image. Please try again.');
+      setShowErrorModal(true);
     } finally {
       setImageRefreshLoading(false);
     }
@@ -79,11 +94,8 @@ const SkillDetailScreen = () => {
     const currentDay = skill.progress?.current_day || 1;
     
     if (dayNumber !== currentDay) {
-      Alert.alert(
-        'Progressive Completion',
-        `You can only complete Day ${currentDay} next. Please complete days in order.`,
-        [{ text: 'OK', style: 'default' }]
-      );
+      setErrorMessage(`You can only complete Day ${currentDay} next. Please complete days in order.`);
+      setShowErrorModal(true);
       return;
     }
 
@@ -92,14 +104,12 @@ const SkillDetailScreen = () => {
       await markSkillDayComplete(skill._id, dayNumber, token);
       await fetchSkill();
       
-      Alert.alert(
-        'Day Complete! 🎉',
-        `Great job! You've completed Day ${dayNumber}. Keep up the excellent work!`,
-        [{ text: 'Continue', style: 'default' }]
-      );
+      setCompletedDay(dayNumber);
+      setShowCompletionModal(true);
     } catch (err) {
       console.error('Complete day error', err);
-      Alert.alert('Error', 'Failed to mark day as complete. Please try again.');
+      setErrorMessage('Failed to mark day as complete. Please try again.');
+      setShowErrorModal(true);
     } finally {
       setOperationLoading(false);
     }
@@ -109,37 +119,13 @@ const SkillDetailScreen = () => {
     const currentDay = skill.progress?.current_day || 1;
     
     if (dayNumber !== currentDay - 1) {
-      Alert.alert(
-        'Undo Restriction',
-        'You can only undo the most recently completed day to maintain progress order.',
-        [{ text: 'OK', style: 'default' }]
-      );
+      setErrorMessage('You can only undo the most recently completed day to maintain progress order.');
+      setShowErrorModal(true);
       return;
     }
 
-    Alert.alert(
-      'Undo Day Completion',
-      `Are you sure you want to undo completion of Day ${dayNumber}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Undo', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              setOperationLoading(true);
-              await undoSkillDayComplete(skill._id, dayNumber, token);
-              await fetchSkill();
-            } catch (err) {
-              console.error('Undo day error', err);
-              Alert.alert('Error', 'Failed to undo completion. Please try again.');
-            } finally {
-              setOperationLoading(false);
-            }
-          }
-        }
-      ]
-    );
+    setUndoDay(dayNumber);
+    setShowUndoConfirmModal(true);
   };
 
   const handleTaskToggle = async (taskIndex) => {
@@ -185,7 +171,8 @@ const SkillDetailScreen = () => {
       await updateSkill(skill._id, updateData, token);
     } catch (err) {
       console.error('Task toggle error', err);
-      Alert.alert('Error', 'Failed to update task. Please try again.');
+      setErrorMessage('Failed to update task. Please try again.');
+      setShowErrorModal(true);
       await fetchSkill();
     } finally {
       setTaskCompletionLoading(false);
@@ -706,7 +693,8 @@ const SkillDetailScreen = () => {
                   [
                     { text: 'Cancel', style: 'cancel' },
                     { text: 'Delete', style: 'destructive', onPress: () => {
-                      Alert.alert('Info', 'Delete functionality will be implemented soon');
+                      setErrorMessage('Delete functionality will be implemented soon');
+                      setShowErrorModal(true);
                     }}
                   ]
                 );
@@ -718,6 +706,83 @@ const SkillDetailScreen = () => {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Beautiful Modal Components */}
+      <CompletionCelebrationModal
+        visible={showCompletionModal}
+        onClose={() => setShowCompletionModal(false)}
+        day={completedDay}
+        skillTitle={skill?.title}
+        totalDays={skill?.curriculum?.daily_tasks?.length || 30}
+        onViewProgress={() => {
+          setShowCompletionModal(false);
+          setShowProgressModal(true);
+        }}
+      />
+
+      <CustomModal
+        visible={showProgressModal}
+        onClose={() => setShowProgressModal(false)}
+        title="Progress Tracking"
+        message="Advanced progress tracking features are coming soon! For now, continue completing your daily tasks."
+        type="info"
+        icon="trending-up"
+        primaryButton={{
+          text: 'Got it',
+          onPress: () => setShowProgressModal(false),
+        }}
+      />
+
+      <ConfirmationModal
+        visible={showUndoConfirmModal}
+        onClose={() => {
+          setShowUndoConfirmModal(false);
+          setUndoDay(null);
+        }}
+        onConfirm={async () => {
+          try {
+            setOperationLoading(true);
+            await undoSkillDayComplete(skill._id, undoDay, token);
+            await fetchSkill();
+            setShowUndoConfirmModal(false);
+            setUndoDay(null);
+          } catch (err) {
+            console.error('Undo day error', err);
+            setErrorMessage('Failed to undo completion. Please try again.');
+            setShowErrorModal(true);
+          } finally {
+            setOperationLoading(false);
+          }
+        }}
+        title="Undo Day Completion"
+        message={`Are you sure you want to undo completion of Day ${undoDay}? This will reset your progress for this day.`}
+        confirmText="Undo"
+        cancelText="Cancel"
+        destructive
+        icon="undo"
+      />
+
+      <SuccessModal
+        visible={showImageSuccessModal}
+        onClose={() => setShowImageSuccessModal(false)}
+        title="Image Refreshed!"
+        message="Your skill background image has been successfully updated with a fresh new look."
+        buttonText="Awesome!"
+        icon="image"
+      />
+
+      <CustomModal
+        visible={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        title="Oops!"
+        message={errorMessage}
+        type="error"
+        icon="error-outline"
+        primaryButton={{
+          text: 'Try Again',
+          onPress: () => setShowErrorModal(false),
+        }}
+      />
     </View>
   );
 };
