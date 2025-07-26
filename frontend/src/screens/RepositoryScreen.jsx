@@ -9,6 +9,7 @@ import {
   ImageBackground,
   ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MaterialIcons } from '@expo/vector-icons';
 import Svg, { Circle } from 'react-native-svg';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
@@ -56,11 +57,35 @@ const CircularProgress = ({
 
 const getHabitIcon = (title = '') => {
   const lower = title.toLowerCase();
-  if (lower.includes('water')) return 'water-drop';
-  if (lower.includes('read')) return 'menu-book';
-  if (lower.includes('exercise') || lower.includes('workout')) return 'fitness-center';
-  if (lower.includes('medit')) return 'self-improvement';
-  if (lower.includes('gratitude')) return 'sentiment-satisfied';
+  
+  // Health & Fitness
+  if (lower.includes('water') || lower.includes('hydrate')) return 'water-drop';
+  if (lower.includes('exercise') || lower.includes('workout') || lower.includes('gym') || lower.includes('run')) return 'fitness-center';
+  if (lower.includes('walk') || lower.includes('steps')) return 'directions-walk';
+  if (lower.includes('sleep') || lower.includes('bedtime')) return 'bedtime';
+  if (lower.includes('stretch') || lower.includes('yoga')) return 'accessibility-new';
+  
+  // Mental & Learning
+  if (lower.includes('read') || lower.includes('book')) return 'menu-book';
+  if (lower.includes('medit') || lower.includes('mindful')) return 'self-improvement';
+  if (lower.includes('gratitude') || lower.includes('grateful')) return 'sentiment-satisfied';
+  if (lower.includes('journal') || lower.includes('write')) return 'edit-note';
+  if (lower.includes('learn') || lower.includes('study')) return 'school';
+  
+  // Productivity & Work
+  if (lower.includes('work') || lower.includes('task')) return 'work';
+  if (lower.includes('email') || lower.includes('inbox')) return 'email';
+  if (lower.includes('organize') || lower.includes('clean')) return 'cleaning-services';
+  if (lower.includes('plan') || lower.includes('schedule')) return 'event';
+  
+  // Social & Personal
+  if (lower.includes('call') || lower.includes('phone')) return 'phone';
+  if (lower.includes('family') || lower.includes('friend')) return 'people';
+  if (lower.includes('cook') || lower.includes('meal')) return 'restaurant';
+  if (lower.includes('music') || lower.includes('listen')) return 'music-note';
+  if (lower.includes('create') || lower.includes('art')) return 'palette';
+  
+  // Default
   return 'check-circle';
 };
 
@@ -72,16 +97,70 @@ export default function RepositoryScreen() {
   const [habits, setHabits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [completedHabits, setCompletedHabits] = useState(new Set());
+  const [loginStreak, setLoginStreak] = useState(0);
+
+  const calculateLoginStreak = async () => {
+    try {
+      const today = new Date().toDateString();
+      const lastLoginDate = await AsyncStorage.getItem('lastLoginDate');
+      const currentStreak = await AsyncStorage.getItem('loginStreak');
+      
+      if (!lastLoginDate) {
+        // First time login
+        await AsyncStorage.setItem('lastLoginDate', today);
+        await AsyncStorage.setItem('loginStreak', '1');
+        setLoginStreak(1);
+        return;
+      }
+      
+      const lastLogin = new Date(lastLoginDate);
+      const todayDate = new Date(today);
+      const timeDiff = todayDate.getTime() - lastLogin.getTime();
+      const daysDiff = Math.floor(timeDiff / (1000 * 3600 * 24));
+      
+      if (daysDiff === 0) {
+        // Same day login
+        setLoginStreak(parseInt(currentStreak || '1'));
+      } else if (daysDiff === 1) {
+        // Consecutive day login
+        const newStreak = parseInt(currentStreak || '0') + 1;
+        await AsyncStorage.setItem('lastLoginDate', today);
+        await AsyncStorage.setItem('loginStreak', newStreak.toString());
+        setLoginStreak(newStreak);
+      } else {
+        // Streak broken, reset to 1
+        await AsyncStorage.setItem('lastLoginDate', today);
+        await AsyncStorage.setItem('loginStreak', '1');
+        setLoginStreak(1);
+      }
+    } catch (error) {
+      console.error('Error calculating login streak:', error);
+      setLoginStreak(1);
+    }
+  };
+
+  useEffect(() => {
+    if (token && isFocused) {
+      calculateLoginStreak();
+    }
+  }, [token, isFocused]);
 
   useEffect(() => {
     const fetchPlans = async () => {
       try {
+        console.log('🔄 Fetching plans from backend...');
         const data = await getAllPlans(token);
+        console.log('📊 Backend response:', data);
+        
         setSkills(data.skills || []);
         setHabits(data.habits || []);
+        
+        // Update completed habits based on backend data (checked_today field)
         const completedSet = new Set();
         (data.habits || []).forEach(h => {
-          if (h.checked_today) completedSet.add(h._id);
+          if (h.checked_today) {
+            completedSet.add(h._id);
+          }
         });
         setCompletedHabits(completedSet);
       } catch (err) {
@@ -98,7 +177,7 @@ export default function RepositoryScreen() {
   }, [token, isFocused]);
 
   const firstSkill = skills.length > 0 ? skills[0] : null;
-  const todaysHabits = habits.slice(0, 4);
+  const todaysHabits = habits;
 
   const getTodaysFocusData = () => {
     const today = new Date();
@@ -165,15 +244,50 @@ export default function RepositoryScreen() {
   const showAddHabit = () => navigation.navigate('AddHabit');
 
   const handleHabitCheck = async (habitId) => {
-    if (completedHabits.has(habitId)) return; 
+    const isCurrentlyCompleted = completedHabits.has(habitId);
+    
+    if (isCurrentlyCompleted) return; // Already completed, don't allow unchecking
+    
+    // Optimistic update
+    const newSet = new Set(completedHabits);
+    newSet.add(habitId);
+    setCompletedHabits(newSet);
+    
+    // Update the habits array optimistically
+    setHabits(prev => prev.map(h => 
+      h._id === habitId ? { ...h, checked_today: true } : h
+    ));
+    
     try {
       const todayIso = new Date().toISOString().split('T')[0];
-      await recordHabitCheckin(habitId, todayIso, token);
-      const newSet = new Set(completedHabits);
-      newSet.add(habitId);
-      setCompletedHabits(newSet);
+      const response = await recordHabitCheckin(habitId, todayIso, token);
+      
+      // Update with the actual habit data from backend (includes updated streaks and checked_today)
+      if (response.habit) {
+        setHabits(prev => prev.map(h => 
+          h._id === habitId ? response.habit : h
+        ));
+        
+        // Update completedHabits based on the backend response
+        const updatedSet = new Set(completedHabits);
+        if (response.habit.checked_today) {
+          updatedSet.add(habitId);
+        } else {
+          updatedSet.delete(habitId);
+        }
+        setCompletedHabits(updatedSet);
+      }
     } catch (err) {
-      console.error('Failed to record checkin', err);
+      console.error('Failed to record checkin:', err);
+      
+      // Rollback optimistic update on error
+      const rollbackSet = new Set(completedHabits);
+      rollbackSet.delete(habitId);
+      setCompletedHabits(rollbackSet);
+      
+      setHabits(prev => prev.map(h => 
+        h._id === habitId ? { ...h, checked_today: false } : h
+      ));
     }
   };
 
@@ -208,7 +322,7 @@ export default function RepositoryScreen() {
             color="#14B8A6"
             style={{ marginRight: 4 }}
           />
-          <Text style={styles.streakText}>0 days</Text>
+          <Text style={styles.streakText}>{loginStreak} days</Text>
         </TouchableOpacity>
       </View>
 
@@ -325,45 +439,84 @@ export default function RepositoryScreen() {
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Today's Habits</Text>
-          {habits.length > 4 && (
+          {habits.length > 0 && (
             <TouchableOpacity style={styles.viewAll} onPress={() => navigation.navigate('MyHabits')}>
-              <Text style={styles.viewAllText}>See All</Text>
+              <Text style={styles.viewAllText}>View All</Text>
               <MaterialIcons name="chevron-right" size={18} color="#14B8A6" />
             </TouchableOpacity>
           )}
         </View>
 
         {todaysHabits.length > 0 ? (
-          <View style={styles.habitCard}>
+          <View style={styles.habitsListContainer}>
             {todaysHabits.map((habit, index) => (
-              <View key={habit._id || index}>
-                <View style={styles.habitItem}>
-                  <View style={[styles.habitLine, { backgroundColor: habit.color || '#14B8A6' }]} />
-                  <MaterialIcons name={getHabitIcon(habit.title)} size={20} color={habit.color || '#14B8A6'} style={{ marginRight: 8 }} />
-                  <View>
-                    <Text style={styles.habitTitle}>{habit.title}</Text>
-                    <Text style={styles.habitTime}>{habit.pattern?.frequency || 'Daily'}</Text>
+              <TouchableOpacity 
+                key={habit._id || index} 
+                style={[
+                  styles.listHabitCard,
+                  completedHabits.has(habit._id) && styles.completedListHabitCard
+                ]}
+                onPress={() => handleHabitCheck(habit._id)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.listHabitContent}>
+                  <View style={styles.listHabitLeft}>
+                    <View style={[
+                      styles.listHabitIconContainer, 
+                      { backgroundColor: (habit.color || '#14B8A6') + '12' }
+                    ]}>
+                      <MaterialIcons 
+                        name={getHabitIcon(habit.title)} 
+                        size={24} 
+                        color={habit.color || '#14B8A6'} 
+                      />
+                    </View>
+                    
+                    <View style={styles.listHabitInfo}>
+                      <Text style={[
+                        styles.listHabitTitle,
+                        completedHabits.has(habit._id) && styles.completedListHabitTitle
+                      ]} numberOfLines={1}>
+                        {habit.title}
+                      </Text>
+                      
+                      <View style={styles.listHabitMeta}>
+                        <Text style={styles.listHabitFrequency}>
+                          {habit.pattern?.frequency || 'Daily'}
+                        </Text>
+                        
+                        {habit.streaks?.current_streak > 0 && (
+                          <>
+                            <View style={styles.metaDivider} />
+                            <View style={styles.listStreakContainer}>
+                              <MaterialIcons name="local-fire-department" size={14} color="#F59E0B" />
+                              <Text style={styles.listStreakText}>
+                                {habit.streaks.current_streak} day streak
+                              </Text>
+                            </View>
+                          </>
+                        )}
+                      </View>
+                    </View>
                   </View>
-                  <TouchableOpacity
-                    style={[
-                      styles.habitCheck,
-                      completedHabits.has(habit._id)
-                        ? { backgroundColor: '#22C55E' }
-                        : { backgroundColor: '#E5E7EB' },
-                    ]}
-                    onPress={() => handleHabitCheck(habit._id)}
-                  >
-                    <MaterialIcons
-                      name="check"
-                      size={16}
-                      color={completedHabits.has(habit._id) ? 'white' : '#6B7280'}
-                    />
-                  </TouchableOpacity>
+                  
+                  <View style={[
+                    styles.listHabitCheckbox,
+                    completedHabits.has(habit._id) 
+                      ? styles.completedListHabitCheckbox
+                      : { borderColor: habit.color || '#14B8A6' }
+                  ]}>
+                    {completedHabits.has(habit._id) && (
+                      <MaterialIcons name="check" size={16} color="white" />
+                    )}
+                  </View>
                 </View>
-                {index !== todaysHabits.length - 1 && (
-                  <View style={styles.habitDivider} />
-                )}
-              </View>
+                
+                <View style={[
+                  styles.listHabitAccent,
+                  { backgroundColor: habit.color || '#14B8A6' }
+                ]} />
+              </TouchableOpacity>
             ))}
           </View>
         ) : (
@@ -620,31 +773,109 @@ const styles = StyleSheet.create({
   },
   skillButtonText: { color: '#111827', fontWeight: '500', fontSize: 14 },
 
-  habitCard: {
+  habitsListContainer: {
+    gap: 12,
+  },
+  listHabitCard: {
     backgroundColor: 'white',
     borderRadius: 16,
-    padding: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 2,
-    borderColor: '#A78BFA',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    position: 'relative',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
-  habitItem: { flexDirection: 'row', alignItems: 'center' },
-  habitLine: { width: 4, height: 40, borderRadius: 2, marginRight: 12 },
-  habitTitle: { fontWeight: '500', color: '#111827' },
-  habitTime: { fontSize: 12, color: '#6B7280' },
-  habitCheck: {
-    marginLeft: 'auto',
-    borderRadius: 999,
-    width: 28,
-    height: 28,
+  completedListHabitCard: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#D1FAE5',
+  },
+  listHabitContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  listHabitLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  listHabitIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#E5E7EB',
+    marginRight: 16,
   },
-  habitDivider: { height: 1, backgroundColor: '#F3F4F6', marginVertical: 12 },
+  listHabitInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  listHabitTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1F2937',
+    marginBottom: 4,
+    lineHeight: 20,
+  },
+  completedListHabitTitle: {
+    color: '#059669',
+    textDecorationLine: 'line-through',
+    opacity: 0.8,
+  },
+  listHabitMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  listHabitFrequency: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  metaDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 8,
+  },
+  listStreakContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  listStreakText: {
+    fontSize: 13,
+    color: '#F59E0B',
+    fontWeight: '600',
+  },
+  listHabitCheckbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  completedListHabitCheckbox: {
+    backgroundColor: '#22C55E',
+    borderColor: '#22C55E',
+  },
+  listHabitAccent: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
 
   placeholderCard: {
     backgroundColor: 'white',

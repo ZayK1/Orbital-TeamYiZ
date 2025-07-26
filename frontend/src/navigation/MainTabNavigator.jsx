@@ -12,20 +12,31 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { colors } from '../constants/colors';
 
 import RepositoryScreen from '../screens/RepositoryScreen';
-import ExploreScreen from '../screens/ExploreScreen';
+import BrowseSkillsScreen from '../screens/BrowseSkillsScreen';
+import SharedSkillDetailScreen from '../screens/SharedSkillDetailScreen';
+import SearchScreen from '../screens/SearchScreen';
 import StatsScreen from '../screens/StatsScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import AddSkillScreen from '../screens/AddSkillScreen';
 import AddHabitScreen from '../screens/AddHabitScreen';
 import AllSkillsScreen from '../screens/AllSkillsScreen';
+import AllHabitsScreen from '../screens/AllHabitsScreen';
 import SkillDetailScreen from '../screens/SkillDetailScreen';
 import SkillEditScreen from '../screens/SkillEditScreen';
 import PlanIndexScreen from '../screens/PlanIndexScreen';
 import DayDetailScreen from '../screens/DayDetailScreen';
 import HabitDetailScreen from '../screens/HabitDetailScreen';
 import MyHabitsScreen from '../screens/MyHabitsScreen';
+// Enhanced Social Features
+import SocialFeedScreen from '../screens/SocialFeedScreen';
+import EnhancedProfileScreen from '../screens/EnhancedProfileScreen';
+import UnifiedProfileScreen from '../screens/UnifiedProfileScreen';
+import CreateSharedSkillScreen from '../screens/CreateSharedSkillScreen';
+import ShareSkillScreen from '../screens/ShareSkillScreen';
+import SettingsScreen from '../screens/SettingsScreen';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -50,7 +61,7 @@ const MyTabBar = ({ state, descriptors, navigation, setTabBarVisible }) => {
       {
         translateX: animation.interpolate({
           inputRange: [0, 1],
-          outputRange: [0, -60],
+          outputRange: [0, -70],
         }),
       },
     ],
@@ -63,7 +74,7 @@ const MyTabBar = ({ state, descriptors, navigation, setTabBarVisible }) => {
       {
         translateX: animation.interpolate({
           inputRange: [0, 1],
-          outputRange: [0, 60],
+          outputRange: [0, 70],
         }),
       },
     ],
@@ -113,18 +124,18 @@ const MyTabBar = ({ state, descriptors, navigation, setTabBarVisible }) => {
             const iconName =
               route.name === 'RepositoryStack'
                 ? 'home'
-                : route.name === 'MyHabits'
-                ? 'track-changes'
                 : route.name === 'Explore'
                 ? 'explore'
                 : route.name === 'Stats'
-                ? 'bar-chart'
-                : 'person';
+                ? 'analytics'
+                : route.name === 'Profile'
+                ? 'person'
+                : 'add';
 
-            const tabColor = isFocused ? '#14B8A6' : '#9CA3AF';
+            const tabColor = isFocused ? colors.primary : colors.gray400;
 
-            // Skip the middle tab (reserved for add button)
-            if (route.name === 'Explore') {
+            // Skip the add button placeholder (we'll put it between Home and SkillShare)
+            if (route.name === 'AddPlaceholder') {
               return <View key={route.key} style={styles.tabSpacer} />;
             }
 
@@ -149,7 +160,7 @@ const MyTabBar = ({ state, descriptors, navigation, setTabBarVisible }) => {
         </BlurView>
         <TouchableOpacity style={styles.addButton} onPress={toggleMenu} activeOpacity={0.8}>
           <View style={styles.addButtonInner}>
-            <MaterialIcons name={addMenuVisible ? "close" : "add"} size={28} color="white" />
+            <MaterialIcons name={addMenuVisible ? "close" : "add"} size={24} color="white" />
           </View>
         </TouchableOpacity>
       </View>
@@ -182,12 +193,39 @@ function RepositoryStackNavigator() {
       <Stack.Screen name="AddSkill" component={AddSkillScreen} />
       <Stack.Screen name="AddHabit" component={AddHabitScreen} />
       <Stack.Screen name="AllSkills" component={AllSkillsScreen} />
+      <Stack.Screen name="AllHabits" component={AllHabitsScreen} />
       <Stack.Screen name="MyHabits" component={MyHabitsScreen} />
       <Stack.Screen name="SkillDetail" component={SkillDetailScreen} />
       <Stack.Screen name="SkillEdit" component={SkillEditScreen} />
       <Stack.Screen name="PlanIndex" component={PlanIndexScreen} />
       <Stack.Screen name="DayDetail" component={DayDetailScreen} />
       <Stack.Screen name="HabitDetail" component={HabitDetailScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function ExploreStackNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="SocialFeed" component={SocialFeedScreen} />
+      <Stack.Screen name="BrowseSkills" component={BrowseSkillsScreen} />
+      <Stack.Screen name="SharedSkillDetail" component={SharedSkillDetailScreen} />
+      <Stack.Screen name="Search" component={SearchScreen} />
+      <Stack.Screen name="CreateSharedSkill" component={CreateSharedSkillScreen} />
+      <Stack.Screen name="ShareSkill" component={ShareSkillScreen} />
+      <Stack.Screen name="UserProfile" component={UnifiedProfileScreen} />
+    </Stack.Navigator>
+  );
+}
+
+function ProfileStackNavigator() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="UnifiedProfile" component={UnifiedProfileScreen} />
+      <Stack.Screen name="EnhancedProfile" component={EnhancedProfileScreen} />
+      <Stack.Screen name="UserProfile" component={UnifiedProfileScreen} />
+      <Stack.Screen name="CreateSharedSkill" component={CreateSharedSkillScreen} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>
   );
 }
@@ -213,10 +251,10 @@ export default function MainTabNavigator() {
           }}
         >
           <Tab.Screen name="RepositoryStack" component={RepositoryStackNavigator} options={{ title: 'Home' }} />
-          <Tab.Screen name="MyHabits" component={MyHabitsScreen} options={{ title: 'Habits' }} />
-          <Tab.Screen name="Explore" component={ExploreScreen} options={{ title: 'Discover' }} />
+          <Tab.Screen name="Explore" component={ExploreStackNavigator} options={{ title: 'SkillShare' }} />
+          <Tab.Screen name="AddPlaceholder" component={View} options={{ title: '' }} />
           <Tab.Screen name="Stats" component={StatsScreen} options={{ title: 'Stats' }} />
-          <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
+          <Tab.Screen name="Profile" component={ProfileStackNavigator} options={{ title: 'Profile' }} />
         </Tab.Navigator>
         {!isTabBarVisible && (
           <TouchableOpacity
@@ -236,9 +274,9 @@ const styles = StyleSheet.create({
   tabBarContainer: {
     position: 'absolute',
     bottom: Platform.OS === 'ios' ? 34 : 20,
-    left: 16,
-    right: 16,
-    height: 70,
+    left: 20,
+    right: 20,
+    height: 80,
     elevation: 0,
     alignItems: 'center',
     justifyContent: 'center',
@@ -247,57 +285,63 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     width: '100%',
     height: '100%',
-    borderRadius: 24,
+    borderRadius: 28,
     overflow: 'hidden',
-    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.9)' : 'white',
-    borderWidth: 0.5,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 12,
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(255, 255, 255, 0.95)' : colors.white,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 28,
+    elevation: 16,
   },
   tabItem: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 8,
+    paddingHorizontal: 4,
   },
   tabSpacer: {
-    width: 60,
+    width: 64,
     height: '100%',
   },
   tabIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   tabIconContainerActive: {
-    backgroundColor: 'rgba(20, 184, 166, 0.1)',
+    backgroundColor: colors.primaryUltraLight,
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     textAlign: 'center',
+    marginTop: 2,
   },
   addButton: {
     position: 'absolute',
-    top: -12,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#14B8A6',
+    top: -16,
+    left: '50%',
+    marginLeft: -32,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#14B8A6',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
     elevation: 12,
+    borderWidth: 4,
+    borderColor: colors.white,
   },
   addButtonInner: {
     width: 48,
@@ -309,28 +353,29 @@ const styles = StyleSheet.create({
   },
   catalogButton: {
     position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 50 : 36,
-    right: 24,
+    bottom: Platform.OS === 'ios' ? 54 : 40,
+    right: 32,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: 'white',
+    backgroundColor: colors.white,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 8,
-    borderWidth: 0.5,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    shadowColor: colors.shadow,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
   actionButtonContainer: {
     position: 'absolute',
     left: 0,
     right: 0,
-    bottom: Platform.OS === 'ios' ? 180 : 160,
+    bottom: Platform.OS === 'ios' ? 170 : 150,
     alignItems: 'center',
+    pointerEvents: 'box-none',
   },
   actionButton: {
     position: 'absolute',
@@ -360,5 +405,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#374151',
     marginTop: 6,
+  },
+  actionButtonIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
   },
 }); 

@@ -2,9 +2,20 @@
 
 
 
-*Last Updated: July 16th 2025*
+*Last Updated: July 26th 2025*
 
 ## 🎨 Latest UI/UX Enhancements (July 2025)
+
+### 🌟 SkillShare Social Platform - Revolutionary Community Feature
+- **Complete Social Ecosystem**: Full-featured social platform for sharing and discovering skills
+- **Community Skill Sharing**: Users can share their 30-day skill plans with the community
+- **Enhanced Skill Discovery**: Browse, search, and filter shared skills with advanced algorithms
+- **Social Interactions**: Like, comment, rate, and download community-shared skills
+- **Custom Task Contributions**: Community members can add custom tasks to improve shared skills
+- **Trending & Categories**: Discover popular skills and browse by categories
+- **User Profiles**: Social profiles showing contributions, shared skills, and activity
+- **Real-time Feed**: Dynamic social feed with following, discover, and trending tabs
+- **Professional UI**: Modern, Instagram-inspired interface with smooth animations
 
 ### ✨ Stats Screen - World-Class Analytics Dashboard
 - **Comprehensive Analytics**: Real-time progress tracking with skills, habits, and activity metrics
@@ -24,6 +35,13 @@
 - **Today's Focus Redesign**: Sleek gradient cards with improved aesthetics
 - **Progressive Completion**: Sequential day completion with proper validation
 - **Layout Optimization**: Fixed empty white space and alignment issues
+
+### ✨ Navigation & Habit System Overhaul
+- **Redesigned Navigation Bar**: Improved tab layout with proper spacing and positioning fixes
+- **Login Streak Tracking**: Real daily login streak calculation with AsyncStorage persistence
+- **Compact Habit Cards**: Modern grid layout for efficient space utilization across screens
+- **State Persistence**: Fixed habit check-in persistence with proper backend synchronization
+- **Consistent Design**: Unified visual patterns across Repository and MyHabits screens
 
 
 
@@ -73,7 +91,7 @@
 
 
 
-**YiZ Planner** is a revolutionary cross-platform application that transforms skill acquisition through AI-powered 30-day learning plans. It combines cutting-edge mobile development with artificial intelligence to deliver personalized, structured learning experiences.
+**YiZ Planner** is a revolutionary cross-platform application that transforms skill acquisition through AI-powered 30-day learning plans and community-driven learning. It combines cutting-edge mobile development with artificial intelligence and social features to deliver personalized, structured learning experiences enhanced by community collaboration.
 
 ### 🔥 Current Status (July 2025)
 - ✅ **Fully Functional**: All core features working reliably
@@ -82,6 +100,8 @@
 - ✅ **Fast Performance**: <3 second response times for all operations
 - ✅ **Stable Backend**: All async/sync issues resolved, 500 errors eliminated
 - ✅ **Clean Frontend**: No build warnings, full SDK 53 compatibility
+- ✅ **SkillShare Platform**: Complete social ecosystem with 23+ API endpoints
+- ✅ **Community Features**: Skill sharing, discovery, interactions, and collaboration
 
 
 
@@ -99,6 +119,12 @@
 
 | 📊 **Plan Management** | View, track, and manage daily learning tasks |
 
+| 🌟 **SkillShare Social Platform** | Community skill sharing, discovery, and social interactions |
+
+| 💬 **Social Features** | Like, comment, rate, and download community skills |
+
+| 🔍 **Advanced Discovery** | Search, filter, trending, and category-based skill browsing |
+
 | 📱 **Cross-Platform** | iOS, Android (Expo Go), and Web (Vercel) support |
 
 
@@ -107,13 +133,17 @@
 
 
 
-- **Students** seeking structured learning paths
+- **Students** seeking structured learning paths and community learning
 
-- **Professionals** wanting to upskill systematically
+- **Professionals** wanting to upskill systematically with peer collaboration
 
-- **Self-learners** desiring AI-guided skill development
+- **Self-learners** desiring AI-guided skill development and social interaction
 
-- **Anyone** looking to master new skills with structure
+- **Communities** looking to share knowledge and learn together
+
+- **Content Creators** wanting to share their expertise and build reputation
+
+- **Anyone** looking to master new skills with structure and social support
 
 
 
@@ -225,40 +255,60 @@ B <--> C[MongoDB Atlas]
 
 B <--> D[OpenRouter AI]
 
-
-subgraph "Frontend"
-
-A
-
-A1[AuthContext]
-
-A2[AsyncStorage]
-
-A3[Navigation]
-
-end
+B <--> E[Unsplash API]
 
 
-subgraph "Backend"
+subgraph "Frontend Screens"
 
-B
+A --> A1[RepositoryScreen]
 
-B1[JWT Auth]
+A --> A2[SocialFeedScreen]
 
-B2[Plan Service]
+A --> A3[BrowseSkillsScreen]
 
-B3[User Models]
+A --> A4[SharedSkillDetailScreen]
+
+A --> A5[StatsScreen]
+
+A --> A6[ProfileScreen]
 
 end
 
 
-subgraph "Data Layer"
+subgraph "Backend Services"
 
-C
+B --> B1[SkillService]
 
-C1[Users Collection]
+B --> B2[HabitService]
 
-C2[Plans Collection]
+B --> B3[SocialService]
+
+B --> B4[InteractionService]
+
+B --> B5[CustomTaskService]
+
+B --> B6[StatsService]
+
+end
+
+
+subgraph "Data Collections"
+
+C --> C1[Users]
+
+C --> C2[Skills]
+
+C --> C3[Habits]
+
+C --> C4[SharedSkills]
+
+C --> C5[CustomTasks]
+
+C --> C6[Interactions]
+
+C --> C7[Comments]
+
+C --> C8[HabitCheckins]
 
 end
 
@@ -268,17 +318,71 @@ end
 
 ### 🔄 Data Flow Sequence
 
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant F as Frontend
+    participant A as AuthContext
+    participant B as Backend
+    participant AI as OpenRouter AI
+    participant DB as MongoDB
+    participant S as SocialService
 
+    Note over U,S: App Launch & Authentication
+    U->>F: Open App
+    F->>A: Load from AsyncStorage
+    A->>B: POST /auth/verify
+    B->>DB: Verify JWT
+    DB->>B: User data
+    B->>A: Valid user
+    A->>F: Set authenticated state
 
+    Note over U,S: Plan Generation
+    U->>F: Create new skill
+    F->>B: POST /generate-plan
+    B->>AI: Generate 30-day plan
+    AI->>B: Structured response
+    B->>DB: Save skill with curriculum
+    DB->>B: Skill created
+    B->>F: Return skill data
+
+    Note over U,S: Social Platform
+    U->>F: Share skill with community
+    F->>B: POST /api/v1/social/skills/share
+    B->>S: SocialService.share_skill()
+    S->>DB: Create shared_skill document
+    DB->>S: Shared skill created
+    S->>B: Return shared skill
+    B->>F: Success response
+
+    Note over U,S: Community Discovery
+    U->>F: Browse skills
+    F->>B: GET /api/v1/social/skills
+    B->>S: SocialService.get_shared_skills()
+    S->>DB: Query with filters/pagination
+    DB->>S: Community skills
+    S->>B: Enriched skills with user info
+    B->>F: Skills feed
+    F->>U: Display social feed
+
+    Note over U,S: Social Interactions
+    U->>F: Like/Comment/Download
+    F->>B: POST /api/v1/social/skills/{id}/like
+    B->>DB: Update interactions
+    DB->>B: Interaction recorded
+    B->>F: Updated engagement metrics
+    F->>U: Real-time UI update
+```
+
+**Key Data Flow Stages**:
 1. **App Launch**: AuthContext loads JWT from AsyncStorage → `/auth/verify`
-
 2. **Authentication**: Backend verifies JWT signature & expiry → returns user
-
 3. **Plan Generation**: `/generate-plan` → OpenRouter AI → structured response
-
-4. **Skill/Habit Creation**: `/api/v1/plans/*` → Unsplash Random Photo API → returns `image_url` / `icon_url`
-
-5. **Persistence**: JWT, user data & generated media URLs stored in AsyncStorage for offline access
+4. **Skill/Habit Creation**: `/api/v1/plans/*` → Unsplash API → returns `image_url` / `icon_url`
+5. **Social Discovery**: `/api/v1/social/skills` → SharedSkillRepository → community skills with interactions
+6. **Skill Sharing**: `/api/v1/social/skills/share` → SocialService → creates shared skill in community
+7. **Community Interactions**: Like/Comment/Rate → InteractionService → real-time social engagement
+8. **Persistence**: JWT, user data, social interactions & media URLs stored for offline access
 
 
 
@@ -340,11 +444,25 @@ frontend/
 
 │ │ ├── 📄 RegisterScreen.jsx # Registration interface
 
-│ │ ├── 📄 RepositoryScreen.jsx # Main dashboard screen
+│ │ ├── 📄 RepositoryScreen.jsx # Main dashboard with compact grid habit cards
+
+│ │ ├── 📄 MyHabitsScreen.jsx # Full habits view with 2-column grid layout
 
 │ │ ├── 📄 ProfileScreen.jsx # Revamped user profile
 
-│ │ ├── 📄 ExploreScreen.jsx # Beta discovery screen (community skills upload & browse)
+│ │ ├── 📄 SocialFeedScreen.jsx # SkillShare social feed with following, discover, trending
+
+│ │ ├── 📄 BrowseSkillsScreen.jsx # Advanced skill discovery with search and filters
+
+│ │ ├── 📄 SharedSkillDetailScreen.jsx # Detailed view of community-shared skills
+
+│ │ ├── 📄 CreateSharedSkillScreen.jsx # Interface for sharing skills with community
+
+│ │ ├── 📄 ShareSkillScreen.jsx # Skill sharing workflow and options
+
+│ │ ├── 📄 SearchScreen.jsx # Advanced search with filters and suggestions
+
+│ │ ├── 📄 UnifiedProfileScreen.jsx # Enhanced social profile with contributions
 
 │ │ ├── 📄 StatsScreen.jsx # World-class analytics dashboard with comprehensive visualizations
 
@@ -404,7 +522,17 @@ backend/
 
 │   ├── 📄 skill_repository.py   # CRUD for skills
 
-│   └── 📄 checkin_repository.py # Habit check-ins
+│   ├── 📄 checkin_repository.py # Habit check-ins
+
+│   ├── 📄 shared_skill_repository.py # Community-shared skills
+
+│   ├── 📄 custom_task_repository.py # User-contributed custom tasks
+
+│   ├── 📄 interaction_repository.py # Social interactions (likes, ratings)
+
+│   ├── 📄 comment_repository.py # Threaded comment system
+
+│   └── 📄 skill_completion_repository.py # Skill completion tracking
 
 └── 📁 services/
 
@@ -415,6 +543,14 @@ backend/
     ├── 📄 skill_service.py     # Skill business logic & image refresh
 
     ├── 📄 stats_service.py     # Comprehensive analytics engine for dashboard
+
+    ├── 📄 social_service.py    # SkillShare social platform core functionality
+
+    ├── 📄 custom_task_service.py # Custom task management and voting system
+
+    ├── 📄 interaction_service.py # Social interactions (likes, comments, ratings)
+
+    ├── 📄 search_service.py    # Advanced search and discovery algorithms
 
     └── 📄 unsplash_service.py  # Enhanced image categorization & skill-relevant photos
 
@@ -747,7 +883,7 @@ const displayValue = Math.ceil(rawValue);
 
 ### 🧭 Navigation Architecture
 
-The app uses a custom-built, animated bottom tab navigator that appears on user interaction. The main "Repository" tab is a nested stack to handle the creation of new skills and habits.
+The app uses a custom-built, animated bottom tab navigator with integrated social features. The navigation includes dedicated stacks for social interactions and skill discovery.
 
 ```mermaid
 graph TD
@@ -765,7 +901,7 @@ graph TD
 
   subgraph "Main Tabs"
     D --> G[RepositoryStack]
-    D --> K[ExploreScreen]
+    D --> S[SocialStack]
     D --> L[StatsScreen]
     D --> M[ProfileScreen]
   end
@@ -776,11 +912,30 @@ graph TD
     H --> J[AddHabitScreen]
     H --> N[AllSkillsScreen]
     H --> O[AllHabitsScreen]
-    H --> P[PlanIndexScreen]
+    H --> P[SkillDetailScreen]
     P --> Q[DayDetailScreen]
   end
 
-  style D fill:#f9f,stroke:#333,stroke-width:2px
+  subgraph "SkillShare Social Stack"
+    S --> SF[SocialFeedScreen]
+    S --> BS[BrowseSkillsScreen]
+    SF --> SSD[SharedSkillDetailScreen]
+    BS --> SSD
+    SF --> CSS[CreateSharedSkillScreen]
+    SF --> SSS[ShareSkillScreen]
+    SF --> SEARCH[SearchScreen]
+    SSD --> CSS
+  end
+
+  subgraph "Social Features"
+    SSD --> COMMENTS[CommentsSection]
+    SSD --> TASKS[CustomTasks]
+    SF --> PROFILE[UserProfileScreen]
+  end
+
+  style D fill:#8B5CF6,stroke:#333,stroke-width:3px
+  style S fill:#22C55E,stroke:#333,stroke-width:2px
+  style SF fill:#3B82F6,stroke:#333,stroke-width:2px
 ```
 
 ### 🔐 Authentication Context
@@ -905,8 +1060,146 @@ process.env.REACT_APP_API_BASE_URL || // Web fallback
     - The central `+` button triggers a spring animation, presenting "Add Skill" and "Add Habit" options horizontally.
     - Uses `expo-blur` for a modern, blurred background effect on the tab bar.
     - Manages its own visibility state, providing a clean and focused UI.
+    - **Redesigned Layout**: Fixed positioning issues with proper spacing and tab order
+    - **Login Streak Integration**: Real daily login streak calculation and display
 
+## 🌟 SkillShare Social Platform
 
+### 🎯 Platform Overview
+The SkillShare social platform transforms YiZ Planner from an individual learning app into a collaborative community-driven ecosystem. Users can share their 30-day skill plans, discover community-created content, and engage through social interactions.
+
+### ✨ Key Social Screens
+
+#### 🔥 `SocialFeedScreen` - Community Hub
+- **Purpose**: Central social hub with Instagram-inspired interface for skill discovery and community engagement
+- **Features**:
+    - **Triple Tab Navigation**: Following, Discover, and Trending feeds with animated transitions
+    - **Real-time Feed**: Dynamic skill posts with rich media and engagement metrics
+    - **Optimistic Updates**: Instant UI updates for likes, downloads, and interactions
+    - **Infinite Scroll**: Seamless pagination with pull-to-refresh functionality
+    - **Header Animations**: Parallax scrolling effects and opacity transitions
+    - **Floating Action Button**: Quick access to skill sharing functionality
+- **UI Design**:
+    - Modern card-based layout with gradient overlays
+    - Professional typography with Material Design icons
+    - Smooth scroll animations and micro-interactions
+    - Responsive layout adapting to content length
+- **Technical Implementation**:
+    - Uses `FlatList` with performance optimizations
+    - `useFocusEffect` for real-time data refresh
+    - Animated scroll handling with `Animated.Value`
+    - Comprehensive error handling and loading states
+
+#### 🔍 `BrowseSkillsScreen` - Advanced Discovery
+- **Purpose**: Comprehensive skill discovery interface with powerful search and filtering capabilities
+- **Features**:
+    - **Modern Tab System**: Discover, Trending, and Categories with pill-style navigation
+    - **Advanced Search**: Real-time search with autocomplete and suggestion system
+    - **Smart Filters**: Category, difficulty, rating, and custom task filters
+    - **Trending Algorithm**: Time-based trending with engagement scoring
+    - **Category Browsing**: Visual category selector with skill counts
+    - **Sample Data Fallback**: Graceful fallback to demo data when API unavailable
+- **UI Design**:
+    - Gradient header with rounded corners and shadows
+    - Card-based skill display with rich metadata
+    - Empty states with actionable CTAs
+    - Loading indicators and skeleton screens
+- **Technical Implementation**:
+    - Debounced search with performance optimization
+    - Efficient pagination and caching strategies
+    - Integration with SearchService for advanced algorithms
+    - Responsive grid layout with proper spacing
+
+#### 📚 `SharedSkillDetailScreen` - Immersive Skill Experience
+- **Purpose**: Comprehensive view of community-shared skills with full social interaction capabilities
+- **Features**:
+    - **Hero Section**: Parallax background image with overlay gradients
+    - **Tabbed Content**: Overview, Curriculum, and Comments with smooth transitions
+    - **Social Actions**: Like, download, upvote, downvote, save with optimistic updates
+    - **Comments System**: Threaded comments with nested replies and voting
+    - **Custom Tasks**: Community-contributed enhancements with voting system
+    - **Rich Metadata**: Creator info, stats, tags, and difficulty indicators
+- **UI Design**:
+    - Cinematic header with animated scaling and transparency
+    - Material Design cards with proper elevation
+    - Professional typography hierarchy
+    - Color-coded interaction buttons
+- **Technical Implementation**:
+    - Complex scroll-based animations using `Animated.Value`
+    - Real-time social interaction updates
+    - Integration with InteractionService and CommentRepository
+    - Error handling with graceful degradation
+
+#### ✍️ `CreateSharedSkillScreen` & `ShareSkillScreen` - Content Creation
+- **Purpose**: Intuitive interfaces for sharing personal skills with the community
+- **Features**:
+    - **Skill Selection**: Choose from personal skill repository
+    - **Rich Descriptions**: Multi-line text input with character limits
+    - **Tagging System**: Auto-suggested tags with category inference
+    - **Visibility Controls**: Public/private sharing options
+    - **Custom Task Inclusion**: Option to include community-contributed tasks
+    - **Preview Mode**: Live preview before publishing
+- **UI Design**:
+    - Form-based interface with progressive disclosure
+    - Real-time validation and feedback
+    - Success animations and confirmations
+- **Technical Implementation**:
+    - Form validation using custom hooks
+    - Integration with SocialService for skill sharing
+    - Image handling and upload optimization
+
+### 🔧 Social Components & Features
+
+#### 🎨 `SharedSkillCard` - Social Post Component
+- **Purpose**: Reusable card component for displaying skills in social feeds
+- **Features**:
+    - Compact skill preview with essential information
+    - Interaction buttons (like, comment, download, share)
+    - Creator information and profile links
+    - Engagement metrics and visual indicators
+    - Responsive layout for different screen sizes
+- **Props**: `skill`, `onPress`, `onLike`, `onDownload`, `onUserPress`, `onComment`, `onShare`
+
+#### 💬 `CommentsSection` - Threaded Comment System
+- **Purpose**: Full-featured comment system with nested replies and moderation
+- **Features**:
+    - Threaded comment display with proper indentation
+    - Like/unlike functionality for individual comments
+    - Reply system with parent-child relationships
+    - Real-time comment submission and updates
+    - User profile integration with avatars
+- **Technical Implementation**:
+    - Recursive component structure for nested comments
+    - Optimistic updates for immediate feedback
+    - Integration with CommentRepository and InteractionService
+
+#### 🔍 `SearchBar` & `SearchFilters` - Discovery Tools
+- **Purpose**: Advanced search interface with filtering capabilities
+- **Features**:
+    - Real-time search with debouncing
+    - Auto-suggestions and search history
+    - Multi-criteria filtering (category, difficulty, rating)
+    - Clear and reset functionality
+    - Responsive design for mobile and tablet
+- **Technical Implementation**:
+    - Custom hooks for search state management
+    - Integration with SearchService algorithms
+    - Performance optimization with memoization
+
+### 📊 Social Analytics & Metrics
+
+#### 📈 Engagement Tracking
+- **Like System**: Toggle-based liking with real-time counts
+- **Rating System**: 5-star rating with optional reviews
+- **Download Tracking**: Skill download metrics and user analytics
+- **Comment Analytics**: Comment count and engagement scoring
+- **Voting System**: Upvote/downvote for custom tasks and contributions
+
+#### 🔥 Trending Algorithm
+- **Time-based Scoring**: Recent activity weighted more heavily
+- **Engagement Metrics**: Likes, downloads, comments, and ratings
+- **Community Validation**: User voting and quality indicators
+- **Category Normalization**: Fair representation across skill categories
 
 ### 📊 Chart Components (Stats Dashboard)
 
@@ -1467,6 +1760,231 @@ Authorization: Bearer <token>
 - **Timeline Data**: 30-day activity timeline with intensity scoring
 - **Trend Analysis**: 7-day completion trends and weekly patterns
 - **Consistency Scoring**: Habit completion rates over 30-day periods
+
+### 🌟 SkillShare Social Platform API
+
+#### Share a Skill with Community
+
+```http
+POST /api/v1/social/skills/share
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "skill_id": "507f1f77bcf86cd799439011",
+  "description": "Master Python programming with hands-on projects and real-world applications",
+  "tags": ["python", "programming", "backend"],
+  "visibility": "public",
+  "include_custom_tasks": true
+}
+```
+
+**Response: 201 Created**
+```json
+{
+  "message": "Skill shared successfully",
+  "shared_skill": {
+    "shared_skill_id": "507f1f77bcf86cd799439012",
+    "title": "Learn Python Programming",
+    "description": "Master Python programming with hands-on projects and real-world applications",
+    "category": "technology",
+    "tags": ["python", "programming", "backend"],
+    "has_custom_tasks": true,
+    "visibility": "public"
+  }
+}
+```
+
+#### Browse Shared Skills
+
+```http
+GET /api/v1/social/skills?page=1&limit=20&category=technology&difficulty=beginner&min_rating=4.0
+```
+
+**Response: 200 OK**
+```json
+{
+  "message": "Shared skills retrieved successfully",
+  "skills": [
+    {
+      "_id": "507f1f77bcf86cd799439012",
+      "title": "Learn Python Programming",
+      "description": "Master Python programming with hands-on projects",
+      "difficulty": "beginner",
+      "category": "technology",
+      "tags": ["python", "programming"],
+      "image_url": "https://images.unsplash.com/photo-...",
+      "shared_by": {
+        "_id": "507f1f77bcf86cd799439010",
+        "username": "pythonmaster",
+        "profile_image": "https://ui-avatars.com/api/?name=pythonmaster"
+      },
+      "engagement": {
+        "likes_count": 42,
+        "downloads_count": 18,
+        "comments_count": 5,
+        "average_rating": 4.7
+      },
+      "user_interactions": {
+        "has_liked": false,
+        "has_downloaded": false,
+        "user_rating": null
+      },
+      "created_at": "2025-07-20T10:30:00Z"
+    }
+  ],
+  "pagination": {
+    "current_page": 1,
+    "total_pages": 5,
+    "total_count": 89,
+    "has_next": true,
+    "has_previous": false
+  }
+}
+```
+
+#### Get Shared Skill Detail
+
+```http
+GET /api/v1/social/skills/{skill_id}
+Authorization: Bearer <token> (optional)
+```
+
+**Response: 200 OK**
+```json
+{
+  "message": "Skill details retrieved successfully",
+  "skill": {
+    "_id": "507f1f77bcf86cd799439012",
+    "title": "Learn Python Programming", 
+    "description": "Master Python programming with hands-on projects",
+    "curriculum": {
+      "daily_tasks": [
+        {
+          "day": 1,
+          "title": "Python Fundamentals",
+          "tasks": [
+            {
+              "description": "Install Python and set up development environment",
+              "resources": ["Python.org", "VS Code setup guide"]
+            }
+          ]
+        }
+      ]
+    },
+    "custom_tasks": [
+      {
+        "_id": "507f1f77bcf86cd799439013",
+        "day": 1,
+        "title": "Build a Calculator App",
+        "description": "Create your first Python application",
+        "votes": 15,
+        "contributor": "advanced_user"
+      }
+    ],
+    "engagement": {
+      "likes_count": 42,
+      "downloads_count": 18,
+      "comments_count": 5,
+      "average_rating": 4.7
+    }
+  }
+}
+```
+
+#### Download Shared Skill
+
+```http
+POST /api/v1/social/skills/{skill_id}/download
+Authorization: Bearer <token>
+```
+
+**Response: 201 Created**
+```json
+{
+  "message": "Skill downloaded successfully and added to your repository",
+  "skill_id": "507f1f77bcf86cd799439014",
+  "title": "Learn Python Programming"
+}
+```
+
+#### Add Custom Task to Shared Skill
+
+```http
+POST /api/v1/social/skills/{skill_id}/days/{day}/tasks
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "title": "Build a Web Scraper",
+  "description": "Create a Python script to scrape data from websites",
+  "task_type": "project",
+  "estimated_time": 120,
+  "instructions": "1. Import required libraries\n2. Write scraping logic\n3. Handle errors",
+  "resources": [
+    {
+      "title": "Beautiful Soup Tutorial",
+      "url": "https://example.com/tutorial",
+      "type": "tutorial"
+    }
+  ]
+}
+```
+
+#### Social Interactions
+
+```http
+# Like/Unlike a shared skill
+POST /api/v1/social/skills/{skill_id}/like
+Authorization: Bearer <token>
+
+# Rate a shared skill
+POST /api/v1/social/skills/{skill_id}/rate
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "rating": 5,
+  "review": "Excellent skill plan with great explanations!"
+}
+
+# Add comment to shared skill
+POST /api/v1/social/skills/{skill_id}/comments
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "content": "This is an amazing skill plan! Thanks for sharing.",
+  "parent_id": null
+}
+
+# Get comments for skill
+GET /api/v1/social/skills/{skill_id}/comments?limit=100
+```
+
+#### Discovery & Search
+
+```http
+# Advanced search
+GET /api/v1/discovery/search?q=python&difficulty=beginner&has_custom_tasks=true&page=1&limit=20
+
+# Get trending skills
+GET /api/v1/social/trending?period=week&limit=10
+
+# Get skill categories
+GET /api/v1/social/categories
+
+# Get popular custom tasks
+GET /api/v1/social/tasks/popular?limit=20
+```
+
+**Key Features**:
+- **23+ API Endpoints**: Comprehensive social platform functionality
+- **Real-time Interactions**: Live likes, comments, ratings, and downloads
+- **Advanced Search**: Multi-criteria search with filters and pagination
+- **Community Content**: User-contributed custom tasks and enhancements
+- **Trending Algorithm**: Time-based trending with engagement scoring
+- **Social Analytics**: Comprehensive interaction tracking and metrics
 
 ### 🔍 Health Check
 
@@ -2172,6 +2690,59 @@ sequenceDiagram
     HS->>API: Return checkin + streaks
     API->>F: JSON response
     F->>U: Show updated progress
+```
+
+### 🌟 SkillShare Social Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant SF as SocialFeedScreen
+    participant BS as BrowseSkillsScreen
+    participant SSD as SharedSkillDetailScreen
+    participant API as Social API
+    participant SS as SocialService
+    participant DB as MongoDB
+
+    Note over U,DB: Social Discovery Flow
+    U->>SF: Open Social Feed
+    SF->>API: GET /api/v1/social/feed
+    API->>SS: get_social_feed()
+    SS->>DB: Query shared_skills with interactions
+    DB->>SS: Feed data with engagement metrics
+    SS->>API: Enriched social feed
+    API->>SF: JSON response
+    SF->>U: Display feed with likes/comments
+
+    Note over U,DB: Skill Discovery Flow
+    U->>BS: Browse Skills
+    BS->>API: GET /api/v1/social/skills?filters
+    API->>SS: get_shared_skills(filters)
+    SS->>DB: Query with category/difficulty filters
+    DB->>SS: Filtered skills with pagination
+    SS->>API: Search results
+    API->>BS: Paginated skill list
+    BS->>U: Display searchable skill grid
+
+    Note over U,DB: Social Interaction Flow
+    U->>SSD: View Skill Detail
+    SSD->>API: GET /api/v1/social/skills/{id}
+    API->>SS: get_shared_skill_detail()
+    SS->>DB: Get skill + custom_tasks + comments
+    DB->>SS: Complete skill data
+    SS->>API: Detailed skill object
+    API->>SSD: Full skill with interactions
+    SSD->>U: Rich skill view with social actions
+
+    Note over U,DB: Community Engagement
+    U->>SSD: Like/Download/Comment
+    SSD->>API: POST /api/v1/social/skills/{id}/like
+    API->>SS: record_interaction()
+    SS->>DB: Update plan_interactions collection
+    DB->>SS: Interaction saved
+    SS->>API: Updated engagement stats
+    API->>SSD: Real-time metrics
+    SSD->>U: Optimistic UI update
 ```
 
 ---
@@ -2927,6 +3498,47 @@ const response = await refreshSkillImage(skillId, token);
 console.log('Refresh response:', response);
 ```
 
+#### ✅ Habit Check-in State Issues
+
+**Problem**: Habit check marks disappear when returning to the page, causing confusion about completion status
+
+**Solution**: Fixed backend collection name inconsistency and improved frontend state management:
+
+```javascript
+// ✅ FIXED: Backend now consistently uses g.db.habit_checkins
+// backend/api/v1/plans.py:227
+checkin_repo = CheckinRepository(g.db.habit_checkins)  // was g.db.checkins
+
+// ✅ FIXED: Frontend now uses backend checked_today field
+const completedSet = new Set();
+(data.habits || []).forEach(h => {
+  if (h.checked_today) {  // Uses backend field instead of local state
+    completedSet.add(h._id);
+  }
+});
+setCompletedHabits(completedSet);
+```
+
+#### 📱 Double Check Mark Issue
+
+**Problem**: Completed habits show both checkbox check mark and overlay check mark icon
+
+**Solution**: Removed redundant overlay check mark in both screens:
+
+```javascript
+// ❌ REMOVED: Duplicate overlay check mark
+{completedHabits.has(habit._id) && (
+  <View style={styles.gridCompletedOverlay}>
+    <MaterialIcons name="check-circle" size={16} color="#22C55E" />
+  </View>
+)}
+
+// ✅ KEPT: Only the checkbox check mark
+{completedHabits.has(habit._id) && (
+  <MaterialIcons name="check" size={12} color="white" />
+)}
+```
+
 #### 🎨 UI Layout Issues
 
 **Problem**: Empty white space or misaligned elements in SkillDetailScreen
@@ -3075,7 +3687,9 @@ windowSize={5}
 | **⚡ Async/Sync Pattern Fix** | • Removed incorrect async decorators from all repository classes<br>• Fixed `require_auth` decorator to work with synchronous functions<br>• Updated all API endpoints to use synchronous patterns | **CRITICAL**: Fixed all 500 errors from async/sync mismatches |
 | **🎯 Enhanced API Endpoints** | • Updated `/api/v1/plans/skills` to work with new service architecture<br>• Enhanced habit creation with additional parameters (color, dates, reminder_time)<br>• Added proper error handling across all endpoints | **MEDIUM**: More robust API with better error responses |
 | **🔍 Improved Error Handling** | • Added comprehensive logging for plan generation<br>• Implemented graceful fallback mechanisms<br>• Enhanced debugging capabilities with detailed error messages | **MEDIUM**: Better debugging and user experience |
-| **🎨 UI/UX Enhancements** | • **Image Refresh System**: Added three-dot menu with image refresh functionality<br>• **Smart Categorization**: Enhanced UnsplashService with 10+ skill categories<br>• **SkillDetailScreen Redesign**: Modern gradient cards with improved layout<br>• **Progressive Completion**: Sequential day completion with validation<br>• **Today's Focus Enhancement**: Sleek gradient design with task indicators<br>• **Layout Optimization**: Fixed empty white space and alignment issues | **HIGH**: Professional UI with better user experience |
+| **🎨 UI/UX Enhancements** | • **Image Refresh System**: Added three-dot menu with image refresh functionality<br>• **Smart Categorization**: Enhanced UnsplashService with 10+ skill categories<br>• **SkillDetailScreen Redesign**: Modern gradient cards with improved layout<br>• **Progressive Completion**: Sequential day completion with validation<br>• **Today's Focus Enhancement**: Sleek gradient design with task indicators<br>• **Layout Optimization**: Fixed empty white space and improved alignment<br>• **Habit Check-in Fix**: Resolved state persistence and double check mark issues | **HIGH**: Professional UI with better user experience |
+| **🔄 Habit System Overhaul** | • **Backend Collection Fix**: Fixed inconsistent `g.db.checkins` vs `g.db.habit_checkins` naming<br>• **State Persistence**: Habits now stay checked on page reload using backend `checked_today` field<br>• **Real-time Sync**: Both RepositoryScreen and MyHabitsScreen properly sync with backend data<br>• **Stats Integration**: Fixed stats endpoint to reflect actual habit completions | **CRITICAL**: Habit functionality now works reliably across all screens |
+| **📱 UI Redesign (Latest)** | • **Compact Habit Cards**: Made RepositoryScreen habit cards smaller and more efficient<br>• **Grid Layout**: Converted MyHabitsScreen to 2-column grid layout for better space utilization<br>• **Single Check Mark**: Fixed double check mark issue by removing overlay indicator<br>• **Consistent Design**: Both screens now use similar compact grid layouts | **MEDIUM**: Improved visual consistency and space efficiency |
 
 ## 📊 Development Summary
 
@@ -3084,6 +3698,9 @@ windowSize={5}
 - **New API Endpoint**: `PATCH /api/v1/plans/skills/{id}/refresh-image`
 - **Enhanced Skill Service**: Added `refresh_skill_image()` method
 - **Day Completion APIs**: Progressive completion with validation logic
+- **Critical Database Fix**: Fixed collection naming inconsistency in `plans.py:227` (`g.db.habit_checkins`)
+- **Habit Service Enhancement**: Improved `get_user_habits()` to properly set `checked_today` field
+- **Stats Service Fix**: Corrected repository initialization for accurate habit statistics
 
 ### 🎨 Frontend Improvements
 - **SkillDetailScreen**: Complete redesign with modern aesthetics
@@ -3091,12 +3708,42 @@ windowSize={5}
 - **Progressive UI**: Sequential day completion with proper validation
 - **Today's Focus**: Gradient cards with enhanced task management
 - **Layout Fixes**: Eliminated white space and improved alignment
+- **Habit State Management**: Fixed state persistence using backend `checked_today` field
+- **Grid Layout Implementation**: Converted MyHabitsScreen to 2-column responsive grid
+- **Compact Design**: Reduced RepositoryScreen habit card sizes for better space utilization
+- **Visual Consistency**: Unified design patterns across both habit screens
 
 ### 🖼️ Image Management
 - **Smart Categorization**: 10+ categories (languages, cooking, programming, etc.)
 - **Cache-Busting**: Automatic refresh parameters for image updates
 - **Fallback System**: Local images when Unsplash API unavailable
 - **Skill-Relevant**: Images matched to skill type for better UX
+
+### ✅ Habit System Architecture (Latest Implementation)
+
+#### Backend Data Flow
+```
+HabitService.get_user_habits() → CheckinRepository.find_by_habit_and_date() → habit.checked_today = boolean
+```
+
+#### Frontend State Management
+```
+Page Load → getAllPlans() → Backend returns habits with checked_today → setCompletedHabits(Set)
+Check-in → recordHabitCheckin() → Backend updates & returns habit → Sync local state
+```
+
+#### Key Implementation Details
+- **Collection Consistency**: All endpoints now use `g.db.habit_checkins` (fixed inconsistency)
+- **Real-time Sync**: Frontend state synchronizes with backend `checked_today` field on every screen focus
+- **Optimistic Updates**: UI updates immediately, with rollback on API failure
+- **Cross-Screen Persistence**: Habits stay checked when navigating between Repository/MyHabits screens
+- **Stats Integration**: StatsScreen auto-refreshes with `useFocusEffect` to show updated completion rates
+
+#### UI/UX Improvements
+- **Grid Layout**: MyHabitsScreen now uses 2-column responsive grid (`48%` width cards)
+- **Compact Cards**: RepositoryScreen cards reduced in size (90px min-height, 10px padding)
+- **Single Check Mark**: Removed duplicate check mark overlays for cleaner visual design
+- **Consistent Styling**: Both screens use unified compact grid card patterns
 
 ---
 
@@ -3112,3 +3759,68 @@ windowSize={5}
 | `BCRYPT_ROUNDS` | Backend | `12` | `12` |
 | `UNSPLASH_ACCESS_KEY` | Backend Image Service | `UqKRPeL...` | Render secret |
 | `EXPO_PUBLIC_API_BASE_URL` | Frontend | `http://192.168.0.116:8080` | `https://<render-url>` |
+
+---
+
+## 📝 Final Notes
+
+### 🎉 SkillShare Social Platform - Complete Implementation
+
+The SkillShare social platform represents a major evolution of YiZ Planner from an individual learning app to a comprehensive community-driven ecosystem. This implementation includes:
+
+**✨ Complete Feature Set**:
+- Full social feed with Following, Discover, and Trending tabs
+- Advanced skill discovery with search, filters, and categorization
+- Rich social interactions (likes, comments, ratings, downloads)
+- Community-contributed custom tasks with voting system
+- Real-time engagement metrics and trending algorithms
+- Professional Instagram-inspired UI design
+
+**🏗️ Robust Architecture**:
+- 4 new database collections (shared_skills, custom_tasks, plan_interactions, plan_comments)
+- 4 new service classes with comprehensive business logic
+- 4 new repository classes following consistent patterns
+- 23+ API endpoints covering all social functionality
+- Comprehensive error handling and validation
+
+**📱 Enhanced User Experience**:
+- Seamless integration with existing skill/habit system
+- Optimistic UI updates for instant feedback
+- Advanced search and discovery capabilities
+- Rich content creation and sharing tools
+- Social analytics and engagement tracking
+
+**🔧 Technical Excellence**:
+- Consistent repository pattern architecture
+- Comprehensive API documentation
+- Real-time social interactions
+- Professional UI components
+- Performance-optimized data flow
+
+### 🌟 SkillShare Platform Key Achievements
+
+#### 📊 Social Database Collections
+- **shared_skills**: Community-shared learning plans with engagement metrics
+- **custom_tasks**: User-contributed enhancements to shared skills
+- **plan_interactions**: Social interactions (likes, downloads, ratings, views)
+- **plan_comments**: Threaded comment system with nested replies
+
+#### 🔗 Platform Integration Points
+- **SocialFeedScreen**: Instagram-inspired social hub with three-tab navigation
+- **BrowseSkillsScreen**: Advanced discovery with search, filters, and trending
+- **SharedSkillDetailScreen**: Immersive skill experience with social interactions
+- **Social API Endpoints**: 23+ endpoints covering all social functionality
+
+#### 🎯 Community Engagement Features
+- **Like System**: Toggle-based liking with real-time counts
+- **Comment System**: Threaded discussions with nested replies
+- **Rating System**: 5-star ratings with optional reviews
+- **Download Tracking**: Skills added to personal repositories
+- **Custom Task Voting**: Community-driven skill improvements
+- **Trending Algorithm**: Time-based engagement scoring
+
+The SkillShare platform successfully transforms YiZ Planner into a complete social learning ecosystem while maintaining the app's core focus on structured, AI-powered skill development.
+
+---
+
+*This developer guide reflects the complete state of YiZ Planner as of July 26th, 2025, including the comprehensive SkillShare social platform implementation.*
