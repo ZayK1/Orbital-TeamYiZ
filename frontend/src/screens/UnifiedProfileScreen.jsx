@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Alert,
   Platform,
   StatusBar,
 } from 'react-native';
@@ -14,6 +13,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../constants/colors';
 import { useAuth } from '../context/AuthContext';
+import LogoutModal from '../components/LogoutModal';
 
 const UnifiedProfileScreen = ({ navigation }) => {
   const { user, logout } = useAuth();
@@ -21,6 +21,7 @@ const UnifiedProfileScreen = ({ navigation }) => {
   const [darkMode, setDarkMode] = useState(false);
   const [emailUpdates, setEmailUpdates] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const profileSections = [
     {
@@ -108,18 +109,12 @@ const UnifiedProfileScreen = ({ navigation }) => {
   ];
 
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Logout', 
-          style: 'destructive', 
-          onPress: logout
-        },
-      ]
-    );
+    setShowLogoutModal(true);
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutModal(false);
+    logout();
   };
 
   const renderSettingItem = (item) => (
@@ -241,6 +236,12 @@ const UnifiedProfileScreen = ({ navigation }) => {
           </View>
         </View>
       </ScrollView>
+      
+      <LogoutModal
+        visible={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={confirmLogout}
+      />
     </View>
   );
 };

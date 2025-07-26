@@ -6,6 +6,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { useAuth } from '../context/AuthContext';
 import { useIsFocused } from '@react-navigation/native';
 import { getAllPlans } from '../api/plans';
+import LogoutModal from '../components/LogoutModal';
 
 
 const CircularProgress = ({ size, strokeWidth, progress, color, backgroundColor, children }) => {
@@ -48,6 +49,7 @@ export default function ProfileScreen() {
   const isFocused = useIsFocused();
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [loadingStats, setLoadingStats] = useState(true);
   const [stats, setStats] = useState({
     activeSkills: 0,
@@ -246,7 +248,7 @@ export default function ProfileScreen() {
               )}
             </TouchableOpacity>
           ))}
-          <TouchableOpacity style={styles.settingItem} onPress={logout}>
+          <TouchableOpacity style={styles.settingItem} onPress={() => setShowLogoutModal(true)}>
             <View style={styles.settingInfo}>
               <MaterialIcons name="logout" size={20} color="#EF4444" />
               <Text style={[styles.settingLabel, { color: "#EF4444" }]}>Log Out</Text>
@@ -254,6 +256,15 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      
+      <LogoutModal
+        visible={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={() => {
+          setShowLogoutModal(false);
+          logout();
+        }}
+      />
     </ScrollView>
   );
 }

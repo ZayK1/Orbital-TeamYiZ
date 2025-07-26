@@ -187,12 +187,14 @@ const CompletionCelebrationModal = ({
             </Text>
             
             {/* Message */}
-            <Text style={styles.message}>
-              {isCompleted 
-                ? `Congratulations! You've completed all ${totalDays} days of "${skillTitle}". You're now a master!`
-                : `Great job completing Day ${day} of "${skillTitle}"! You're making excellent progress.`
-              }
-            </Text>
+            <View style={styles.messageContainer}>
+              <Text style={styles.message}>
+                {isCompleted 
+                  ? `Congratulations! You've completed all ${totalDays} days of "${skillTitle}". You're now a master!`
+                  : `Great job completing Day ${day} of "${skillTitle}"! You're making excellent progress.`
+                }
+              </Text>
+            </View>
 
             {/* Stats */}
             <View style={styles.statsContainer}>
@@ -364,12 +366,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     letterSpacing: -0.5,
   },
+  messageContainer: {
+    marginBottom: 24,
+    paddingHorizontal: 4,
+  },
   message: {
     fontSize: 16,
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: 24,
   },
   statsContainer: {
     flexDirection: 'row',
