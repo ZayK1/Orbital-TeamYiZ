@@ -448,62 +448,74 @@ export default function RepositoryScreen() {
         </View>
 
         {todaysHabits.length > 0 ? (
-          <View style={styles.habitsGridContainer}>
+          <View style={styles.habitsListContainer}>
             {todaysHabits.map((habit, index) => (
               <TouchableOpacity 
                 key={habit._id || index} 
                 style={[
-                  styles.gridHabitCard,
-                  completedHabits.has(habit._id) && styles.completedGridHabitCard,
-                  { borderColor: habit.color || '#14B8A6' }
+                  styles.listHabitCard,
+                  completedHabits.has(habit._id) && styles.completedListHabitCard
                 ]}
                 onPress={() => handleHabitCheck(habit._id)}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
               >
-                <View style={styles.gridHabitContent}>
-                  <View style={[
-                    styles.gridHabitIconContainer, 
-                    { backgroundColor: (habit.color || '#14B8A6') + '15' }
-                  ]}>
-                    <MaterialIcons 
-                      name={getHabitIcon(habit.title)} 
-                      size={20} 
-                      color={habit.color || '#14B8A6'} 
-                    />
+                <View style={styles.listHabitContent}>
+                  <View style={styles.listHabitLeft}>
+                    <View style={[
+                      styles.listHabitIconContainer, 
+                      { backgroundColor: (habit.color || '#14B8A6') + '12' }
+                    ]}>
+                      <MaterialIcons 
+                        name={getHabitIcon(habit.title)} 
+                        size={24} 
+                        color={habit.color || '#14B8A6'} 
+                      />
+                    </View>
+                    
+                    <View style={styles.listHabitInfo}>
+                      <Text style={[
+                        styles.listHabitTitle,
+                        completedHabits.has(habit._id) && styles.completedListHabitTitle
+                      ]} numberOfLines={1}>
+                        {habit.title}
+                      </Text>
+                      
+                      <View style={styles.listHabitMeta}>
+                        <Text style={styles.listHabitFrequency}>
+                          {habit.pattern?.frequency || 'Daily'}
+                        </Text>
+                        
+                        {habit.streaks?.current_streak > 0 && (
+                          <>
+                            <View style={styles.metaDivider} />
+                            <View style={styles.listStreakContainer}>
+                              <MaterialIcons name="local-fire-department" size={14} color="#F59E0B" />
+                              <Text style={styles.listStreakText}>
+                                {habit.streaks.current_streak} day streak
+                              </Text>
+                            </View>
+                          </>
+                        )}
+                      </View>
+                    </View>
                   </View>
                   
-                  <Text style={[
-                    styles.gridHabitTitle,
-                    completedHabits.has(habit._id) && styles.completedGridHabitTitle
-                  ]} numberOfLines={2}>
-                    {habit.title}
-                  </Text>
-                  
-                  <Text style={styles.gridHabitFrequency}>
-                    {habit.pattern?.frequency || 'Daily'}
-                  </Text>
-                  
-                  {habit.streaks?.current_streak > 0 && (
-                    <View style={styles.gridStreakContainer}>
-                      <MaterialIcons name="local-fire-department" size={12} color="#F97316" />
-                      <Text style={styles.gridStreakText}>
-                        {habit.streaks.current_streak}d
-                      </Text>
-                    </View>
-                  )}
-                  
                   <View style={[
-                    styles.gridHabitCheckbox,
+                    styles.listHabitCheckbox,
                     completedHabits.has(habit._id) 
-                      ? { backgroundColor: '#22C55E', borderColor: '#22C55E' }
-                      : { backgroundColor: 'transparent', borderColor: habit.color || '#14B8A6' }
+                      ? styles.completedListHabitCheckbox
+                      : { borderColor: habit.color || '#14B8A6' }
                   ]}>
                     {completedHabits.has(habit._id) && (
-                      <MaterialIcons name="check" size={12} color="white" />
+                      <MaterialIcons name="check" size={16} color="white" />
                     )}
                   </View>
                 </View>
                 
+                <View style={[
+                  styles.listHabitAccent,
+                  { backgroundColor: habit.color || '#14B8A6' }
+                ]} />
               </TouchableOpacity>
             ))}
           </View>
@@ -761,86 +773,108 @@ const styles = StyleSheet.create({
   },
   skillButtonText: { color: '#111827', fontWeight: '500', fontSize: 14 },
 
-  habitsGridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+  habitsListContainer: {
     gap: 12,
-    justifyContent: 'space-between',
   },
-  gridHabitCard: {
+  listHabitCard: {
     backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 10,
-    width: '48%',
-    minHeight: 90,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
-    borderWidth: 2,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
     position: 'relative',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#F3F4F6',
   },
-  completedGridHabitCard: {
+  completedListHabitCard: {
     backgroundColor: '#F0FDF4',
+    borderColor: '#D1FAE5',
   },
-  gridHabitContent: {
+  listHabitContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  listHabitLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
-  gridHabitIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  listHabitIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 6,
+    marginRight: 16,
   },
-  gridHabitTitle: {
-    fontSize: 12,
+  listHabitInfo: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  listHabitTitle: {
+    fontSize: 16,
     fontWeight: '700',
     color: '#1F2937',
-    textAlign: 'center',
-    marginBottom: 3,
-    lineHeight: 14,
+    marginBottom: 4,
+    lineHeight: 20,
   },
-  completedGridHabitTitle: {
+  completedListHabitTitle: {
     color: '#059669',
     textDecorationLine: 'line-through',
     opacity: 0.8,
   },
-  gridHabitFrequency: {
-    fontSize: 10,
-    color: '#6B7280',
-    fontWeight: '500',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  gridStreakContainer: {
+  listHabitMeta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    marginBottom: 4,
   },
-  gridStreakText: {
-    fontSize: 10,
-    color: '#F97316',
+  listHabitFrequency: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  metaDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: '#E5E7EB',
+    marginHorizontal: 8,
+  },
+  listStreakContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  listStreakText: {
+    fontSize: 13,
+    color: '#F59E0B',
     fontWeight: '600',
   },
-  gridHabitCheckbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
+  listHabitCheckbox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2.5,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 'auto',
+    backgroundColor: 'transparent',
   },
-  gridCompletedOverlay: {
+  completedListHabitCheckbox: {
+    backgroundColor: '#22C55E',
+    borderColor: '#22C55E',
+  },
+  listHabitAccent: {
     position: 'absolute',
-    top: 8,
-    right: 8,
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
   },
 
   placeholderCard: {
