@@ -1,5 +1,10 @@
 # YiZ Planner - AI-Powered Skill & Habit Development Platform
 
+
+## NUS Orbital 2025 - Apollo 11
+Project Video: https://youtu.be/mi_KxrZxSG8?si=NbgkgJD5__tuytht
+---
+
 ## Foreword
 
 Welcome to the comprehensive technical documentation of YiZ Planner, our ambitious NUS Orbital 2025 project submission that represents three months of intensive development, innovation, and collaboration. As a team of passionate developers and learners ourselves, we recognized a fundamental gap in the personal development ecosystem that affects millions of people worldwide.
